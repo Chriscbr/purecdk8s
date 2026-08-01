@@ -541,7 +541,11 @@ func (g *packageGenerator) typeForSchema(s *schema, owner generatedType, propert
 	case "boolean":
 		return goType{Name: "*bool", Category: categoryPrimitive}
 	case "array":
-		element := g.typeForSchema(s.Items, owner, propertyFQN+"Item", false)
+		// json2jsii derives the Go name for an inline array element from the
+		// array property itself. Appending "Item" produces types such as
+		// ExternalSecretSpecDataFromItem, whereas upstream exposes
+		// ExternalSecretSpecDataFrom.
+		element := g.typeForSchema(s.Items, owner, propertyFQN, false)
 		return goType{Name: "*[]" + element.Name, Category: categoryArray}
 	case "object":
 		if s.AdditionalProperties != nil {
