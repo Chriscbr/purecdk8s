@@ -1,0 +1,5 @@
+language: go
+app: go run .
+output: dist
+imports:
+  - https://raw.githubusercontent.com/cert-manager/cert-manager/refs/tags/v1.18.2/deploy/crds/crd-certificates.yaml

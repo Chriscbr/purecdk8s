@@ -1,0 +1,5 @@
+language: go
+app: go run .
+output: dist
+imports:
+  - k8s@1.26.0
