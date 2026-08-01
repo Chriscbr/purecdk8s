@@ -654,6 +654,17 @@ func Dependable_Of(instance IDependable) Dependable {
 	if trait, ok := dependableTraits.Load(instance); ok {
 		return trait.(Dependable)
 	}
+	// Generated Go resources wrap an underlying construct interface. They are
+	// still constructs (and therefore dependables), but the wrapper itself was
+	// not present when the underlying node was initialized. Resolve such
+	// forwarding wrappers to the node's actual host.
+	if construct, ok := instance.(IConstruct); ok {
+		root := construct
+		if node, native := construct.Node().(*nodeImpl); native && node.host != nil {
+			root = node.host
+		}
+		return &singleDependable{root: root}
+	}
 	panic(fmt.Sprintf(`%v does not implement IDependable. Use "Dependable_Implement()" to implement`, instance))
 }
 

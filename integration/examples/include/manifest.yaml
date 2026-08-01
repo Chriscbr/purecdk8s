@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: included-config
+  labels:
+    example: include
+data:
+  message: hello from a checked-in manifest

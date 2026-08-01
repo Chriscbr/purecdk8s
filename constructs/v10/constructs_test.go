@@ -6,6 +6,10 @@ type customConstruct struct {
 	Construct
 }
 
+type forwardingConstruct struct {
+	IConstruct
+}
+
 func TestOverrideSupportsEmbeddedConstruct(t *testing.T) {
 	rootID := ""
 	root := NewRootConstruct(&rootID)
@@ -69,6 +73,20 @@ func TestDependenciesPreserveDuplicateRootsAcrossDependables(t *testing.T) {
 	dependencies := *first.Node().Dependencies()
 	if len(dependencies) != 2 || dependencies[0] != second || dependencies[1] != second {
 		t.Fatalf("dependencies = %#v, want duplicate roots from distinct dependables", dependencies)
+	}
+}
+
+func TestDependenciesAcceptForwardingConstructWrappers(t *testing.T) {
+	rootID, sourceID, targetID := "root", "source", "target"
+	root := NewRootConstruct(&rootID)
+	source := NewConstruct(root, &sourceID)
+	target := NewConstruct(root, &targetID)
+	wrapper := &forwardingConstruct{IConstruct: target}
+
+	source.Node().AddDependency(wrapper)
+	dependencies := *source.Node().Dependencies()
+	if len(dependencies) != 1 || dependencies[0] != target {
+		t.Fatalf("dependencies = %#v, want underlying construct %#v", dependencies, target)
 	}
 }
 

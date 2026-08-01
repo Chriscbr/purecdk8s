@@ -753,7 +753,7 @@ func (m *metadataDefinition) ToJson() interface{} {
 	data["finalizers"] = m.finalizers
 	data["ownerReferences"] = m.ownerReferences
 	data["labels"] = m.labels
-	resolved := plainMap(resolveValue(data, m.object))
+	resolved := plainMap(resolveValueAt(appendResolutionKey(nil, "metadata"), data, m.object))
 	return sanitizeMap(resolved, true)
 }
 

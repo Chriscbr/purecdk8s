@@ -330,6 +330,25 @@ func (r *testReplacingResolver) Resolve(context ResolutionContext) {
 	context.ReplaceValue("replaced")
 }
 
+type testMetadataNameResolver struct{}
+
+func (r *testMetadataNameResolver) Resolve(context ResolutionContext) {
+	key := *context.Key()
+	if len(key) != 2 || stringValue(key[0]) != "metadata" || stringValue(key[1]) != "name" {
+		return
+	}
+	switch name := context.Value().(type) {
+	case string:
+		if !strings.HasPrefix(name, "prefix-") {
+			context.ReplaceValue("prefix-" + name)
+		}
+	case *string:
+		if name != nil && !strings.HasPrefix(*name, "prefix-") {
+			context.ReplaceValue("prefix-" + *name)
+		}
+	}
+}
+
 type testAnyProducer struct{ value interface{} }
 
 func (p *testAnyProducer) Produce() interface{} { return p.value }
@@ -369,6 +388,23 @@ func TestResolverPrimitives(t *testing.T) {
 	union := resolveValue(&testNumberStringUnion{value: numberPointer(42)}, object)
 	if !reflect.DeepEqual(union, map[string]interface{}{"value": float64(42)}) {
 		t.Fatalf("union result = %#v", union)
+	}
+}
+
+func TestResolverReceivesFullMetadataPath(t *testing.T) {
+	resolvers := []IResolver{&testMetadataNameResolver{}}
+	app := NewApp(&AppProps{Resolvers: &resolvers})
+	chart := NewChart(app, stringPointer("chart"), nil)
+	object := NewApiObject(chart, stringPointer("object"), &ApiObjectProps{
+		ApiVersion: stringPointer("v1"),
+		Kind:       stringPointer("Thing"),
+		Metadata:   &ApiObjectMetadata{Name: stringPointer("settings")},
+	})
+
+	rendered := object.ToJson().(map[string]interface{})
+	metadata := rendered["metadata"].(map[string]interface{})
+	if got := metadata["name"]; got != "prefix-settings" {
+		t.Fatalf("resolved metadata.name = %#v, want prefix-settings", got)
 	}
 }
 

@@ -307,6 +307,33 @@ Release verification also compiles the complete Kubernetes 1.25 schema,
 exercises local and remote Helm generation, and compares an import-swapped
 example manifest byte-for-byte with upstream cdk8s.
 
+Run one Docker integration test with:
+
+```console
+./integration/run.sh helm
+```
+
+Run every test with:
+
+```console
+./integration/run-all.sh
+```
+
+`run.sh` synthesizes upstream cdk8s and migrated purecdk8s, then compares the
+output byte-for-byte. Add another project directory to `integration/examples`
+to add another case.
+
+To inspect output manually, retain one or both implementations:
+
+```console
+./integration/run.sh helm upstream
+./integration/run.sh helm pure
+./integration/run.sh helm both
+```
+
+The last command also compares the two trees and prints the temporary output
+directory instead of removing it.
+
 To confirm the runtime dependency boundary:
 
 ```console
