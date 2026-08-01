@@ -59,7 +59,7 @@ The library requires Go 1.23 or newer.
 
 ## Import compatibility
 
-These are the three import-path changes for application code:
+These are the core import-path changes for application code:
 
 | Upstream import | Native replacement |
 | --- | --- |
@@ -67,8 +67,27 @@ These are the three import-path changes for application code:
 | `github.com/aws/constructs-go/constructs/v10` | `github.com/purecdk8s/purecdk8s/constructs/v10` |
 | `github.com/aws/jsii-runtime-go` | `github.com/purecdk8s/purecdk8s/jsii` |
 
+Native cdk8s+ packages use the same versioned import convention:
+
+| Upstream import | Native replacement |
+| --- | --- |
+| `github.com/cdk8s-team/cdk8s-plus-go/cdk8splus34/v2` | `github.com/purecdk8s/purecdk8s/cdk8splus34/v2` |
+| `github.com/cdk8s-team/cdk8s-plus-go/cdk8splus35/v2` | `github.com/purecdk8s/purecdk8s/cdk8splus35/v2` |
+| `github.com/cdk8s-team/cdk8s-plus-go/cdk8splus36/v2` | `github.com/purecdk8s/purecdk8s/cdk8splus36/v2` |
+
 The replacement helper package is still named `jsii`, so calls such as
 `jsii.String("default")` and `jsii.Number(3)` do not need to change.
+
+## cdk8s+
+
+The native cdk8s+ implementation includes Kubernetes-specific low-level
+bindings under each of `cdk8splus34/v2/k8s`, `cdk8splus35/v2/k8s`, and
+`cdk8splus36/v2/k8s`. The high-level layer currently provides native
+ConfigMap, Secret, Namespace, ServiceAccount, Volume, Container, Pod, Job,
+CronJob, Deployment, Service, and Ingress constructs, including deployment
+exposure and lazy synthesis. Kubernetes 1.35 and 1.36
+are forward ports of the 1.34 high-level behavior because upstream cdk8s+ has
+not yet published corresponding reference packages.
 
 A typical native app looks like this:
 

@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/purecdk8s/purecdk8s/constructs/v10"
+	"github.com/purecdk8s/purecdk8s/jsii"
 )
 
 type includeImpl struct {
@@ -79,9 +80,9 @@ func addIncludedDocuments(scope constructs.Construct, documents []interface{}) {
 			parts = append(parts, namespace)
 		}
 		identifier := strings.Join(parts, "-")
-		NewApiObjectWithManifest(scope, strptr(identifier), &ApiObjectProps{
-			ApiVersion: strptr(apiVersion),
-			Kind:       strptr(kind),
+		NewApiObjectWithManifest(scope, jsii.String(identifier), &ApiObjectProps{
+			ApiVersion: jsii.String(apiVersion),
+			Kind:       jsii.String(kind),
 		}, manifest)
 	}
 }

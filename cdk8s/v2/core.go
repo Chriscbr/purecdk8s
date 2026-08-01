@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/purecdk8s/purecdk8s/constructs/v10"
+	"github.com/purecdk8s/purecdk8s/jsii"
 	purecdk8sserialization "github.com/purecdk8s/purecdk8s/serialization"
 )
 
@@ -27,7 +28,7 @@ func (c *constructBase) SetNodeInternal(node constructs.Node) { c.node = node }
 
 func (c *constructBase) ToString() *string {
 	if c.node == nil || stringValue(c.node.Path()) == "" {
-		return strptr("<root>")
+		return jsii.String("<root>")
 	}
 	return c.node.Path()
 }
@@ -74,9 +75,9 @@ func initializeApp(app *appImpl, props *AppProps) {
 func initializeAppHost(app *appImpl, host App, props *AppProps) {
 	validateAppProps(props)
 	if host == app {
-		constructs.NewRootConstruct_Override(app, strptr(""))
+		constructs.NewRootConstruct_Override(app, jsii.String(""))
 	} else {
-		app.node = constructs.NewNode(host, nil, strptr(""))
+		app.node = constructs.NewNode(host, nil, jsii.String(""))
 	}
 	if props != nil && props.Outdir != nil {
 		app.outdir = *props.Outdir
@@ -172,7 +173,7 @@ func (a *appImpl) Synth() {
 			documents = append(documents, (*chart.ToJson())...)
 		}
 		if len(charts) > 0 {
-			Yaml_Save(strptr(filepath.Join(a.outdir, "app"+a.outputFileExtension)), &documents)
+			Yaml_Save(jsii.String(filepath.Join(a.outdir, "app"+a.outputFileExtension)), &documents)
 		}
 	case YamlOutputType_FILE_PER_RESOURCE:
 		for _, chart := range charts {
@@ -201,7 +202,7 @@ func (a *appImpl) Synth() {
 				name = fmt.Sprintf("%04d-%s", index, name)
 			}
 			documents := chart.ToJson()
-			Yaml_Save(strptr(filepath.Join(a.outdir, name+a.outputFileExtension)), documents)
+			Yaml_Save(jsii.String(filepath.Join(a.outdir, name+a.outputFileExtension)), documents)
 		}
 	}
 
@@ -874,7 +875,7 @@ func writeResourceFile(directory, extension string, document interface{}) {
 	name := fmt.Sprint(metadata["name"])
 	fileName := regexp.MustCompile(`[^0-9a-zA-Z-_.]`).ReplaceAllString(kind+"."+name, "")
 	documents := []interface{}{document}
-	Yaml_Save(strptr(filepath.Join(directory, fileName+extension)), &documents)
+	Yaml_Save(jsii.String(filepath.Join(directory, fileName+extension)), &documents)
 }
 
 func orderTopLevel(input map[string]interface{}) map[string]interface{} {
@@ -1139,8 +1140,6 @@ func boolValue(value *bool) bool {
 	return value != nil && *value
 }
 
-func strptr(value string) *string { return &value }
-
 func setEmbeddedImplementation(target interface{}, implementation interface{}) bool {
 	value := reflect.ValueOf(target)
 	if !value.IsValid() || value.Kind() != reflect.Pointer || value.IsNil() {
@@ -1181,7 +1180,7 @@ func Testing_App(props *AppProps) App {
 }
 
 func Testing_Chart() Chart {
-	return NewChart(Testing_App(nil), strptr("test"), nil)
+	return NewChart(Testing_App(nil), jsii.String("test"), nil)
 }
 
 func Testing_Synth(chart Chart) *[]interface{} {
