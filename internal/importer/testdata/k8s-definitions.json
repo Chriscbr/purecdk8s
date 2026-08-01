@@ -1,0 +1,110 @@
+{
+  "definitions": {
+    "io.k8s.api.apps.v1.Deployment": {
+      "description": "Deployment enables declarative updates.",
+      "type": "object",
+      "properties": {
+        "apiVersion": { "type": "string" },
+        "kind": { "type": "string", "enum": ["Deployment"] },
+        "metadata": { "$ref": "#/definitions/io.k8s.apimachinery.pkg.apis.meta.v1.ObjectMeta" },
+        "spec": { "$ref": "#/definitions/io.k8s.api.apps.v1.DeploymentSpec" },
+        "status": { "type": "object", "additionalProperties": {} }
+      },
+      "x-kubernetes-group-version-kind": [
+        { "group": "apps", "version": "v1", "kind": "Deployment" }
+      ]
+    },
+    "io.k8s.api.apps.v1.DeploymentList": {
+      "description": "DeploymentList is a list of Deployments.",
+      "type": "object",
+      "required": ["items"],
+      "properties": {
+        "apiVersion": { "type": "string" },
+        "kind": { "type": "string", "enum": ["DeploymentList"] },
+        "metadata": { "$ref": "#/definitions/io.k8s.apimachinery.pkg.apis.meta.v1.ObjectMeta" },
+        "items": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/io.k8s.api.apps.v1.Deployment" }
+        }
+      },
+      "x-kubernetes-group-version-kind": [
+        { "group": "apps", "version": "v1", "kind": "DeploymentList" }
+      ]
+    },
+    "io.k8s.api.apps.v1.DeploymentSpec": {
+      "description": "DeploymentSpec describes a deployment.",
+      "type": "object",
+      "required": ["selector"],
+      "properties": {
+        "deleteOptions": {
+          "$ref": "#/definitions/io.k8s.apimachinery.pkg.apis.meta.v1.DeleteOptions"
+        },
+        "hostIP": { "type": "string" },
+        "limits": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/definitions/io.k8s.apimachinery.pkg.api.resource.Quantity"
+          }
+        },
+        "recursive": {
+          "$ref": "#/definitions/io.example.v1.Recursive"
+        },
+        "ordering": {
+          "$ref": "#/definitions/io.example.v1.Ordering"
+        },
+        "selector": { "type": "string" },
+        "targetPort": {
+          "$ref": "#/definitions/io.k8s.apimachinery.pkg.util.intstr.IntOrString"
+        }
+      }
+    },
+    "io.k8s.apimachinery.pkg.apis.meta.v1.ObjectMeta": {
+      "description": "ObjectMeta is Kubernetes metadata.",
+      "type": "object",
+      "properties": {
+        "labels": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        },
+        "name": { "type": "string" }
+      }
+    },
+    "io.k8s.apimachinery.pkg.apis.meta.v1.DeleteOptions": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["DeleteOptions"]
+        }
+      }
+    },
+    "io.k8s.apimachinery.pkg.api.resource.Quantity": {
+      "oneOf": [
+        { "type": "string" },
+        { "type": "number" }
+      ]
+    },
+    "io.k8s.apimachinery.pkg.util.intstr.IntOrString": {
+      "oneOf": [
+        { "type": "string" },
+        { "type": "integer" }
+      ]
+    },
+    "io.example.v1.Recursive": {
+      "type": "object",
+      "properties": {
+        "next": { "$ref": "#/definitions/io.example.v1.Recursive" }
+      }
+    },
+    "io.example.v1.Ordering": {
+      "type": "object",
+      "required": ["zulu", "middle"],
+      "properties": {
+        "alpha": { "type": "string" },
+        "zulu": { "type": "string" },
+        "middle": { "type": "string" },
+        "beta": { "type": "string" }
+      }
+    }
+  }
+}
