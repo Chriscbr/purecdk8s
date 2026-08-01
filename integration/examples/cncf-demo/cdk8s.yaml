@@ -1,0 +1,10 @@
+language: go
+app: go run .
+output: dist
+imports:
+  - k8s@1.25.0
+  - crds/certificate.yaml
+  - crds/crossplane-sqlclaims.yaml
+  - crds/externalsecrets.yaml
+  - crds/schemahero-database.yaml
+  - crds/schemahero-table.yaml

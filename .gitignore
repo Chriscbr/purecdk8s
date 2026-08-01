@@ -1,4 +1,5 @@
 /bin/
 /dist/
+integration/examples/cncf-demo/imports/
 *.test
 coverage.out

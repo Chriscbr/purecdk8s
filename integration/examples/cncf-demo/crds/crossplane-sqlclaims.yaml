@@ -1,0 +1,45 @@
+# Source: https://github.com/vfarcic/cncf-demo/tree/main/cdk8s/crds/crossplane-sqlclaims.yaml
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: sqlclaims.devopstoolkitseries.com
+spec:
+  group: devopstoolkitseries.com
+  names:
+    kind: SQLClaim
+    plural: sqlclaims
+    singular: sqlclaim
+  scope: Namespaced
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            apiVersion:
+              type: string
+            kind:
+              type: string
+            metadata:
+              type: object
+            spec:
+              type: object
+              properties:
+                id:
+                  type: string
+                compositionSelector:
+                  type: object
+                  properties:
+                    matchLabels:
+                      type: object
+                      additionalProperties:
+                        type: string
+                parameters:
+                  type: object
+                  properties:
+                    version:
+                      type: string
+                    size:
+                      type: string
