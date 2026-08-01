@@ -36,6 +36,11 @@ type ContainerOpts = plus34.ContainerOpts
 type Container = plus34.Container
 type EnvValue = plus34.EnvValue
 type EnvValueFromConfigMapOptions = plus34.EnvValueFromConfigMapOptions
+type EnvValueFromSecretOptions = plus34.EnvValueFromSecretOptions
+type Env = plus34.Env
+type ProbeOptions = plus34.ProbeOptions
+type CommandProbeOptions = plus34.CommandProbeOptions
+type Probe = plus34.Probe
 type MountOptions = plus34.MountOptions
 type VolumeMount = plus34.VolumeMount
 type IStorage = plus34.IStorage
@@ -57,6 +62,22 @@ type DeploymentProps = plus34.DeploymentProps
 type DeploymentExposeViaServiceOptions = plus34.DeploymentExposeViaServiceOptions
 type ExposeDeploymentViaIngressOptions = plus34.ExposeDeploymentViaIngressOptions
 type Deployment = plus34.Deployment
+type StatefulSetProps = plus34.StatefulSetProps
+type StatefulSet = plus34.StatefulSet
+type NodeLabelQuery = plus34.NodeLabelQuery
+type LabeledNode = plus34.LabeledNode
+type PodSchedulingAttractOptions = plus34.PodSchedulingAttractOptions
+type PodSchedulingColocateOptions = plus34.PodSchedulingColocateOptions
+type PodScheduling = plus34.PodScheduling
+type WorkloadScheduling = plus34.WorkloadScheduling
+type PodConnections = plus34.PodConnections
+type PodConnectionsAllowToOptions = plus34.PodConnectionsAllowToOptions
+type IScalable = plus34.IScalable
+type ScalingTarget = plus34.ScalingTarget
+type HorizontalPodAutoscalerProps = plus34.HorizontalPodAutoscalerProps
+type HorizontalPodAutoscaler = plus34.HorizontalPodAutoscaler
+type Metric = plus34.Metric
+type MetricTarget = plus34.MetricTarget
 type PodSelectorConfig = plus34.PodSelectorConfig
 type LabelSelector = plus34.LabelSelector
 type ServiceType = plus34.ServiceType
@@ -91,7 +112,10 @@ type Ingress = plus34.Ingress
 type ISecret = plus34.ISecret
 type Secret = plus34.Secret
 type SecretProps = plus34.SecretProps
-type EnvValueFromSecretOptions = plus34.EnvValueFromSecretOptions
+type SecretValue = plus34.SecretValue
+type ISubject = plus34.ISubject
+type Group = plus34.Group
+type RoleBinding = plus34.RoleBinding
 type Namespace = plus34.Namespace
 type NamespaceProps = plus34.NamespaceProps
 type NamespaceSelectorConfig = plus34.NamespaceSelectorConfig
@@ -113,6 +137,12 @@ func NewContainer_Override(container Container, props *ContainerProps) {
 func EnvValue_FromValue(value *string) EnvValue { return plus34.EnvValue_FromValue(value) }
 func EnvValue_FromConfigMap(configMap IConfigMap, key *string, options *EnvValueFromConfigMapOptions) EnvValue {
 	return plus34.EnvValue_FromConfigMap(configMap, key, options)
+}
+func EnvValue_FromSecretValue(value *SecretValue, options *EnvValueFromSecretOptions) EnvValue {
+	return plus34.EnvValue_FromSecretValue(value, options)
+}
+func Probe_FromCommand(command *[]*string, options *CommandProbeOptions) Probe {
+	return plus34.Probe_FromCommand(command, options)
 }
 func Volume_FromConfigMap(scope constructs.Construct, id *string, configMap IConfigMap, options *ConfigMapVolumeOptions) Volume {
 	return plus34.Volume_FromConfigMap(scope, id, configMap, options)
@@ -138,6 +168,55 @@ func NewDeployment_Override(deployment Deployment, scope constructs.Construct, i
 	plus34.NewDeployment_Override(deployment, scope, id, props)
 }
 func Deployment_IsConstruct(x interface{}) *bool { return plus34.Deployment_IsConstruct(x) }
+func NewStatefulSet(scope constructs.Construct, id *string, props *StatefulSetProps) StatefulSet {
+	return plus34.NewStatefulSet(scope, id, props)
+}
+func NewStatefulSet_Override(statefulSet StatefulSet, scope constructs.Construct, id *string, props *StatefulSetProps) {
+	plus34.NewStatefulSet_Override(statefulSet, scope, id, props)
+}
+func StatefulSet_IsConstruct(x interface{}) *bool { return plus34.StatefulSet_IsConstruct(x) }
+func NodeLabelQuery_Is(key, value *string) NodeLabelQuery {
+	return plus34.NodeLabelQuery_Is(key, value)
+}
+func NodeLabelQuery_In(key *string, values *[]*string) NodeLabelQuery {
+	return plus34.NodeLabelQuery_In(key, values)
+}
+func NodeLabelQuery_NotIn(key *string, values *[]*string) NodeLabelQuery {
+	return plus34.NodeLabelQuery_NotIn(key, values)
+}
+func NodeLabelQuery_Exists(key *string) NodeLabelQuery { return plus34.NodeLabelQuery_Exists(key) }
+func NodeLabelQuery_DoesNotExist(key *string) NodeLabelQuery {
+	return plus34.NodeLabelQuery_DoesNotExist(key)
+}
+func NodeLabelQuery_Gt(key *string, values *[]*string) NodeLabelQuery {
+	return plus34.NodeLabelQuery_Gt(key, values)
+}
+func NodeLabelQuery_Lt(key *string, values *[]*string) NodeLabelQuery {
+	return plus34.NodeLabelQuery_Lt(key, values)
+}
+func Node_Labeled(selectors ...NodeLabelQuery) LabeledNode { return plus34.Node_Labeled(selectors...) }
+func NewHorizontalPodAutoscaler(scope constructs.Construct, id *string, props *HorizontalPodAutoscalerProps) HorizontalPodAutoscaler {
+	return plus34.NewHorizontalPodAutoscaler(scope, id, props)
+}
+func NewHorizontalPodAutoscaler_Override(autoscaler HorizontalPodAutoscaler, scope constructs.Construct, id *string, props *HorizontalPodAutoscalerProps) {
+	plus34.NewHorizontalPodAutoscaler_Override(autoscaler, scope, id, props)
+}
+func HorizontalPodAutoscaler_IsConstruct(x interface{}) *bool {
+	return plus34.HorizontalPodAutoscaler_IsConstruct(x)
+}
+func MetricTarget_AverageUtilization(value *float64) MetricTarget {
+	return plus34.MetricTarget_AverageUtilization(value)
+}
+func MetricTarget_AverageValue(value *float64) MetricTarget {
+	return plus34.MetricTarget_AverageValue(value)
+}
+func MetricTarget_Value(value *float64) MetricTarget    { return plus34.MetricTarget_Value(value) }
+func Metric_ResourceCpu(target MetricTarget) Metric     { return plus34.Metric_ResourceCpu(target) }
+func Metric_ResourceMemory(target MetricTarget) Metric  { return plus34.Metric_ResourceMemory(target) }
+func Metric_ResourceStorage(target MetricTarget) Metric { return plus34.Metric_ResourceStorage(target) }
+func Metric_ResourceEphemeralStorage(target MetricTarget) Metric {
+	return plus34.Metric_ResourceEphemeralStorage(target)
+}
 func NewService(scope constructs.Construct, id *string, props *ServiceProps) Service {
 	return plus34.NewService(scope, id, props)
 }
@@ -165,6 +244,13 @@ func NewSecret_Override(secret Secret, scope constructs.Construct, id *string, p
 	plus34.NewSecret_Override(secret, scope, id, props)
 }
 func Secret_IsConstruct(x interface{}) *bool { return plus34.Secret_IsConstruct(x) }
+func Secret_FromSecretName(scope constructs.Construct, id, secretName *string) ISecret {
+	return plus34.Secret_FromSecretName(scope, id, secretName)
+}
+func Group_FromName(scope constructs.Construct, id, name *string) Group {
+	return plus34.Group_FromName(scope, id, name)
+}
+func Group_IsConstruct(x interface{}) *bool { return plus34.Group_IsConstruct(x) }
 func NewNamespace(scope constructs.Construct, id *string, props *NamespaceProps) Namespace {
 	return plus34.NewNamespace(scope, id, props)
 }

@@ -1,0 +1,4 @@
+app: go mod download && go mod tidy && go run .
+language: go
+imports:
+  - https://download.elastic.co/downloads/eck/1.1.2/all-in-one.yaml

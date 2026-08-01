@@ -16,6 +16,8 @@ type DeploymentProps struct {
 	PodMetadata *cdk8s.ApiObjectMetadata `field:"optional" json:"podMetadata" yaml:"podMetadata"`
 	Replicas    *float64                 `field:"optional" json:"replicas" yaml:"replicas"`
 	Select      *bool                    `field:"optional" json:"select" yaml:"select"`
+	Spread      *bool                    `field:"optional" json:"spread" yaml:"spread"`
+	Isolate     *bool                    `field:"optional" json:"isolate" yaml:"isolate"`
 }
 type DeploymentExposeViaServiceOptions struct {
 	Ports       *[]*ServicePort `field:"optional" json:"ports" yaml:"ports"`
@@ -31,26 +33,36 @@ type ExposeDeploymentViaIngressOptions struct {
 }
 type Deployment interface {
 	Resource
+	IScalable
 	Containers() *[]Container
 	Replicas() *float64
 	AddContainer(cont *ContainerProps) Container
 	ExposeViaService(options *DeploymentExposeViaServiceOptions) Service
 	ExposeViaIngress(path *string, options *ExposeDeploymentViaIngressOptions) Ingress
 	ToPodSelectorConfig() *PodSelectorConfig
+	Scheduling() WorkloadScheduling
+	Connections() PodConnections
 }
 type deploymentImpl struct {
 	resourceBase
-	containers  []Container
-	replicas    *float64
-	selector    map[string]*string
-	podMetadata *cdk8s.ApiObjectMetadata
+	containers    []Container
+	replicas      *float64
+	hasAutoscaler bool
+	selector      map[string]*string
+	podMetadata   *cdk8s.ApiObjectMetadata
+	scheduling    *podSchedulingImpl
+	connections   *podConnectionsImpl
+	spread        bool
 }
 
 func NewDeployment(scope constructs.Construct, id *string, props *DeploymentProps) Deployment {
 	if props == nil {
 		props = &DeploymentProps{}
 	}
-	result := &deploymentImpl{replicas: props.Replicas, selector: map[string]*string{}, podMetadata: props.PodMetadata}
+	result := &deploymentImpl{
+		replicas: props.Replicas, selector: map[string]*string{}, podMetadata: props.PodMetadata,
+		scheduling: &podSchedulingImpl{}, spread: props.Spread != nil && *props.Spread,
+	}
 	manifest := map[string]interface{}{}
 	result.resourceBase.initialize(result, scope, id, "apps/v1", "Deployment", "deployments", props.Metadata, manifest)
 	selectPods := true
@@ -69,6 +81,10 @@ func NewDeployment(scope constructs.Construct, id *string, props *DeploymentProp
 		}
 	}
 	manifest["spec"] = cdk8s.Lazy_Any(lazyProducer{produce: func() interface{} { return result.toManifest() }})
+	result.connections = &podConnectionsImpl{workload: result}
+	if props.Isolate != nil && *props.Isolate {
+		result.connections.Isolate()
+	}
 	return result
 }
 func NewDeployment_Override(d Deployment, scope constructs.Construct, id *string, props *DeploymentProps) {
@@ -79,7 +95,22 @@ func (d *deploymentImpl) Containers() *[]Container {
 	values := append([]Container(nil), d.containers...)
 	return &values
 }
-func (d *deploymentImpl) Replicas() *float64 { return d.replicas }
+func (d *deploymentImpl) Replicas() *float64   { return d.replicas }
+func (d *deploymentImpl) HasAutoscaler() *bool { return jsii.Bool(d.hasAutoscaler) }
+func (d *deploymentImpl) SetHasAutoscaler(value *bool) {
+	d.hasAutoscaler = value != nil && *value
+}
+func (d *deploymentImpl) MarkHasAutoscaler() { d.hasAutoscaler = true }
+func (d *deploymentImpl) ToScalingTarget() *ScalingTarget {
+	containers := d.Containers()
+	return &ScalingTarget{
+		ApiVersion: d.ApiVersion(),
+		Containers: containers,
+		Kind:       d.Kind(),
+		Name:       d.Name(),
+		Replicas:   d.replicas,
+	}
+}
 func (d *deploymentImpl) AddContainer(props *ContainerProps) Container {
 	container := NewContainer(props)
 	d.containers = append(d.containers, container)
@@ -92,6 +123,8 @@ func (d *deploymentImpl) ToPodSelectorConfig() *PodSelectorConfig {
 	}
 	return &PodSelectorConfig{LabelSelector: &LabelSelector{Labels: &labels}}
 }
+func (d *deploymentImpl) Scheduling() WorkloadScheduling { return d.scheduling }
+func (d *deploymentImpl) Connections() PodConnections    { return d.connections }
 func (d *deploymentImpl) toManifest() interface{} {
 	if len(d.containers) == 0 {
 		panic("PodSpec must have at least 1 container")
@@ -158,11 +191,18 @@ func (d *deploymentImpl) toManifest() interface{} {
 	if len(volumeValues) > 0 {
 		spec["volumes"] = volumeValues
 	}
+	if affinity := d.scheduling.toManifest(d, d.spread); affinity != nil {
+		spec["affinity"] = affinity
+	}
 	replicas := d.replicas
-	if replicas == nil {
+	if replicas == nil && !d.hasAutoscaler {
 		replicas = jsii.Number(2)
 	}
-	return map[string]interface{}{"replicas": replicas, "selector": map[string]interface{}{"matchLabels": d.selector}, "template": map[string]interface{}{"metadata": podMetadata, "spec": spec}, "strategy": map[string]interface{}{"type": "RollingUpdate", "rollingUpdate": map[string]interface{}{"maxSurge": "25%", "maxUnavailable": "25%"}}, "minReadySeconds": 0, "progressDeadlineSeconds": 600, "revisionHistoryLimit": 10}
+	result := map[string]interface{}{"selector": map[string]interface{}{"matchLabels": d.selector}, "template": map[string]interface{}{"metadata": podMetadata, "spec": spec}, "strategy": map[string]interface{}{"type": "RollingUpdate", "rollingUpdate": map[string]interface{}{"maxSurge": "25%", "maxUnavailable": "25%"}}, "minReadySeconds": 0, "progressDeadlineSeconds": 600, "revisionHistoryLimit": 10}
+	if replicas != nil {
+		result["replicas"] = replicas
+	}
+	return result
 }
 func (d *deploymentImpl) ExposeViaService(options *DeploymentExposeViaServiceOptions) Service {
 	if options == nil {

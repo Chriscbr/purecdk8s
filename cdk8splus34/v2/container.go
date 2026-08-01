@@ -45,6 +45,9 @@ type ContainerProps struct {
 	WorkingDir      *string              `field:"optional" json:"workingDir" yaml:"workingDir"`
 	EnvVariables    *map[string]EnvValue `field:"optional" json:"envVariables" yaml:"envVariables"`
 	ImagePullPolicy ImagePullPolicy      `field:"optional" json:"imagePullPolicy" yaml:"imagePullPolicy"`
+	Liveness        Probe                `field:"optional" json:"liveness" yaml:"liveness"`
+	Readiness       Probe                `field:"optional" json:"readiness" yaml:"readiness"`
+	Startup         Probe                `field:"optional" json:"startup" yaml:"startup"`
 }
 
 // ContainerOpts is the optional portion of ContainerProps.
@@ -58,6 +61,9 @@ type ContainerOpts struct {
 	WorkingDir      *string
 	EnvVariables    *map[string]EnvValue
 	ImagePullPolicy ImagePullPolicy
+	Liveness        Probe
+	Readiness       Probe
+	Startup         Probe
 }
 
 // Container represents a container attached to a pod workload.
@@ -72,6 +78,7 @@ type Container interface {
 	PortNumber() *float64
 	Ports() *[]*ContainerPort
 	WorkingDir() *string
+	Env() Env
 	AddPort(port *ContainerPort)
 	Mount(path *string, storage IStorage, options *MountOptions)
 }
@@ -87,6 +94,9 @@ type containerImpl struct {
 	env        map[string]EnvValue
 	mounts     []*VolumeMount
 	pullPolicy ImagePullPolicy
+	liveness   Probe
+	readiness  Probe
+	startup    Probe
 }
 
 func NewContainer(props *ContainerProps) Container {
@@ -112,6 +122,9 @@ func newContainer(props *ContainerProps) *containerImpl {
 		args:       props.Args,
 		workingDir: props.WorkingDir,
 		pullPolicy: props.ImagePullPolicy,
+		liveness:   props.Liveness,
+		readiness:  props.Readiness,
+		startup:    props.Startup,
 		env:        map[string]EnvValue{},
 	}
 	if result.pullPolicy == "" {
@@ -148,6 +161,7 @@ func (c *containerImpl) Name() *string                    { return c.name }
 func (c *containerImpl) Port() *float64                   { return c.portNumber }
 func (c *containerImpl) PortNumber() *float64             { return c.portNumber }
 func (c *containerImpl) WorkingDir() *string              { return c.workingDir }
+func (c *containerImpl) Env() Env                         { return &envImpl{variables: c.env} }
 func (c *containerImpl) Ports() *[]*ContainerPort {
 	values := append([]*ContainerPort(nil), c.ports...)
 	return &values
@@ -265,6 +279,15 @@ func (c *containerImpl) toManifest() map[string]interface{} {
 			"tcpSocket":        map[string]interface{}{"port": c.portNumber},
 		}
 	}
+	if c.liveness != nil {
+		result["livenessProbe"] = c.liveness.toManifest(c)
+	}
+	if c.readiness != nil {
+		result["readinessProbe"] = c.readiness.toManifest(c)
+	}
+	if c.startup != nil {
+		result["startupProbe"] = c.startup.toManifest(c)
+	}
 	return result
 }
 
@@ -285,6 +308,37 @@ func EnvValue_FromValue(value *string) EnvValue {
 		panic("value is required")
 	}
 	return &envValue{value: value}
+}
+
+// Env is a mutable container environment.
+type Env interface {
+	Variables() *map[string]EnvValue
+	AddVariable(name *string, value EnvValue)
+}
+
+type envImpl struct{ variables map[string]EnvValue }
+
+func NewEnv(_ interface{}, variables *map[string]EnvValue) Env {
+	values := map[string]EnvValue{}
+	if variables != nil {
+		for name, value := range *variables {
+			values[name] = value
+		}
+	}
+	return &envImpl{variables: values}
+}
+func (e *envImpl) Variables() *map[string]EnvValue {
+	values := make(map[string]EnvValue, len(e.variables))
+	for name, value := range e.variables {
+		values[name] = value
+	}
+	return &values
+}
+func (e *envImpl) AddVariable(name *string, value EnvValue) {
+	if name == nil || *name == "" || value == nil {
+		panic("environment variable name and value are required")
+	}
+	e.variables[*name] = value
 }
 
 type EnvValueFromConfigMapOptions struct {

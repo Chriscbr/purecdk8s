@@ -541,10 +541,10 @@ func (g *packageGenerator) typeForSchema(s *schema, owner generatedType, propert
 	case "boolean":
 		return goType{Name: "*bool", Category: categoryPrimitive}
 	case "array":
-		// json2jsii derives the Go name for an inline array element from the
-		// array property itself. Appending "Item" produces types such as
-		// ExternalSecretSpecDataFromItem, whereas upstream exposes
-		// ExternalSecretSpecDataFrom.
+		// json2jsii names an inline object used as an array element after the
+		// property itself (for example ElasticsearchSpecNodeSets), not an
+		// implementation-oriented "Item" suffix. This keeps imported CRD
+		// types source-compatible with the cdk8s Go importer.
 		element := g.typeForSchema(s.Items, owner, propertyFQN, false)
 		return goType{Name: "*[]" + element.Name, Category: categoryArray}
 	case "object":

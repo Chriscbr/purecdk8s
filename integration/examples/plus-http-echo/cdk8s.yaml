@@ -1,0 +1,2 @@
+app: go mod download && go mod tidy && go run .
+language: go

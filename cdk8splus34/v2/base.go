@@ -57,9 +57,11 @@ type ResourceProps struct {
 	Metadata *cdk8s.ApiObjectMetadata `field:"optional" json:"metadata" yaml:"metadata"`
 }
 
-// ResourcePermissions is retained for source compatibility. RBAC resource
-// helpers are implemented with the RBAC constructs as they are added.
-type ResourcePermissions interface{}
+// ResourcePermissions controls RBAC grants for a resource.
+type ResourcePermissions interface {
+	GrantRead(subjects ...ISubject) RoleBinding
+	GrantReadWrite(subjects ...ISubject) RoleBinding
+}
 
 type resourceBase struct {
 	node         constructs.Node
@@ -67,6 +69,7 @@ type resourceBase struct {
 	resourceType string
 	resource     IResource
 	manifest     map[string]interface{}
+	permissions  ResourcePermissions
 }
 
 func (r *resourceBase) Node() constructs.Node { return r.node }
@@ -91,9 +94,19 @@ func (r *resourceBase) initialize(host constructs.Construct, scope constructs.Co
 		panic("scope and id are required")
 	}
 	constructs.NewConstruct_Override(host, scope, id)
+	r.initializeApiObject(host, apiVersion, kind, resourceType, metadata, manifest)
+}
+
+// initializeApiObject attaches the Kubernetes API object after a resource has
+// already been initialized as a construct. StatefulSet uses this to create its
+// required headless Service before its own API object.
+func (r *resourceBase) initializeApiObject(host constructs.Construct, apiVersion, kind, resourceType string, metadata *cdk8s.ApiObjectMetadata, manifest map[string]interface{}) {
 	r.resourceType = resourceType
 	r.manifest = manifest
 	r.resource, _ = host.(IResource)
+	if resource, ok := host.(Resource); ok {
+		r.permissions = &resourcePermissions{instance: resource}
+	}
 	r.apiObject = cdk8s.NewApiObjectWithManifest(host, jsii.String("Resource"), &cdk8s.ApiObjectProps{
 		ApiVersion: jsii.String(apiVersion),
 		Kind:       jsii.String(kind),
@@ -111,7 +124,7 @@ func (r *resourceBase) ResourceName() *string                       { return r.a
 func (r *resourceBase) ResourceType() *string                       { return jsii.String(r.resourceType) }
 func (r *resourceBase) AsApiResource() IApiResource                 { return r.resource }
 func (r *resourceBase) AsNonApiResource() *string                   { return nil }
-func (r *resourceBase) Permissions() ResourcePermissions            { return nil }
+func (r *resourceBase) Permissions() ResourcePermissions            { return r.permissions }
 
 func metadataMap(metadata *cdk8s.ApiObjectMetadata) map[string]interface{} {
 	if metadata == nil {

@@ -19,9 +19,11 @@ COPY --chmod=755 integration/container-run.sh /usr/local/bin/integration-run
 FROM node:${NODE_VERSION}-bookworm AS node-runtime
 
 FROM base AS upstream
-ARG CDK8S_CLI_VERSION=2.207.41
+# cdk8splus34's upstream Go bindings predate constructs' mixin API. Keep the
+# importer on the corresponding cdk8s CLI line so CRD bindings compile with it.
+ARG CDK8S_CLI_VERSION=2.200.156
 COPY --from=node-runtime /usr/local/ /usr/local/
-RUN npm install --global "cdk8s-cli@${CDK8S_CLI_VERSION}"
+RUN npm install --global "cdk8s-cli@${CDK8S_CLI_VERSION}" "constructs@10.4.2"
 ENV CDK8S_IMPLEMENTATION=upstream
 ENTRYPOINT ["/usr/local/bin/integration-run"]
 
