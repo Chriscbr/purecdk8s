@@ -29,6 +29,13 @@ build-cli: ## Build bin/purecdk8s
 	mkdir -p bin
 	go build -o bin/purecdk8s ./cmd/purecdk8s
 
+.PHONY: generate
+generate: ## Regenerate checked-in Go bindings
+	go run ./cmd/purecdk8s import k8s@1.34.0 --output cdk8splus34/v2 --no-save
+	go run ./cmd/purecdk8s import k8s@1.35.0 --output cdk8splus35/v2 --no-save
+	go run ./cmd/purecdk8s import k8s@1.36.0 --output cdk8splus36/v2 --no-save
+	go run ./scripts/forward-cdk8splus.go 35 36
+
 .PHONY: unittest
 unittest: ## Run Go unit tests
 	go test ./...
