@@ -114,8 +114,12 @@ spec:
 
 type testUnion struct{ number *float64 }
 
-func (u *testUnion) Value() interface{}    { return u.number }
-func (u *testUnion) PureCDK8sScalarUnion() {}
+func (u *testUnion) Value() interface{} {
+	return u.number
+}
+
+func (u *testUnion) PureCDK8sScalarUnion() {
+}
 
 type testCasing struct {
 	HostIp *string    `json:"hostIp,omitempty" k8s:"hostIP"`
@@ -151,7 +155,9 @@ func TestPlainValueUsesKubernetesCasingAndUnionValue(t *testing.T) {
 
 type testProducer struct{ value interface{} }
 
-func (p *testProducer) Produce() interface{} { return p.value }
+func (p *testProducer) Produce() interface{} {
+	return p.value
+}
 
 type dependencyObservingValidation struct {
 	chart        Chart
@@ -297,9 +303,11 @@ func assertCorePanics(t *testing.T, callback func()) {
 	callback()
 }
 
-type customApp struct{ App }
-type customChart struct{ Chart }
-type customApiObject struct{ ApiObject }
+type (
+	customApp       struct{ App }
+	customChart     struct{ Chart }
+	customApiObject struct{ ApiObject }
+)
 
 func TestOverrideConstructorsSupportEmbeddedInterfaces(t *testing.T) {
 	app := &customApp{}

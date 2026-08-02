@@ -266,10 +266,12 @@ func TestDependencyGraphMatchesJavaScriptNumericKeyOrder(t *testing.T) {
 	}
 }
 
-type testCronOverride struct{ Cron }
-type testVertexOverride struct{ DependencyVertex }
-type testGraphOverride struct{ DependencyGraph }
-type testContextOverride struct{ ResolutionContext }
+type (
+	testCronOverride    struct{ Cron }
+	testVertexOverride  struct{ DependencyVertex }
+	testGraphOverride   struct{ DependencyGraph }
+	testContextOverride struct{ ResolutionContext }
+)
 
 func TestUtilityOverrideConstructorsPopulateEmbeddedInterfaces(t *testing.T) {
 	cron := &testCronOverride{}
@@ -351,15 +353,21 @@ func (r *testMetadataNameResolver) Resolve(context ResolutionContext) {
 
 type testAnyProducer struct{ value interface{} }
 
-func (p *testAnyProducer) Produce() interface{} { return p.value }
+func (p *testAnyProducer) Produce() interface{} {
+	return p.value
+}
 
 type testImplicitToken struct{ value string }
 
-func (t *testImplicitToken) Resolve() *string { return &t.value }
+func (t *testImplicitToken) Resolve() *string {
+	return &t.value
+}
 
 type testNumberStringUnion struct{ value *float64 }
 
-func (u *testNumberStringUnion) Value() interface{} { return u.value }
+func (u *testNumberStringUnion) Value() interface{} {
+	return u.value
+}
 
 func TestResolverPrimitives(t *testing.T) {
 	resolver := &testReplacingResolver{}
@@ -408,9 +416,17 @@ func TestResolverReceivesFullMetadataPath(t *testing.T) {
 	}
 }
 
-func numberPointer(value float64) *float64 { return &value }
-func boolPointer(value bool) *bool         { return &value }
-func stringPointer(value string) *string   { return &value }
+func numberPointer(value float64) *float64 {
+	return &value
+}
+
+func boolPointer(value bool) *bool {
+	return &value
+}
+
+func stringPointer(value string) *string {
+	return &value
+}
 
 func assertPanics(t *testing.T, callback func()) {
 	t.Helper()

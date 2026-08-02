@@ -10,7 +10,6 @@ import (
 )
 
 func NewWebCacheDB(scope constructs.Construct, id string) cdk8s.Chart {
-
 	chart := cdk8s.NewChart(scope, jsii.String(id), nil)
 
 	storageNodes := cdk8splus34.Node_Labeled(cdk8splus34.NodeLabelQuery_Is(jsii.String("optimized"), jsii.String("storage")))
@@ -70,7 +69,6 @@ func NewWebCacheDB(scope constructs.Construct, id string) cdk8s.Chart {
 	web.ExposeViaService(&cdk8splus34.DeploymentExposeViaServiceOptions{ServiceType: cdk8splus34.ServiceType_LOAD_BALANCER})
 
 	return chart
-
 }
 
 func main() {

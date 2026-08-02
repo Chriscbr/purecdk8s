@@ -35,19 +35,25 @@ type ContainerPort struct {
 
 // ContainerProps configures one workload container.
 type ContainerProps struct {
-	Image           *string              `field:"required" json:"image" yaml:"image"`
-	Name            *string              `field:"optional" json:"name" yaml:"name"`
-	Port            *float64             `field:"optional" json:"port" yaml:"port"`
-	PortNumber      *float64             `field:"optional" json:"portNumber" yaml:"portNumber"`
-	Ports           *[]*ContainerPort    `field:"optional" json:"ports" yaml:"ports"`
-	Command         *[]*string           `field:"optional" json:"command" yaml:"command"`
-	Args            *[]*string           `field:"optional" json:"args" yaml:"args"`
-	WorkingDir      *string              `field:"optional" json:"workingDir" yaml:"workingDir"`
-	EnvVariables    *map[string]EnvValue `field:"optional" json:"envVariables" yaml:"envVariables"`
-	ImagePullPolicy ImagePullPolicy      `field:"optional" json:"imagePullPolicy" yaml:"imagePullPolicy"`
-	Liveness        Probe                `field:"optional" json:"liveness" yaml:"liveness"`
-	Readiness       Probe                `field:"optional" json:"readiness" yaml:"readiness"`
-	Startup         Probe                `field:"optional" json:"startup" yaml:"startup"`
+	Image           *string                        `field:"required" json:"image" yaml:"image"`
+	Name            *string                        `field:"optional" json:"name" yaml:"name"`
+	Port            *float64                       `field:"optional" json:"port" yaml:"port"`
+	PortNumber      *float64                       `field:"optional" json:"portNumber" yaml:"portNumber"`
+	Ports           *[]*ContainerPort              `field:"optional" json:"ports" yaml:"ports"`
+	Command         *[]*string                     `field:"optional" json:"command" yaml:"command"`
+	Args            *[]*string                     `field:"optional" json:"args" yaml:"args"`
+	WorkingDir      *string                        `field:"optional" json:"workingDir" yaml:"workingDir"`
+	EnvVariables    *map[string]EnvValue           `field:"optional" json:"envVariables" yaml:"envVariables"`
+	EnvFrom         *[]EnvFrom                     `field:"optional" json:"envFrom" yaml:"envFrom"`
+	ImagePullPolicy ImagePullPolicy                `field:"optional" json:"imagePullPolicy" yaml:"imagePullPolicy"`
+	Liveness        Probe                          `field:"optional" json:"liveness" yaml:"liveness"`
+	Readiness       Probe                          `field:"optional" json:"readiness" yaml:"readiness"`
+	Startup         Probe                          `field:"optional" json:"startup" yaml:"startup"`
+	Lifecycle       *ContainerLifecycle            `field:"optional" json:"lifecycle" yaml:"lifecycle"`
+	Resources       *ContainerResources            `field:"optional" json:"resources" yaml:"resources"`
+	RestartPolicy   ContainerRestartPolicy         `field:"optional" json:"restartPolicy" yaml:"restartPolicy"`
+	SecurityContext *ContainerSecurityContextProps `field:"optional" json:"securityContext" yaml:"securityContext"`
+	VolumeMounts    *[]*VolumeMount                `field:"optional" json:"volumeMounts" yaml:"volumeMounts"`
 }
 
 // ContainerOpts is the optional portion of ContainerProps.
@@ -60,10 +66,16 @@ type ContainerOpts struct {
 	Args            *[]*string
 	WorkingDir      *string
 	EnvVariables    *map[string]EnvValue
+	EnvFrom         *[]EnvFrom
 	ImagePullPolicy ImagePullPolicy
 	Liveness        Probe
 	Readiness       Probe
 	Startup         Probe
+	Lifecycle       *ContainerLifecycle
+	Resources       *ContainerResources
+	RestartPolicy   ContainerRestartPolicy
+	SecurityContext *ContainerSecurityContextProps
+	VolumeMounts    *[]*VolumeMount
 }
 
 // Container represents a container attached to a pod workload.
@@ -79,24 +91,31 @@ type Container interface {
 	Ports() *[]*ContainerPort
 	WorkingDir() *string
 	Env() Env
+	Resources() *ContainerResources
+	RestartPolicy() ContainerRestartPolicy
+	SecurityContext() ContainerSecurityContext
 	AddPort(port *ContainerPort)
 	Mount(path *string, storage IStorage, options *MountOptions)
 }
 
 type containerImpl struct {
-	image      *string
-	name       *string
-	portNumber *float64
-	ports      []*ContainerPort
-	command    *[]*string
-	args       *[]*string
-	workingDir *string
-	env        map[string]EnvValue
-	mounts     []*VolumeMount
-	pullPolicy ImagePullPolicy
-	liveness   Probe
-	readiness  Probe
-	startup    Probe
+	image           *string
+	name            *string
+	portNumber      *float64
+	ports           []*ContainerPort
+	command         *[]*string
+	args            *[]*string
+	workingDir      *string
+	env             *envImpl
+	mounts          []*VolumeMount
+	pullPolicy      ImagePullPolicy
+	liveness        Probe
+	readiness       Probe
+	startup         Probe
+	lifecycle       *ContainerLifecycle
+	resources       *ContainerResources
+	restartPolicy   ContainerRestartPolicy
+	securityContext ContainerSecurityContext
 }
 
 func NewContainer(props *ContainerProps) Container {
@@ -107,7 +126,7 @@ func NewContainer(props *ContainerProps) Container {
 }
 
 func NewContainer_Override(container Container, props *ContainerProps) {
-	panic("native cdk8splus34 does not support overriding value objects")
+	applyOverride(container, NewContainer(props), "Container")
 }
 
 func newContainer(props *ContainerProps) *containerImpl {
@@ -116,16 +135,20 @@ func newContainer(props *ContainerProps) *containerImpl {
 		name = jsii.String("main")
 	}
 	result := &containerImpl{
-		image:      props.Image,
-		name:       name,
-		command:    props.Command,
-		args:       props.Args,
-		workingDir: props.WorkingDir,
-		pullPolicy: props.ImagePullPolicy,
-		liveness:   props.Liveness,
-		readiness:  props.Readiness,
-		startup:    props.Startup,
-		env:        map[string]EnvValue{},
+		image:           props.Image,
+		name:            name,
+		command:         props.Command,
+		args:            props.Args,
+		workingDir:      props.WorkingDir,
+		pullPolicy:      props.ImagePullPolicy,
+		liveness:        props.Liveness,
+		readiness:       props.Readiness,
+		startup:         props.Startup,
+		lifecycle:       props.Lifecycle,
+		resources:       normalizedContainerResources(props.Resources),
+		restartPolicy:   props.RestartPolicy,
+		securityContext: NewContainerSecurityContext(props.SecurityContext),
+		env:             newEnv(props.EnvFrom, props.EnvVariables),
 	}
 	if result.pullPolicy == "" {
 		result.pullPolicy = ImagePullPolicy_ALWAYS
@@ -145,43 +168,88 @@ func newContainer(props *ContainerProps) *containerImpl {
 			}
 		}
 	}
-	if props.EnvVariables != nil {
-		for key, value := range *props.EnvVariables {
-			result.env[key] = value
+	if props.VolumeMounts != nil {
+		for _, mount := range *props.VolumeMounts {
+			if mount == nil || mount.Path == nil || mount.Volume == nil {
+				panic("volume mount path and volume are required")
+			}
+			result.mounts = append(result.mounts, mount)
 		}
 	}
 	return result
 }
 
-func (c *containerImpl) Args() *[]*string                 { return c.args }
-func (c *containerImpl) Command() *[]*string              { return c.command }
-func (c *containerImpl) Image() *string                   { return c.image }
-func (c *containerImpl) ImagePullPolicy() ImagePullPolicy { return c.pullPolicy }
-func (c *containerImpl) Name() *string                    { return c.name }
-func (c *containerImpl) Port() *float64                   { return c.portNumber }
-func (c *containerImpl) PortNumber() *float64             { return c.portNumber }
-func (c *containerImpl) WorkingDir() *string              { return c.workingDir }
-func (c *containerImpl) Env() Env                         { return &envImpl{variables: c.env} }
+func (c *containerImpl) Args() *[]*string {
+	return c.args
+}
+
+func (c *containerImpl) Command() *[]*string {
+	return c.command
+}
+
+func (c *containerImpl) Image() *string {
+	return c.image
+}
+
+func (c *containerImpl) ImagePullPolicy() ImagePullPolicy {
+	return c.pullPolicy
+}
+
+func (c *containerImpl) Name() *string {
+	return c.name
+}
+
+func (c *containerImpl) Port() *float64 {
+	return c.portNumber
+}
+
+func (c *containerImpl) PortNumber() *float64 {
+	return c.portNumber
+}
+
+func (c *containerImpl) WorkingDir() *string {
+	return c.workingDir
+}
+
+func (c *containerImpl) Env() Env {
+	return c.env
+}
+
+func (c *containerImpl) Resources() *ContainerResources {
+	return c.resources
+}
+
+func (c *containerImpl) RestartPolicy() ContainerRestartPolicy {
+	return c.restartPolicy
+}
+
+func (c *containerImpl) SecurityContext() ContainerSecurityContext {
+	return c.securityContext
+}
+
 func (c *containerImpl) Ports() *[]*ContainerPort {
 	values := append([]*ContainerPort(nil), c.ports...)
 	return &values
 }
+
 func (c *containerImpl) Mounts() *[]*VolumeMount {
 	values := append([]*VolumeMount(nil), c.mounts...)
 	return &values
 }
+
 func (c *containerImpl) AddPort(port *ContainerPort) {
 	if port == nil || port.Number == nil {
 		panic("container port number is required")
 	}
 	c.ports = append(c.ports, port)
 }
+
 func (c *containerImpl) Mount(path *string, storage IStorage, options *MountOptions) {
 	if path == nil || storage == nil {
 		panic("path and storage are required")
 	}
 	volume := storage.AsVolume()
-	c.mounts = append(c.mounts, &VolumeMount{Path: path, Volume: volume, MountPath: path, ReadOnly: optionsReadOnly(options)})
+	c.mounts = append(c.mounts, &VolumeMount{Path: path, Volume: volume, ReadOnly: optionsReadOnly(options), Propagation: optionsPropagation(options), SubPath: optionsSubPath(options), SubPathExpr: optionsSubPathExpr(options)})
 }
 
 func optionsReadOnly(options *MountOptions) *bool {
@@ -189,6 +257,27 @@ func optionsReadOnly(options *MountOptions) *bool {
 		return nil
 	}
 	return options.ReadOnly
+}
+
+func optionsPropagation(options *MountOptions) MountPropagation {
+	if options == nil {
+		return ""
+	}
+	return options.Propagation
+}
+
+func optionsSubPath(options *MountOptions) *string {
+	if options == nil {
+		return nil
+	}
+	return options.SubPath
+}
+
+func optionsSubPathExpr(options *MountOptions) *string {
+	if options == nil {
+		return nil
+	}
+	return options.SubPathExpr
 }
 
 func (c *containerImpl) toManifest() map[string]interface{} {
@@ -215,16 +304,25 @@ func (c *containerImpl) toManifest() map[string]interface{} {
 		if mount.ReadOnly != nil {
 			entry["readOnly"] = mount.ReadOnly
 		}
+		if mount.Propagation != "" {
+			entry["mountPropagation"] = mountPropagationManifest(mount.Propagation)
+		}
+		if mount.SubPath != nil {
+			entry["subPath"] = mount.SubPath
+		}
+		if mount.SubPathExpr != nil {
+			entry["subPathExpr"] = mount.SubPathExpr
+		}
 		mounts = append(mounts, entry)
 	}
-	env := make([]interface{}, 0, len(c.env))
-	keys := make([]string, 0, len(c.env))
-	for key := range c.env {
+	env := make([]interface{}, 0, len(c.env.variables))
+	keys := make([]string, 0, len(c.env.variables))
+	for key := range c.env.variables {
 		keys = append(keys, key)
 	}
 	sort.Strings(keys)
 	for _, key := range keys {
-		value := c.env[key]
+		value := c.env.variables[key]
 		entry := map[string]interface{}{"name": key}
 		if value.Value() != nil {
 			entry["value"] = value.Value()
@@ -238,22 +336,8 @@ func (c *containerImpl) toManifest() map[string]interface{} {
 		"image":           c.image,
 		"name":            c.name,
 		"imagePullPolicy": string(c.pullPolicy),
-		"resources": map[string]interface{}{
-			"limits": map[string]interface{}{
-				"cpu":    "1500m",
-				"memory": "2048Mi",
-			},
-			"requests": map[string]interface{}{
-				"cpu":    "1000m",
-				"memory": "512Mi",
-			},
-		},
-		"securityContext": map[string]interface{}{
-			"allowPrivilegeEscalation": false,
-			"privileged":               false,
-			"readOnlyRootFilesystem":   true,
-			"runAsNonRoot":             true,
-		},
+		"resources":       containerResourcesManifest(c.resources),
+		"securityContext": c.securityContext.toManifest(),
 	}
 	if c.command != nil {
 		result["command"] = c.command
@@ -273,6 +357,28 @@ func (c *containerImpl) toManifest() map[string]interface{} {
 	if len(env) > 0 {
 		result["env"] = env
 	}
+	if len(c.env.sources) > 0 {
+		sources := make([]interface{}, 0, len(c.env.sources))
+		for _, source := range c.env.sources {
+			if source == nil {
+				panic("environment source is required")
+			}
+			sources = append(sources, source.toManifest())
+		}
+		result["envFrom"] = sources
+	}
+	if c.lifecycle != nil {
+		lifecycle := map[string]interface{}{}
+		if c.lifecycle.PostStart != nil {
+			lifecycle["postStart"] = c.lifecycle.PostStart.toManifest(c)
+		}
+		if c.lifecycle.PreStop != nil {
+			lifecycle["preStop"] = c.lifecycle.PreStop.toManifest(c)
+		}
+		if len(lifecycle) > 0 {
+			result["lifecycle"] = lifecycle
+		}
+	}
 	if c.portNumber != nil {
 		result["startupProbe"] = map[string]interface{}{
 			"failureThreshold": 3,
@@ -288,6 +394,9 @@ func (c *containerImpl) toManifest() map[string]interface{} {
 	if c.startup != nil {
 		result["startupProbe"] = c.startup.toManifest(c)
 	}
+	if c.restartPolicy != "" {
+		result["restartPolicy"] = containerRestartPolicyManifest(c.restartPolicy)
+	}
 	return result
 }
 
@@ -300,8 +409,13 @@ type EnvValue interface {
 
 type envValue struct{ value, valueFrom interface{} }
 
-func (v *envValue) Value() interface{}     { return v.value }
-func (v *envValue) ValueFrom() interface{} { return v.valueFrom }
+func (v *envValue) Value() interface{} {
+	return v.value
+}
+
+func (v *envValue) ValueFrom() interface{} {
+	return v.valueFrom
+}
 
 func EnvValue_FromValue(value *string) EnvValue {
 	if value == nil {
@@ -312,21 +426,52 @@ func EnvValue_FromValue(value *string) EnvValue {
 
 // Env is a mutable container environment.
 type Env interface {
+	Sources() *[]EnvFrom
 	Variables() *map[string]EnvValue
 	AddVariable(name *string, value EnvValue)
+	CopyFrom(from EnvFrom)
 }
 
-type envImpl struct{ variables map[string]EnvValue }
+type envImpl struct {
+	sources   []EnvFrom
+	variables map[string]EnvValue
+}
 
-func NewEnv(_ interface{}, variables *map[string]EnvValue) Env {
-	values := map[string]EnvValue{}
+func NewEnv(sources *[]EnvFrom, variables *map[string]EnvValue) Env {
+	return newEnv(sources, variables)
+}
+
+func NewEnv_Override(env Env, sources *[]EnvFrom, variables *map[string]EnvValue) {
+	applyOverride(env, NewEnv(sources, variables), "Env")
+}
+
+func newEnv(sources *[]EnvFrom, variables *map[string]EnvValue) *envImpl {
+	values := make(map[string]EnvValue)
 	if variables != nil {
 		for name, value := range *variables {
+			if value == nil {
+				panic("environment variable value is required")
+			}
 			values[name] = value
 		}
 	}
-	return &envImpl{variables: values}
+	result := &envImpl{variables: values}
+	if sources != nil {
+		for _, source := range *sources {
+			if source == nil {
+				panic("environment source is required")
+			}
+			result.sources = append(result.sources, source)
+		}
+	}
+	return result
 }
+
+func (e *envImpl) Sources() *[]EnvFrom {
+	values := append([]EnvFrom(nil), e.sources...)
+	return &values
+}
+
 func (e *envImpl) Variables() *map[string]EnvValue {
 	values := make(map[string]EnvValue, len(e.variables))
 	for name, value := range e.variables {
@@ -334,11 +479,19 @@ func (e *envImpl) Variables() *map[string]EnvValue {
 	}
 	return &values
 }
+
 func (e *envImpl) AddVariable(name *string, value EnvValue) {
 	if name == nil || *name == "" || value == nil {
 		panic("environment variable name and value are required")
 	}
 	e.variables[*name] = value
+}
+
+func (e *envImpl) CopyFrom(from EnvFrom) {
+	if from == nil {
+		panic("environment source is required")
+	}
+	e.sources = append(e.sources, from)
 }
 
 type EnvValueFromConfigMapOptions struct {

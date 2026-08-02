@@ -110,4 +110,6 @@ func convertSize(amount float64, from storageUnit, to storageUnit, opts *SizeCon
 	}
 }
 
-func sizeFloat(value float64) *float64 { return &value }
+func sizeFloat(value float64) *float64 {
+	return &value
+}

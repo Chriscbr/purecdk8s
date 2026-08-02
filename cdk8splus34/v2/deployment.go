@@ -2,7 +2,6 @@ package cdk8splus34
 
 import (
 	"fmt"
-	"sort"
 
 	"github.com/purecdk8s/purecdk8s/cdk8s/v2"
 	"github.com/purecdk8s/purecdk8s/constructs/v10"
@@ -11,19 +10,38 @@ import (
 
 // DeploymentProps configures a Deployment workload.
 type DeploymentProps struct {
-	Metadata    *cdk8s.ApiObjectMetadata `field:"optional" json:"metadata" yaml:"metadata"`
-	Containers  *[]*ContainerProps       `field:"optional" json:"containers" yaml:"containers"`
-	PodMetadata *cdk8s.ApiObjectMetadata `field:"optional" json:"podMetadata" yaml:"podMetadata"`
-	Replicas    *float64                 `field:"optional" json:"replicas" yaml:"replicas"`
-	Select      *bool                    `field:"optional" json:"select" yaml:"select"`
-	Spread      *bool                    `field:"optional" json:"spread" yaml:"spread"`
-	Isolate     *bool                    `field:"optional" json:"isolate" yaml:"isolate"`
+	Metadata                     *cdk8s.ApiObjectMetadata `field:"optional" json:"metadata" yaml:"metadata"`
+	AutomountServiceAccountToken *bool                    `field:"optional" json:"automountServiceAccountToken" yaml:"automountServiceAccountToken"`
+	Containers                   *[]*ContainerProps       `field:"optional" json:"containers" yaml:"containers"`
+	Dns                          *PodDnsProps             `field:"optional" json:"dns" yaml:"dns"`
+	DockerRegistryAuth           ISecret                  `field:"optional" json:"dockerRegistryAuth" yaml:"dockerRegistryAuth"`
+	EnableServiceLinks           *bool                    `field:"optional" json:"enableServiceLinks" yaml:"enableServiceLinks"`
+	HostAliases                  *[]*HostAlias            `field:"optional" json:"hostAliases" yaml:"hostAliases"`
+	HostNetwork                  *bool                    `field:"optional" json:"hostNetwork" yaml:"hostNetwork"`
+	InitContainers               *[]*ContainerProps       `field:"optional" json:"initContainers" yaml:"initContainers"`
+	Isolate                      *bool                    `field:"optional" json:"isolate" yaml:"isolate"`
+	MinReady                     cdk8s.Duration           `field:"optional" json:"minReady" yaml:"minReady"`
+	PodMetadata                  *cdk8s.ApiObjectMetadata `field:"optional" json:"podMetadata" yaml:"podMetadata"`
+	ProgressDeadline             cdk8s.Duration           `field:"optional" json:"progressDeadline" yaml:"progressDeadline"`
+	Replicas                     *float64                 `field:"optional" json:"replicas" yaml:"replicas"`
+	RestartPolicy                RestartPolicy            `field:"optional" json:"restartPolicy" yaml:"restartPolicy"`
+	RevisionHistoryLimit         *float64                 `field:"optional" json:"revisionHistoryLimit" yaml:"revisionHistoryLimit"`
+	SecurityContext              *PodSecurityContextProps `field:"optional" json:"securityContext" yaml:"securityContext"`
+	Select                       *bool                    `field:"optional" json:"select" yaml:"select"`
+	ServiceAccount               IServiceAccount          `field:"optional" json:"serviceAccount" yaml:"serviceAccount"`
+	ShareProcessNamespace        *bool                    `field:"optional" json:"shareProcessNamespace" yaml:"shareProcessNamespace"`
+	Spread                       *bool                    `field:"optional" json:"spread" yaml:"spread"`
+	Strategy                     DeploymentStrategy       `field:"optional" json:"strategy" yaml:"strategy"`
+	TerminationGracePeriod       cdk8s.Duration           `field:"optional" json:"terminationGracePeriod" yaml:"terminationGracePeriod"`
+	Volumes                      *[]Volume                `field:"optional" json:"volumes" yaml:"volumes"`
 }
+
 type DeploymentExposeViaServiceOptions struct {
 	Ports       *[]*ServicePort `field:"optional" json:"ports" yaml:"ports"`
 	ServiceType ServiceType     `field:"optional" json:"serviceType" yaml:"serviceType"`
 	Name        *string         `field:"optional" json:"name" yaml:"name"`
 }
+
 type ExposeDeploymentViaIngressOptions struct {
 	Ports       *[]*ServicePort     `field:"optional" json:"ports" yaml:"ports"`
 	ServiceType ServiceType         `field:"optional" json:"serviceType" yaml:"serviceType"`
@@ -31,28 +49,34 @@ type ExposeDeploymentViaIngressOptions struct {
 	Ingress     Ingress             `field:"optional" json:"ingress" yaml:"ingress"`
 	PathType    HttpIngressPathType `field:"optional" json:"pathType" yaml:"pathType"`
 }
+
 type Deployment interface {
-	Resource
+	Workload
 	IScalable
-	Containers() *[]Container
 	Replicas() *float64
-	AddContainer(cont *ContainerProps) Container
+	MinReady() cdk8s.Duration
+	ProgressDeadline() cdk8s.Duration
+	RevisionHistoryLimit() *float64
+	Strategy() DeploymentStrategy
 	ExposeViaService(options *DeploymentExposeViaServiceOptions) Service
 	ExposeViaIngress(path *string, options *ExposeDeploymentViaIngressOptions) Ingress
-	ToPodSelectorConfig() *PodSelectorConfig
-	Scheduling() WorkloadScheduling
-	Connections() PodConnections
 }
+
 type deploymentImpl struct {
 	resourceBase
-	containers    []Container
-	replicas      *float64
-	hasAutoscaler bool
-	selector      map[string]*string
-	podMetadata   *cdk8s.ApiObjectMetadata
-	scheduling    *podSchedulingImpl
-	connections   *podConnectionsImpl
-	spread        bool
+	podState
+	replicas             *float64
+	hasAutoscaler        bool
+	selector             map[string]*string
+	matchExpressions     []*LabelSelectorRequirement
+	podMetadata          *cdk8s.ApiObjectMetadata
+	scheduling           WorkloadScheduling
+	connections          PodConnections
+	spread               bool
+	strategy             DeploymentStrategy
+	minReady             cdk8s.Duration
+	progressDeadline     cdk8s.Duration
+	revisionHistoryLimit *float64
 }
 
 func NewDeployment(scope constructs.Construct, id *string, props *DeploymentProps) Deployment {
@@ -60,8 +84,10 @@ func NewDeployment(scope constructs.Construct, id *string, props *DeploymentProp
 		props = &DeploymentProps{}
 	}
 	result := &deploymentImpl{
-		replicas: props.Replicas, selector: map[string]*string{}, podMetadata: props.PodMetadata,
-		scheduling: &podSchedulingImpl{}, spread: props.Spread != nil && *props.Spread,
+		podState: newPodState(deploymentPodProps(props)), replicas: props.Replicas, selector: map[string]*string{}, podMetadata: props.PodMetadata,
+		spread:   props.Spread != nil && *props.Spread,
+		strategy: props.Strategy,
+		minReady: props.MinReady, progressDeadline: props.ProgressDeadline, revisionHistoryLimit: props.RevisionHistoryLimit,
 	}
 	manifest := map[string]interface{}{}
 	result.resourceBase.initialize(result, scope, id, "apps/v1", "Deployment", "deployments", props.Metadata, manifest)
@@ -73,34 +99,76 @@ func NewDeployment(scope constructs.Construct, id *string, props *DeploymentProp
 		matcher := cdk8s.Names_ToLabelValue(result, nil)
 		result.selector[podAddressLabel] = matcher
 	}
-	if props.Containers != nil {
-		for _, container := range *props.Containers {
-			if container != nil {
-				result.AddContainer(container)
-			}
-		}
+	result.scheduling = NewWorkloadScheduling(result)
+	if result.spread {
+		result.scheduling.Spread(&WorkloadSchedulingSpreadOptions{Topology: Topology_HOSTNAME()})
+		result.scheduling.Spread(&WorkloadSchedulingSpreadOptions{Topology: Topology_ZONE()})
 	}
 	manifest["spec"] = cdk8s.Lazy_Any(lazyProducer{produce: func() interface{} { return result.toManifest() }})
-	result.connections = &podConnectionsImpl{workload: result}
+	result.connections = NewPodConnections(result)
 	if props.Isolate != nil && *props.Isolate {
 		result.connections.Isolate()
 	}
 	return result
 }
+
 func NewDeployment_Override(d Deployment, scope constructs.Construct, id *string, props *DeploymentProps) {
-	panic("native cdk8splus34 overrides are not implemented")
+	applyOverride(d, NewDeployment(scope, id, props), "Deployment")
 }
-func Deployment_IsConstruct(x interface{}) *bool { return constructs.Construct_IsConstruct(x) }
+
+func Deployment_IsConstruct(x interface{}) *bool {
+	return constructs.Construct_IsConstruct(x)
+}
+
 func (d *deploymentImpl) Containers() *[]Container {
-	values := append([]Container(nil), d.containers...)
+	values := append([]Container(nil), d.podState.containers...)
 	return &values
 }
-func (d *deploymentImpl) Replicas() *float64   { return d.replicas }
-func (d *deploymentImpl) HasAutoscaler() *bool { return jsii.Bool(d.hasAutoscaler) }
+
+func (d *deploymentImpl) Replicas() *float64 {
+	return d.replicas
+}
+
+func (d *deploymentImpl) MinReady() cdk8s.Duration {
+	if d.minReady == nil {
+		return cdk8s.Duration_Seconds(jsii.Number(0))
+	}
+	return d.minReady
+}
+
+func (d *deploymentImpl) ProgressDeadline() cdk8s.Duration {
+	if d.progressDeadline == nil {
+		return cdk8s.Duration_Seconds(jsii.Number(600))
+	}
+	return d.progressDeadline
+}
+
+func (d *deploymentImpl) RevisionHistoryLimit() *float64 {
+	if d.revisionHistoryLimit == nil {
+		return jsii.Number(10)
+	}
+	return d.revisionHistoryLimit
+}
+
+func (d *deploymentImpl) Strategy() DeploymentStrategy {
+	if d.strategy == nil {
+		return DeploymentStrategy_RollingUpdate(nil)
+	}
+	return d.strategy
+}
+
+func (d *deploymentImpl) HasAutoscaler() *bool {
+	return jsii.Bool(d.hasAutoscaler)
+}
+
 func (d *deploymentImpl) SetHasAutoscaler(value *bool) {
 	d.hasAutoscaler = value != nil && *value
 }
-func (d *deploymentImpl) MarkHasAutoscaler() { d.hasAutoscaler = true }
+
+func (d *deploymentImpl) MarkHasAutoscaler() {
+	d.hasAutoscaler = true
+}
+
 func (d *deploymentImpl) ToScalingTarget() *ScalingTarget {
 	containers := d.Containers()
 	return &ScalingTarget{
@@ -111,99 +179,210 @@ func (d *deploymentImpl) ToScalingTarget() *ScalingTarget {
 		Replicas:   d.replicas,
 	}
 }
+
 func (d *deploymentImpl) AddContainer(props *ContainerProps) Container {
-	container := NewContainer(props)
-	d.containers = append(d.containers, container)
-	return container
+	return d.addContainer(props)
 }
+
 func (d *deploymentImpl) ToPodSelectorConfig() *PodSelectorConfig {
 	labels := map[string]*string{}
 	for k, v := range d.selector {
 		labels[k] = v
 	}
-	return &PodSelectorConfig{LabelSelector: &LabelSelector{Labels: &labels}}
+	return &PodSelectorConfig{LabelSelector: newLabelSelectorFromRequirements(d.matchExpressions, &labels)}
 }
-func (d *deploymentImpl) Scheduling() WorkloadScheduling { return d.scheduling }
-func (d *deploymentImpl) Connections() PodConnections    { return d.connections }
+
+func (d *deploymentImpl) Scheduling() WorkloadScheduling {
+	return d.scheduling
+}
+
+func (d *deploymentImpl) Connections() PodConnections {
+	return d.connections
+}
+
 func (d *deploymentImpl) toManifest() interface{} {
-	if len(d.containers) == 0 {
-		panic("PodSpec must have at least 1 container")
-	}
-	containers := make([]interface{}, 0, len(d.containers))
-	volumes := map[string]Volume{}
-	for _, container := range d.containers {
-		native, ok := container.(*containerImpl)
-		if !ok {
-			panic("unsupported native container")
-		}
-		containers = append(containers, native.toManifest())
-		for _, mount := range *native.Mounts() {
-			volumes[stringValue(mount.Volume.Name())] = mount.Volume
-		}
-	}
-	volumeValues := make([]interface{}, 0, len(volumes))
-	names := make([]string, 0, len(volumes))
-	for name := range volumes {
-		names = append(names, name)
-	}
-	sort.Strings(names)
-	for _, name := range names {
-		volume := volumes[name].(*volumeImpl)
-		entry := map[string]interface{}{"name": volume.Name()}
-		for key, value := range volume.spec {
-			entry[key] = value
-		}
-		volumeValues = append(volumeValues, entry)
-	}
-	labels := copyLabels(nil)
-	if d.podMetadata != nil {
-		labels = copyLabels(d.podMetadata.Labels)
-	}
-	for key, value := range d.selector {
-		labels[key] = value
-	}
-	podMetadata := map[string]interface{}{"labels": labels}
-	if d.podMetadata != nil {
-		if d.podMetadata.Annotations != nil {
-			podMetadata["annotations"] = *d.podMetadata.Annotations
-		}
-		if d.podMetadata.Name != nil {
-			podMetadata["name"] = d.podMetadata.Name
-		}
-		if d.podMetadata.Namespace != nil {
-			podMetadata["namespace"] = d.podMetadata.Namespace
-		}
-	}
-	spec := map[string]interface{}{
-		"automountServiceAccountToken": false,
-		"containers":                   containers,
-		"dnsPolicy":                    "ClusterFirst",
-		"hostNetwork":                  false,
-		"restartPolicy":                "Always",
-		"securityContext": map[string]interface{}{
-			"fsGroupChangePolicy": "Always",
-			"runAsNonRoot":        true,
-		},
-		"setHostnameAsFQDN":             false,
-		"shareProcessNamespace":         false,
-		"terminationGracePeriodSeconds": 30,
-	}
-	if len(volumeValues) > 0 {
-		spec["volumes"] = volumeValues
-	}
-	if affinity := d.scheduling.toManifest(d, d.spread); affinity != nil {
-		spec["affinity"] = affinity
+	spec := d.podState.manifest(d.RestartPolicy())
+	for key, value := range d.scheduling.toManifest() {
+		spec[key] = value
 	}
 	replicas := d.replicas
 	if replicas == nil && !d.hasAutoscaler {
 		replicas = jsii.Number(2)
 	}
-	result := map[string]interface{}{"selector": map[string]interface{}{"matchLabels": d.selector}, "template": map[string]interface{}{"metadata": podMetadata, "spec": spec}, "strategy": map[string]interface{}{"type": "RollingUpdate", "rollingUpdate": map[string]interface{}{"maxSurge": "25%", "maxUnavailable": "25%"}}, "minReadySeconds": 0, "progressDeadlineSeconds": 600, "revisionHistoryLimit": 10}
+	result := map[string]interface{}{"selector": d.workloadSelector(), "template": map[string]interface{}{"metadata": d.PodMetadata().ToJson(), "spec": spec}, "strategy": d.Strategy().toManifest(), "minReadySeconds": d.MinReady().ToSeconds(nil), "progressDeadlineSeconds": d.ProgressDeadline().ToSeconds(nil), "revisionHistoryLimit": d.RevisionHistoryLimit()}
 	if replicas != nil {
 		result["replicas"] = replicas
 	}
 	return result
 }
+
+func deploymentPodProps(p *DeploymentProps) *PodProps {
+	return &PodProps{Metadata: p.Metadata, AutomountServiceAccountToken: p.AutomountServiceAccountToken, Containers: p.Containers, Dns: p.Dns, DockerRegistryAuth: p.DockerRegistryAuth, EnableServiceLinks: p.EnableServiceLinks, HostAliases: p.HostAliases, HostNetwork: p.HostNetwork, InitContainers: p.InitContainers, Isolate: p.Isolate, RestartPolicy: p.RestartPolicy, SecurityContext: p.SecurityContext, ServiceAccount: p.ServiceAccount, ShareProcessNamespace: p.ShareProcessNamespace, TerminationGracePeriod: p.TerminationGracePeriod, Volumes: p.Volumes}
+}
+
+func (d *deploymentImpl) PodMetadata() cdk8s.ApiObjectMetadataDefinition {
+	metadata := d.podMetadata
+	if metadata == nil {
+		metadata = &cdk8s.ApiObjectMetadata{}
+	}
+	result := cdk8s.NewApiObjectMetadataDefinition(&cdk8s.ApiObjectMetadataDefinitionOptions{ApiObject: d.ApiObject(), Name: metadata.Name, Namespace: metadata.Namespace, Labels: metadata.Labels, Annotations: metadata.Annotations})
+	for key, value := range d.selector {
+		result.AddLabel(jsii.String(key), value)
+	}
+	return result
+}
+
+func (d *deploymentImpl) workloadSelector() map[string]interface{} {
+	result := map[string]interface{}{"matchLabels": d.selector}
+	if len(d.matchExpressions) > 0 {
+		result["matchExpressions"] = d.matchExpressions
+	}
+	return result
+}
+
+func (d *deploymentImpl) MatchLabels() *map[string]*string {
+	values := map[string]*string{}
+	for key, value := range d.selector {
+		values[key] = value
+	}
+	return &values
+}
+
+func (d *deploymentImpl) MatchExpressions() *[]*LabelSelectorRequirement {
+	values := append([]*LabelSelectorRequirement(nil), d.matchExpressions...)
+	return &values
+}
+
+func (d *deploymentImpl) Select(selectors ...LabelSelector) {
+	for _, selector := range selectors {
+		if selector == nil {
+			panic("selector is required")
+		}
+		for key, value := range labelSelectorLabels(selector) {
+			d.selector[key] = value
+		}
+		d.matchExpressions = append(d.matchExpressions, labelSelectorRequirements(selector)...)
+	}
+}
+
+func (d *deploymentImpl) InitContainers() *[]Container {
+	values := append([]Container(nil), d.podState.initContainers...)
+	return &values
+}
+
+func (d *deploymentImpl) Volumes() *[]Volume {
+	values := append([]Volume(nil), d.podState.volumes...)
+	return &values
+}
+
+func (d *deploymentImpl) AddInitContainer(props *ContainerProps) Container {
+	return d.addInitContainer(props)
+}
+
+func (d *deploymentImpl) AddVolume(volume Volume) {
+	d.addVolume(volume)
+}
+
+func (d *deploymentImpl) AddHostAlias(alias *HostAlias) {
+	if alias == nil || alias.Ip == nil || alias.Hostnames == nil {
+		panic("host alias IP and hostnames are required")
+	}
+	d.hostAliases = append(d.hostAliases, alias)
+}
+
+func (d *deploymentImpl) AttachContainer(container Container) {
+	if container == nil {
+		panic("container is required")
+	}
+	d.containers = append(d.containers, container)
+}
+
+func (d *deploymentImpl) ToNetworkPolicyPeerConfig() *NetworkPolicyPeerConfig {
+	return &NetworkPolicyPeerConfig{PodSelector: d.ToPodSelectorConfig()}
+}
+
+func (d *deploymentImpl) ToPodSelector() IPodSelector {
+	return d
+}
+
+func (d *deploymentImpl) AutomountServiceAccountToken() *bool {
+	if d.props.AutomountServiceAccountToken == nil {
+		return jsii.Bool(false)
+	}
+	return d.props.AutomountServiceAccountToken
+}
+
+func (d *deploymentImpl) Dns() PodDns {
+	return d.dns
+}
+
+func (d *deploymentImpl) DockerRegistryAuth() ISecret {
+	return d.props.DockerRegistryAuth
+}
+
+func (d *deploymentImpl) EnableServiceLinks() *bool {
+	return d.props.EnableServiceLinks
+}
+
+func (d *deploymentImpl) HostAliases() *[]*HostAlias {
+	values := append([]*HostAlias(nil), d.hostAliases...)
+	return &values
+}
+
+func (d *deploymentImpl) HostNetwork() *bool {
+	if d.props.HostNetwork == nil {
+		return jsii.Bool(false)
+	}
+	return d.props.HostNetwork
+}
+
+func (d *deploymentImpl) Isolate() *bool {
+	if d.props.Isolate == nil {
+		return jsii.Bool(false)
+	}
+	return d.props.Isolate
+}
+
+func (d *deploymentImpl) RestartPolicy() RestartPolicy {
+	if d.props.RestartPolicy == "" {
+		return RestartPolicy_ALWAYS
+	}
+	return d.props.RestartPolicy
+}
+
+func (d *deploymentImpl) SecurityContext() PodSecurityContext {
+	return d.security
+}
+
+func (d *deploymentImpl) ServiceAccount() IServiceAccount {
+	return d.props.ServiceAccount
+}
+
+func (d *deploymentImpl) ShareProcessNamespace() *bool {
+	if d.props.ShareProcessNamespace == nil {
+		return jsii.Bool(false)
+	}
+	return d.props.ShareProcessNamespace
+}
+
+func (d *deploymentImpl) TerminationGracePeriod() cdk8s.Duration {
+	if d.props.TerminationGracePeriod == nil {
+		return cdk8s.Duration_Seconds(jsii.Number(30))
+	}
+	return d.props.TerminationGracePeriod
+}
+
+func (d *deploymentImpl) ToSubjectConfiguration() *SubjectConfiguration {
+	if d.props.ServiceAccount == nil && !*d.AutomountServiceAccountToken() {
+		panic(stringValue(d.Name()) + " cannot be converted to a role binding subject: You must either assign a service account to it, or use 'automountServiceAccountToken: true'")
+	}
+	name := jsii.String("default")
+	if d.props.ServiceAccount != nil {
+		name = d.props.ServiceAccount.ResourceName()
+	}
+	return &SubjectConfiguration{ApiGroup: jsii.String(""), Kind: jsii.String("ServiceAccount"), Name: name}
+}
+
 func (d *deploymentImpl) ExposeViaService(options *DeploymentExposeViaServiceOptions) Service {
 	if options == nil {
 		options = &DeploymentExposeViaServiceOptions{}
@@ -231,6 +410,7 @@ func (d *deploymentImpl) ExposeViaService(options *DeploymentExposeViaServiceOpt
 	}
 	return NewService(d, jsii.String(stringValue(options.Name)+"Service"), &ServiceProps{Metadata: metadata, Selector: d, Ports: ports, Type: serviceType})
 }
+
 func (d *deploymentImpl) ExposeViaIngress(path *string, options *ExposeDeploymentViaIngressOptions) Ingress {
 	if path == nil {
 		panic("path is required")
@@ -238,30 +418,35 @@ func (d *deploymentImpl) ExposeViaIngress(path *string, options *ExposeDeploymen
 	service := d.ExposeViaService(&DeploymentExposeViaServiceOptions{Ports: optionsPorts(options), ServiceType: optionsServiceType(options), Name: optionsName(options)})
 	return service.ExposeViaIngress(path, &ExposeServiceViaIngressOptions{Ingress: optionsIngress(options), PathType: optionsPathType(options)})
 }
+
 func optionsPorts(options *ExposeDeploymentViaIngressOptions) *[]*ServicePort {
 	if options == nil {
 		return nil
 	}
 	return options.Ports
 }
+
 func optionsServiceType(options *ExposeDeploymentViaIngressOptions) ServiceType {
 	if options == nil {
 		return ""
 	}
 	return options.ServiceType
 }
+
 func optionsName(options *ExposeDeploymentViaIngressOptions) *string {
 	if options == nil {
 		return nil
 	}
 	return options.Name
 }
+
 func optionsIngress(options *ExposeDeploymentViaIngressOptions) Ingress {
 	if options == nil {
 		return nil
 	}
 	return options.Ingress
 }
+
 func optionsPathType(options *ExposeDeploymentViaIngressOptions) HttpIngressPathType {
 	if options == nil {
 		return ""

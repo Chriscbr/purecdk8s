@@ -8,7 +8,6 @@ import (
 )
 
 func NewHttpEcho(scope constructs.Construct, id string) cdk8s.Chart {
-
 	chart := cdk8s.NewChart(scope, jsii.String(id), nil)
 
 	ingress := cdk8splus34.NewIngress(chart, jsii.String("ingress"), nil)
@@ -24,7 +23,6 @@ func NewHttpEcho(scope constructs.Construct, id string) cdk8s.Chart {
 }
 
 func EchoBackend(scope constructs.Construct, text string) cdk8splus34.IngressBackend {
-
 	deploy := cdk8splus34.NewDeployment(scope, jsii.String(text), &cdk8splus34.DeploymentProps{
 		Containers: &[]*cdk8splus34.ContainerProps{
 			{
@@ -36,8 +34,8 @@ func EchoBackend(scope constructs.Construct, text string) cdk8splus34.IngressBac
 	})
 
 	return cdk8splus34.IngressBackend_FromService(deploy.ExposeViaService(&cdk8splus34.DeploymentExposeViaServiceOptions{
-		Ports: &[]*cdk8splus34.ServicePort{{Port: jsii.Number(5678)}}}), nil)
-
+		Ports: &[]*cdk8splus34.ServicePort{{Port: jsii.Number(5678)}},
+	}), nil)
 }
 
 func main() {

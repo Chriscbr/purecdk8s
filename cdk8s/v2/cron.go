@@ -112,4 +112,6 @@ func cronValue(value *string) string {
 	return *value
 }
 
-func cronString(value string) *string { return &value }
+func cronString(value string) *string {
+	return &value
+}

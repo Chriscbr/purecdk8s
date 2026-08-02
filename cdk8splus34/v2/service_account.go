@@ -17,13 +17,18 @@ type ServiceAccountProps struct {
 type ServiceAccount interface {
 	Resource
 	IServiceAccount
+	ISubject
 	AutomountToken() *bool
 	Secrets() *[]ISecret
 	AddSecret(secret ISecret)
 }
 
-// IServiceAccount identifies a service account resource.
-type IServiceAccount interface{ IResource }
+// IServiceAccount identifies a service account resource and is a valid RBAC
+// role-binding subject.
+type IServiceAccount interface {
+	IResource
+	ISubject
+}
 
 type serviceAccountImpl struct {
 	resourceBase
@@ -59,12 +64,83 @@ func NewServiceAccount(scope constructs.Construct, id *string, props *ServiceAcc
 }
 
 func NewServiceAccount_Override(account ServiceAccount, scope constructs.Construct, id *string, props *ServiceAccountProps) {
-	panic("native cdk8splus34 overrides are not implemented")
+	applyOverride(account, NewServiceAccount(scope, id, props), "ServiceAccount")
 }
 
-func ServiceAccount_IsConstruct(x interface{}) *bool { return constructs.Construct_IsConstruct(x) }
+func ServiceAccount_IsConstruct(x interface{}) *bool {
+	return constructs.Construct_IsConstruct(x)
+}
 
-func (s *serviceAccountImpl) AutomountToken() *bool { return s.automountToken }
+// ServiceAccount_FromServiceAccountName imports an existing ServiceAccount by name.
+func ServiceAccount_FromServiceAccountName(scope constructs.Construct, id, name *string, options *FromServiceAccountNameOptions) IServiceAccount {
+	if scope == nil || id == nil || name == nil {
+		panic("scope, id and name are required")
+	}
+	result := &importedServiceAccount{name: name}
+	if options != nil {
+		result.namespace = options.NamespaceName
+	}
+	constructs.NewConstruct_Override(result, scope, id)
+	return result
+}
+
+type FromServiceAccountNameOptions struct {
+	NamespaceName *string `field:"optional" json:"namespaceName" yaml:"namespaceName"`
+}
+
+type importedServiceAccount struct {
+	node      constructs.Node
+	name      *string
+	namespace *string
+}
+
+func (s *importedServiceAccount) Node() constructs.Node {
+	return s.node
+}
+
+func (s *importedServiceAccount) SetNodeInternal(node constructs.Node) {
+	s.node = node
+}
+
+func (s *importedServiceAccount) ToString() *string {
+	return s.node.Path()
+}
+
+func (s *importedServiceAccount) With(mixins ...constructs.IMixin) constructs.IConstruct {
+	return s.node.With(mixins...)
+}
+
+func (s *importedServiceAccount) ApiVersion() *string {
+	return jsii.String("v1")
+}
+
+func (s *importedServiceAccount) ApiGroup() *string {
+	return jsii.String("")
+}
+
+func (s *importedServiceAccount) Kind() *string {
+	return jsii.String("ServiceAccount")
+}
+
+func (s *importedServiceAccount) Name() *string {
+	return s.name
+}
+
+func (s *importedServiceAccount) ResourceName() *string {
+	return s.name
+}
+
+func (s *importedServiceAccount) ResourceType() *string {
+	return jsii.String("serviceaccounts")
+}
+
+func (s *importedServiceAccount) ToSubjectConfiguration() *SubjectConfiguration {
+	return &SubjectConfiguration{ApiGroup: jsii.String(""), Kind: jsii.String("ServiceAccount"), Name: s.Name(), Namespace: s.namespace}
+}
+
+func (s *serviceAccountImpl) AutomountToken() *bool {
+	return s.automountToken
+}
 
 func (s *serviceAccountImpl) Secrets() *[]ISecret {
 	values := append([]ISecret(nil), s.secrets...)
@@ -76,4 +152,8 @@ func (s *serviceAccountImpl) AddSecret(secret ISecret) {
 		panic("secret is required")
 	}
 	s.secrets = append(s.secrets, secret)
+}
+
+func (s *serviceAccountImpl) ToSubjectConfiguration() *SubjectConfiguration {
+	return &SubjectConfiguration{ApiGroup: jsii.String(""), Kind: jsii.String("ServiceAccount"), Name: s.Name(), Namespace: s.Metadata().Namespace()}
 }

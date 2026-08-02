@@ -212,8 +212,13 @@ func formatDurationUnit(amount float64, unit durationUnit) string {
 	return formatJSNumber(amount) + " " + label
 }
 
-func durationFloat(value float64) *float64 { return &value }
-func durationBool(value bool) *bool        { return &value }
+func durationFloat(value float64) *float64 {
+	return &value
+}
+
+func durationBool(value bool) *bool {
+	return &value
+}
 
 func formatJSNumber(value float64) string {
 	switch {

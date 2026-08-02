@@ -2,8 +2,10 @@ package serialization
 
 import "testing"
 
-type testMode string
-type unrelatedMode string
+type (
+	testMode      string
+	unrelatedMode string
+)
 
 const testModeDeleteOptions testMode = "DELETE_OPTIONS"
 

@@ -18,14 +18,19 @@ fi
 
 root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 package="cdk8splus${minor_version}"
-module="github.com/cdk8s-team/cdk8s-plus-go/${package}/v2"
 version=v2.0.46
 pure_dir="$root/$package/v2"
 
 if [[ -n "${UPSTREAM_DIR:-}" ]]; then
-  upstream_dir=$UPSTREAM_DIR
+	upstream_dir=$UPSTREAM_DIR
+	reference="${package} override source"
+elif [[ "$minor_version" == "34" ]]; then
+	module="github.com/cdk8s-team/cdk8s-plus-go/${package}/v2"
+	upstream_dir=$(go mod download -json "${module}@${version}" | sed -nE 's/^[[:space:]]*"Dir": "([^"]+)",/\1/p')
+	reference="${module}@${version}"
 else
-  upstream_dir=$(go mod download -json "${module}@${version}" | sed -nE 's/^[[:space:]]*"Dir": "([^"]+)",/\1/p')
+	upstream_dir="$root/cdk8splus34/v2"
+	reference="implemented cdk8splus34/v2 API"
 fi
 
 if [[ ! -d "$upstream_dir" || ! -d "$pure_dir" ]]; then
@@ -71,7 +76,9 @@ if (( missing )); then
   exit 1
 fi
 
-echo "${package} API names cover ${module}@${version} ($(wc -l < "$temp_dir/upstream-types" | tr -d ' ') types, $(wc -l < "$temp_dir/upstream-functions" | tr -d ' ') functions)."
+UPSTREAM_DIR="$upstream_dir" REFERENCE_LABEL="$reference" go run "$root/scripts/check-cdk8splus-api-shape.go" "$minor_version"
+
+echo "${package} API names cover ${reference} ($(wc -l < "$temp_dir/upstream-types" | tr -d ' ') types, $(wc -l < "$temp_dir/upstream-functions" | tr -d ' ') functions)."
 if [[ -s "$temp_dir/extra-types" || -s "$temp_dir/extra-functions" ]]; then
   echo "purecdk8s-only names are allowed and were found:"
   sed 's/^/  type: /' "$temp_dir/extra-types"

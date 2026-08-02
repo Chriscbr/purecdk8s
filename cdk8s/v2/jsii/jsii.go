@@ -3,4 +3,5 @@
 package jsii
 
 // Initialize is a source-compatible no-op.
-func Initialize() {}
+func Initialize() {
+}

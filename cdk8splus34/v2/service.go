@@ -8,10 +8,8 @@ import (
 
 // PodSelectorConfig describes a pod selector and its namespaces.
 type PodSelectorConfig struct {
-	LabelSelector *LabelSelector `field:"required" json:"labelSelector" yaml:"labelSelector"`
-}
-type LabelSelector struct {
-	Labels *map[string]*string `field:"optional" json:"labels" yaml:"labels"`
+	LabelSelector LabelSelector            `field:"required" json:"labelSelector" yaml:"labelSelector"`
+	Namespaces    *NamespaceSelectorConfig `field:"optional" json:"namespaces" yaml:"namespaces"`
 }
 
 // ServiceType controls Service exposure.
@@ -30,6 +28,17 @@ type ServiceBindOptions struct {
 	Protocol   Protocol `field:"optional" json:"protocol" yaml:"protocol"`
 	TargetPort *float64 `field:"optional" json:"targetPort" yaml:"targetPort"`
 }
+
+// AddDeploymentOptions is retained for compatibility with the cdk8s+ service
+// API. It extends ServiceBindOptions with the service port to bind.
+type AddDeploymentOptions struct {
+	Name       *string  `field:"optional" json:"name" yaml:"name"`
+	NodePort   *float64 `field:"optional" json:"nodePort" yaml:"nodePort"`
+	Port       *float64 `field:"optional" json:"port" yaml:"port"`
+	Protocol   Protocol `field:"optional" json:"protocol" yaml:"protocol"`
+	TargetPort *float64 `field:"optional" json:"targetPort" yaml:"targetPort"`
+}
+
 type ServicePort struct {
 	Port       *float64 `field:"required" json:"port" yaml:"port"`
 	Name       *string  `field:"optional" json:"name" yaml:"name"`
@@ -37,19 +46,24 @@ type ServicePort struct {
 	Protocol   Protocol `field:"optional" json:"protocol" yaml:"protocol"`
 	TargetPort *float64 `field:"optional" json:"targetPort" yaml:"targetPort"`
 }
+
 type ServiceProps struct {
-	Metadata     *cdk8s.ApiObjectMetadata `field:"optional" json:"metadata" yaml:"metadata"`
-	Selector     IPodSelector             `field:"optional" json:"selector" yaml:"selector"`
-	ClusterIP    *string                  `field:"optional" json:"clusterIP" yaml:"clusterIP"`
-	ExternalIPs  *[]*string               `field:"optional" json:"externalIPs" yaml:"externalIPs"`
-	Type         ServiceType              `field:"optional" json:"type" yaml:"type"`
-	Ports        *[]*ServicePort          `field:"optional" json:"ports" yaml:"ports"`
-	ExternalName *string                  `field:"optional" json:"externalName" yaml:"externalName"`
+	Metadata                 *cdk8s.ApiObjectMetadata `field:"optional" json:"metadata" yaml:"metadata"`
+	Selector                 IPodSelector             `field:"optional" json:"selector" yaml:"selector"`
+	ClusterIP                *string                  `field:"optional" json:"clusterIP" yaml:"clusterIP"`
+	ExternalIPs              *[]*string               `field:"optional" json:"externalIPs" yaml:"externalIPs"`
+	Type                     ServiceType              `field:"optional" json:"type" yaml:"type"`
+	Ports                    *[]*ServicePort          `field:"optional" json:"ports" yaml:"ports"`
+	ExternalName             *string                  `field:"optional" json:"externalName" yaml:"externalName"`
+	LoadBalancerSourceRanges *[]*string               `field:"optional" json:"loadBalancerSourceRanges" yaml:"loadBalancerSourceRanges"`
+	PublishNotReadyAddresses *bool                    `field:"optional" json:"publishNotReadyAddresses" yaml:"publishNotReadyAddresses"`
 }
+
 type IPodSelector interface {
 	constructs.IConstruct
 	ToPodSelectorConfig() *PodSelectorConfig
 }
+
 type Service interface {
 	Resource
 	ClusterIP() *string
@@ -62,21 +76,24 @@ type Service interface {
 	SelectLabel(key, value *string)
 	ExposeViaIngress(path *string, options *ExposeServiceViaIngressOptions) Ingress
 }
+
 type serviceImpl struct {
 	resourceBase
-	clusterIP    *string
-	type_        ServiceType
-	externalName *string
-	ports        []*ServicePort
-	selector     map[string]*string
-	externalIPs  *[]*string
+	clusterIP                *string
+	type_                    ServiceType
+	externalName             *string
+	ports                    []*ServicePort
+	selector                 map[string]*string
+	externalIPs              *[]*string
+	loadBalancerSourceRanges *[]*string
+	publishNotReadyAddresses *bool
 }
 
 func NewService(scope constructs.Construct, id *string, props *ServiceProps) Service {
 	if props == nil {
 		props = &ServiceProps{}
 	}
-	result := &serviceImpl{clusterIP: props.ClusterIP, externalName: props.ExternalName, selector: map[string]*string{}, externalIPs: props.ExternalIPs}
+	result := &serviceImpl{clusterIP: props.ClusterIP, externalName: props.ExternalName, selector: map[string]*string{}, externalIPs: props.ExternalIPs, loadBalancerSourceRanges: props.LoadBalancerSourceRanges, publishNotReadyAddresses: props.PublishNotReadyAddresses}
 	result.type_ = props.Type
 	if result.externalName != nil {
 		result.type_ = ServiceType_EXTERNAL_NAME
@@ -98,23 +115,39 @@ func NewService(scope constructs.Construct, id *string, props *ServiceProps) Ser
 	manifest["spec"] = cdk8s.Lazy_Any(lazyProducer{produce: func() interface{} { return result.toManifest() }})
 	return result
 }
+
 func NewService_Override(service Service, scope constructs.Construct, id *string, props *ServiceProps) {
-	panic("native cdk8splus34 overrides are not implemented")
+	applyOverride(service, NewService(scope, id, props), "Service")
 }
-func Service_IsConstruct(x interface{}) *bool { return constructs.Construct_IsConstruct(x) }
-func (s *serviceImpl) ClusterIP() *string     { return s.clusterIP }
-func (s *serviceImpl) Type() ServiceType      { return s.type_ }
-func (s *serviceImpl) ExternalName() *string  { return s.externalName }
+
+func Service_IsConstruct(x interface{}) *bool {
+	return constructs.Construct_IsConstruct(x)
+}
+
+func (s *serviceImpl) ClusterIP() *string {
+	return s.clusterIP
+}
+
+func (s *serviceImpl) Type() ServiceType {
+	return s.type_
+}
+
+func (s *serviceImpl) ExternalName() *string {
+	return s.externalName
+}
+
 func (s *serviceImpl) Ports() *[]*ServicePort {
 	values := append([]*ServicePort(nil), s.ports...)
 	return &values
 }
+
 func (s *serviceImpl) Port() *float64 {
 	if len(s.ports) == 0 {
 		return nil
 	}
 	return s.ports[0].Port
 }
+
 func (s *serviceImpl) Bind(port *float64, options *ServiceBindOptions) {
 	if port == nil {
 		panic("port is required")
@@ -128,24 +161,27 @@ func (s *serviceImpl) Bind(port *float64, options *ServiceBindOptions) {
 	}
 	s.ports = append(s.ports, result)
 }
+
 func (s *serviceImpl) Select(selector IPodSelector) {
 	if selector == nil {
 		panic("selector is required")
 	}
 	config := selector.ToPodSelectorConfig()
-	if config == nil || config.LabelSelector == nil || config.LabelSelector.Labels == nil {
+	if config == nil || config.LabelSelector == nil {
 		return
 	}
-	for key, value := range *config.LabelSelector.Labels {
+	for key, value := range labelSelectorLabels(config.LabelSelector) {
 		s.selector[key] = value
 	}
 }
+
 func (s *serviceImpl) SelectLabel(key, value *string) {
 	if key == nil || value == nil {
 		panic("key and value are required")
 	}
 	s.selector[*key] = value
 }
+
 func (s *serviceImpl) toManifest() interface{} {
 	if s.type_ == ServiceType_EXTERNAL_NAME {
 		if s.externalName == nil {
@@ -180,6 +216,12 @@ func (s *serviceImpl) toManifest() interface{} {
 		}
 	}
 	result := map[string]interface{}{"type": string(s.type_), "ports": ports, "selector": s.selector, "externalIPs": externalIPs}
+	if s.loadBalancerSourceRanges != nil {
+		result["loadBalancerSourceRanges"] = s.loadBalancerSourceRanges
+	}
+	if s.publishNotReadyAddresses != nil {
+		result["publishNotReadyAddresses"] = s.publishNotReadyAddresses
+	}
 	if s.clusterIP != nil {
 		result["clusterIP"] = s.clusterIP
 	}

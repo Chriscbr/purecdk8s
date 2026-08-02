@@ -69,7 +69,9 @@ func (c *resolutionContextImpl) Key() *[]*string {
 	return &result
 }
 
-func (c *resolutionContextImpl) Obj() ApiObject { return c.obj }
+func (c *resolutionContextImpl) Obj() ApiObject {
+	return c.obj
+}
 
 func (c *resolutionContextImpl) Replaced() *bool {
 	result := c.replaced
@@ -83,7 +85,9 @@ func (c *resolutionContextImpl) SetReplaced(value *bool) {
 	c.replaced = *value
 }
 
-func (c *resolutionContextImpl) ReplacedValue() interface{} { return c.replacedValue }
+func (c *resolutionContextImpl) ReplacedValue() interface{} {
+	return c.replacedValue
+}
 
 func (c *resolutionContextImpl) SetReplacedValue(value interface{}) {
 	if value == nil {
@@ -92,7 +96,9 @@ func (c *resolutionContextImpl) SetReplacedValue(value interface{}) {
 	c.replacedValue = value
 }
 
-func (c *resolutionContextImpl) Value() interface{} { return c.value }
+func (c *resolutionContextImpl) Value() interface{} {
+	return c.value
+}
 
 func (c *resolutionContextImpl) ReplaceValue(value interface{}) {
 	if value == nil {
@@ -119,7 +125,16 @@ func (l *lazyImpl) Produce() interface{} {
 
 type lazyResolverImpl struct{}
 
-func NewLazyResolver() LazyResolver { return &lazyResolverImpl{} }
+// undefinedLazyValue marks a lazy value that intentionally resolves to an
+// omitted field. JavaScript cdk8s uses `undefined` for this; a nil value cannot
+// be passed through ResolutionContext.ReplaceValue because that public API
+// rejects nil arguments.
+type undefinedLazyValue struct{}
+
+func NewLazyResolver() LazyResolver {
+	return &lazyResolverImpl{}
+}
+
 func NewLazyResolver_Override(resolver LazyResolver) {
 	if resolver == nil {
 		panic("parameter resolver is required, but nil was provided")
@@ -135,13 +150,21 @@ func NewLazyResolver_Override(resolver LazyResolver) {
 func (r *lazyResolverImpl) Resolve(context ResolutionContext) {
 	requireResolutionContext(context)
 	if lazy, ok := context.Value().(*lazyImpl); ok {
-		context.ReplaceValue(lazy.Produce())
+		value := lazy.Produce()
+		if value == nil {
+			context.ReplaceValue(undefinedLazyValue{})
+			return
+		}
+		context.ReplaceValue(value)
 	}
 }
 
 type implicitTokenResolverImpl struct{}
 
-func NewImplicitTokenResolver() ImplicitTokenResolver { return &implicitTokenResolverImpl{} }
+func NewImplicitTokenResolver() ImplicitTokenResolver {
+	return &implicitTokenResolverImpl{}
+}
+
 func NewImplicitTokenResolver_Override(resolver ImplicitTokenResolver) {
 	if resolver == nil {
 		panic("parameter resolver is required, but nil was provided")
@@ -293,6 +316,9 @@ func resolveValueAt(key []*string, value interface{}, obj ApiObject) interface{}
 }
 
 func resolveNestedValue(key []*string, input interface{}, obj ApiObject) interface{} {
+	if _, omitted := input.(undefinedLazyValue); omitted {
+		return nil
+	}
 	value := reflect.ValueOf(input)
 	for value.Kind() == reflect.Interface || value.Kind() == reflect.Pointer {
 		if value.IsNil() {
@@ -398,4 +424,6 @@ func appendResolutionKey(key []*string, component string) []*string {
 	return append(result, &value)
 }
 
-func strconvKey(index int) string { return fmt.Sprintf("%d", index) }
+func strconvKey(index int) string {
+	return fmt.Sprintf("%d", index)
+}

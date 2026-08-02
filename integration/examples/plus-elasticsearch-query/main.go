@@ -12,7 +12,6 @@ import (
 )
 
 func NewElasticsearchQuery(scope constructs.Construct, id string) cdk8s.Chart {
-
 	chart := cdk8s.NewChart(scope, jsii.String(id), nil)
 
 	es_port := 9200
@@ -77,7 +76,6 @@ func NewElasticsearchQuery(scope constructs.Construct, id string) cdk8s.Chart {
 	deployment.ExposeViaService(nil)
 
 	return chart
-
 }
 
 func main() {

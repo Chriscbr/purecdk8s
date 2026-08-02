@@ -1,99 +1,170 @@
 package cdk8splus34
 
 import (
-	"github.com/purecdk8s/purecdk8s/constructs/v10"
+	"github.com/purecdk8s/purecdk8s/cdk8s/v2"
 	"github.com/purecdk8s/purecdk8s/jsii"
 )
 
-// PodConnections configures NetworkPolicy connections for a workload.
+// PodConnectionsIsolation chooses which endpoint receives a NetworkPolicy.
+type PodConnectionsIsolation string
+
+const (
+	PodConnectionsIsolation_POD  PodConnectionsIsolation = "POD"
+	PodConnectionsIsolation_PEER PodConnectionsIsolation = "PEER"
+)
+
+type PodConnectionsAllowToOptions struct {
+	Isolation PodConnectionsIsolation `field:"optional" json:"isolation" yaml:"isolation"`
+	Ports     *[]NetworkPolicyPort    `field:"optional" json:"ports" yaml:"ports"`
+}
+
+type PodConnectionsAllowFromOptions struct {
+	Isolation PodConnectionsIsolation `field:"optional" json:"isolation" yaml:"isolation"`
+	Ports     *[]NetworkPolicyPort    `field:"optional" json:"ports" yaml:"ports"`
+}
+
+// PodConnections controls NetworkPolicy isolation rules for one pod or
+// workload pod template.
 type PodConnections interface {
-	AllowTo(peer IPodSelector, options *PodConnectionsAllowToOptions)
+	Instance() AbstractPod
+	AllowFrom(INetworkPolicyPeer, *PodConnectionsAllowFromOptions)
+	AllowTo(INetworkPolicyPeer, *PodConnectionsAllowToOptions)
 	Isolate()
 }
 
-// PodConnectionsAllowToOptions configures an allowed connection. The native
-// implementation currently supports the default behavior used by cdk8s+.
-type PodConnectionsAllowToOptions struct{}
+type podConnectionsImpl struct{ instance AbstractPod }
 
-type connectableWorkload interface {
-	Resource
-	IPodSelector
-	Containers() *[]Container
+func NewPodConnections(instance AbstractPod) PodConnections {
+	if instance == nil {
+		panic("instance is required")
+	}
+	return &podConnectionsImpl{instance: instance}
 }
 
-type podConnectionsImpl struct{ workload connectableWorkload }
-
-func (c *podConnectionsImpl) Isolate() {
-	newNetworkPolicy(c.workload, "DefaultDenyAll", c.workload, map[string]interface{}{
-		"policyTypes": []interface{}{"Egress", "Ingress"},
-	})
+func NewPodConnections_Override(connections PodConnections, instance AbstractPod) {
+	applyOverride(connections, NewPodConnections(instance), "PodConnections")
 }
 
-func (c *podConnectionsImpl) AllowTo(peer IPodSelector, options *PodConnectionsAllowToOptions) {
+func (p *podConnectionsImpl) Instance() AbstractPod {
+	return p.instance
+}
+
+func (p *podConnectionsImpl) AllowTo(peer INetworkPolicyPeer, options *PodConnectionsAllowToOptions) {
 	if peer == nil {
 		panic("peer is required")
 	}
+	ports := extractedNetworkPolicyPorts(peer)
+	isolation := PodConnectionsIsolation("")
 	if options != nil {
-		panic("pod connection options are not implemented")
+		isolation = options.Isolation
+		if options.Ports != nil {
+			ports = options.Ports
+		}
 	}
-	ports := networkPolicyPorts(peer)
-	peerAddress := stringValue(peer.Node().Addr())
-	newNetworkPolicy(c.workload, "AllowEgress"+peerAddress, c.workload, map[string]interface{}{
-		"egress": []interface{}{map[string]interface{}{
-			"ports": ports,
-			"to":    []interface{}{map[string]interface{}{"podSelector": podSelectorManifest(peer)}},
-		}},
-		"policyTypes": []interface{}{"Egress"},
-	})
-	newNetworkPolicy(c.workload, "AllowIngressundefined"+peerAddress, peer, map[string]interface{}{
-		"ingress": []interface{}{map[string]interface{}{
-			"from":  []interface{}{map[string]interface{}{"podSelector": podSelectorManifest(c.workload)}},
-			"ports": ports,
-		}},
-		"policyTypes": []interface{}{"Ingress"},
+	p.allow("Egress", peer, isolation, ports)
+}
+
+func (p *podConnectionsImpl) AllowFrom(peer INetworkPolicyPeer, options *PodConnectionsAllowFromOptions) {
+	if peer == nil {
+		panic("peer is required")
+	}
+	ports := extractedNetworkPolicyPorts(p.instance)
+	isolation := PodConnectionsIsolation("")
+	if options != nil {
+		isolation = options.Isolation
+		if options.Ports != nil {
+			ports = options.Ports
+		}
+	}
+	p.allow("Ingress", peer, isolation, ports)
+}
+
+func (p *podConnectionsImpl) Isolate() {
+	NewNetworkPolicy(p.instance, jsii.String("DefaultDenyAll"), &NetworkPolicyProps{
+		Metadata: &cdk8s.ApiObjectMetadata{Namespace: p.instance.Metadata().Namespace()}, Selector: p.instance,
+		Egress:  &NetworkPolicyTraffic{Default: NetworkPolicyTrafficDefault_DENY},
+		Ingress: &NetworkPolicyTraffic{Default: NetworkPolicyTrafficDefault_DENY},
 	})
 }
 
-func networkPolicyPorts(peer IPodSelector) []interface{} {
-	workload, ok := peer.(interface{ Containers() *[]Container })
+func extractedNetworkPolicyPorts(peer INetworkPolicyPeer) *[]NetworkPolicyPort {
+	containers, ok := peer.(interface{ Containers() *[]Container })
 	if !ok {
-		return []interface{}{}
+		return &[]NetworkPolicyPort{}
 	}
-	ports := []interface{}{}
-	for _, container := range *workload.Containers() {
+	result := make([]NetworkPolicyPort, 0)
+	for _, container := range *containers.Containers() {
 		for _, port := range *container.Ports() {
-			entry := map[string]interface{}{"port": port.Number}
-			if port.Protocol != "" {
-				entry["protocol"] = string(port.Protocol)
-			} else {
-				entry["protocol"] = "TCP"
+			if port != nil && port.Number != nil {
+				result = append(result, NetworkPolicyPort_Tcp(port.Number))
 			}
-			ports = append(ports, entry)
 		}
 	}
-	return ports
+	return &result
 }
 
-func newNetworkPolicy(scope constructs.Construct, id string, selector IPodSelector, spec map[string]interface{}) {
-	policy := &networkPolicyImpl{}
-	policySpec := map[string]interface{}{}
-	for key, value := range spec {
-		policySpec[key] = value
+func peerAddress(peer INetworkPolicyPeer) string {
+	if peer == nil || peer.Node() == nil {
+		return "Peer"
 	}
-	policySpec["podSelector"] = podSelectorManifest(selector)
-	manifest := map[string]interface{}{"spec": policySpec}
-	policy.resourceBase.initialize(policy, scope, jsii.String(id), "networking.k8s.io/v1", "NetworkPolicy", "networkpolicies", nil, manifest)
+	return stringValue(peer.Node().Addr())
 }
 
-type networkPolicyImpl struct{ resourceBase }
-
-func podSelectorManifest(selector IPodSelector) map[string]interface{} {
-	config := selector.ToPodSelectorConfig()
-	labels := map[string]interface{}{}
-	if config != nil && config.LabelSelector != nil && config.LabelSelector.Labels != nil {
-		for key, value := range *config.LabelSelector.Labels {
-			labels[key] = value
+func (p *podConnectionsImpl) allow(direction string, peer INetworkPolicyPeer, isolation PodConnectionsIsolation, ports *[]NetworkPolicyPort) {
+	config := peer.ToNetworkPolicyPeerConfig()
+	if config == nil || (config.IpBlock == nil && config.PodSelector == nil) {
+		panic("network policy peer configuration is required")
+	}
+	address := peerAddress(peer)
+	if isolation == "" || isolation == PodConnectionsIsolation_POD {
+		policy := NewNetworkPolicy(p.instance, jsii.String("Allow"+direction+address), &NetworkPolicyProps{
+			Metadata: &cdk8s.ApiObjectMetadata{Namespace: p.instance.Metadata().Namespace()}, Selector: p.instance,
+		})
+		if direction == "Egress" {
+			policy.AddEgressRule(peer, ports)
+		} else {
+			policy.AddIngressRule(peer, ports)
 		}
 	}
-	return map[string]interface{}{"matchLabels": labels}
+	if isolation != "" && isolation != PodConnectionsIsolation_PEER {
+		return
+	}
+	if config.IpBlock != nil {
+		return
+	}
+	selector := peer.ToPodSelector()
+	if selector == nil {
+		panic("Unable to create opposite network policy because peer is not a pod selector")
+	}
+	selectorConfig := selector.ToPodSelectorConfig()
+	if selectorConfig == nil {
+		panic("pod selector configuration is required")
+	}
+	namespaces := []*string{p.instance.Metadata().Namespace()}
+	if selectorConfig.Namespaces != nil {
+		if selectorConfig.Namespaces.LabelSelector != nil && !*selectorConfig.Namespaces.LabelSelector.IsEmpty() {
+			panic("Unable to create opposite network policy for peer with namespace label selector")
+		}
+		if selectorConfig.Namespaces.Names == nil {
+			panic("Unable to create opposite network policy for peer without namespace names")
+		}
+		namespaces = *selectorConfig.Namespaces.Names
+	}
+	for _, namespace := range namespaces {
+		// TypeScript interpolates an omitted namespace as "undefined" in the
+		// construct id, while leaving the resource metadata namespace unset. Do
+		// the same here: an unset namespace means the chart default namespace,
+		// not that the opposite policy should be skipped.
+		namespaceAddress := "undefined"
+		if namespace != nil {
+			namespaceAddress = *namespace
+		}
+		if direction == "Egress" {
+			policy := NewNetworkPolicy(p.instance, jsii.String("AllowIngress"+namespaceAddress+address), &NetworkPolicyProps{Metadata: &cdk8s.ApiObjectMetadata{Namespace: namespace}, Selector: selector})
+			policy.AddIngressRule(p.instance, ports)
+		} else {
+			policy := NewNetworkPolicy(p.instance, jsii.String("AllowEgress"+namespaceAddress+address), &NetworkPolicyProps{Metadata: &cdk8s.ApiObjectMetadata{Namespace: namespace}, Selector: selector})
+			policy.AddEgressRule(p.instance, ports)
+		}
+	}
 }

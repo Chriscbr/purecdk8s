@@ -10,10 +10,16 @@ import (
 type ServiceIngressBackendOptions struct {
 	Port *float64 `field:"optional" json:"port" yaml:"port"`
 }
-type IngressBackend interface{ manifest() interface{} }
-type ingressBackend struct{ value interface{} }
 
-func (b *ingressBackend) manifest() interface{} { return b.value }
+type (
+	IngressBackend interface{ manifest() interface{} }
+	ingressBackend struct{ value interface{} }
+)
+
+func (b *ingressBackend) manifest() interface{} {
+	return b.value
+}
+
 func IngressBackend_FromService(service Service, options *ServiceIngressBackendOptions) IngressBackend {
 	if service == nil {
 		panic("service is required")
@@ -27,6 +33,7 @@ func IngressBackend_FromService(service Service, options *ServiceIngressBackendO
 	}
 	return &ingressBackend{value: map[string]interface{}{"service": map[string]interface{}{"name": service.Name(), "port": map[string]interface{}{"number": port}}}}
 }
+
 func IngressBackend_FromResource(resource IResource) IngressBackend {
 	if resource == nil {
 		panic("resource is required")
@@ -40,10 +47,12 @@ type IngressRule struct {
 	Backend  IngressBackend      `field:"required" json:"backend" yaml:"backend"`
 	PathType HttpIngressPathType `field:"optional" json:"pathType" yaml:"pathType"`
 }
+
 type IngressTls struct {
 	Hosts  *[]*string `field:"optional" json:"hosts" yaml:"hosts"`
 	Secret ISecret    `field:"optional" json:"secret" yaml:"secret"`
 }
+
 type IngressProps struct {
 	Metadata       *cdk8s.ApiObjectMetadata `field:"optional" json:"metadata" yaml:"metadata"`
 	ClassName      *string                  `field:"optional" json:"className" yaml:"className"`
@@ -51,6 +60,7 @@ type IngressProps struct {
 	Rules          *[]*IngressRule          `field:"optional" json:"rules" yaml:"rules"`
 	Tls            *[]*IngressTls           `field:"optional" json:"tls" yaml:"tls"`
 }
+
 type Ingress interface {
 	Resource
 	AddDefaultBackend(backend IngressBackend)
@@ -60,6 +70,7 @@ type Ingress interface {
 	AddRules(rules ...*IngressRule)
 	AddTls(tls *[]*IngressTls)
 }
+
 type ingressImpl struct {
 	resourceBase
 	className      *string
@@ -84,20 +95,31 @@ func NewIngress(scope constructs.Construct, id *string, props *IngressProps) Ing
 	manifest["spec"] = cdk8s.Lazy_Any(lazyProducer{produce: func() interface{} { return result.toManifest() }})
 	return result
 }
+
 func NewIngress_Override(ingress Ingress, scope constructs.Construct, id *string, props *IngressProps) {
-	panic("native cdk8splus34 overrides are not implemented")
+	applyOverride(ingress, NewIngress(scope, id, props), "Ingress")
 }
-func Ingress_IsConstruct(x interface{}) *bool                   { return constructs.Construct_IsConstruct(x) }
-func (i *ingressImpl) AddDefaultBackend(backend IngressBackend) { i.defaultBackend = backend }
+
+func Ingress_IsConstruct(x interface{}) *bool {
+	return constructs.Construct_IsConstruct(x)
+}
+
+func (i *ingressImpl) AddDefaultBackend(backend IngressBackend) {
+	i.defaultBackend = backend
+}
+
 func (i *ingressImpl) AddHostDefaultBackend(host *string, backend IngressBackend) {
 	i.AddRules(&IngressRule{Host: host, Backend: backend})
 }
+
 func (i *ingressImpl) AddHostRule(host, path *string, backend IngressBackend, pathType HttpIngressPathType) {
 	i.AddRules(&IngressRule{Host: host, Path: path, Backend: backend, PathType: pathType})
 }
+
 func (i *ingressImpl) AddRule(path *string, backend IngressBackend, pathType HttpIngressPathType) {
 	i.AddHostRule(nil, path, backend, pathType)
 }
+
 func (i *ingressImpl) AddRules(rules ...*IngressRule) {
 	for _, rule := range rules {
 		if rule == nil || rule.Backend == nil {
@@ -113,11 +135,13 @@ func (i *ingressImpl) AddRules(rules ...*IngressRule) {
 		i.rules = append(i.rules, rule)
 	}
 }
+
 func (i *ingressImpl) AddTls(tls *[]*IngressTls) {
 	if tls != nil {
 		i.tls = append(i.tls, (*tls)...)
 	}
 }
+
 func (i *ingressImpl) toManifest() interface{} {
 	result := map[string]interface{}{}
 	if i.className != nil {
@@ -180,4 +204,7 @@ func (i *ingressImpl) toManifest() interface{} {
 
 // ISecret is declared here because container and ingress APIs reference it.
 // Its concrete resource implementation is provided with the Secret constructs.
-type ISecret interface{ IResource }
+type ISecret interface {
+	IResource
+	EnvValue(key *string, options *EnvValueFromSecretOptions) EnvValue
+}

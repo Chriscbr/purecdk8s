@@ -16,7 +16,9 @@ type numberType interface {
 		~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64 | ~uintptr
 }
 
-func Ptr[T basicType](v T) *T { return &v }
+func Ptr[T basicType](v T) *T {
+	return &v
+}
 
 func PtrSlice[T basicType](values ...T) *[]*T {
 	result := make([]*T, len(values))
@@ -27,13 +29,21 @@ func PtrSlice[T basicType](values ...T) *[]*T {
 	return &result
 }
 
-func String(v string) *string { return &v }
+func String(v string) *string {
+	return &v
+}
 
-func Strings(values ...string) *[]*string { return PtrSlice(values...) }
+func Strings(values ...string) *[]*string {
+	return PtrSlice(values...)
+}
 
-func Bool(v bool) *bool { return &v }
+func Bool(v bool) *bool {
+	return &v
+}
 
-func Bools(values ...bool) *[]*bool { return PtrSlice(values...) }
+func Bools(values ...bool) *[]*bool {
+	return PtrSlice(values...)
+}
 
 func Number[T numberType](v T) *float64 {
 	value := float64(v)
@@ -78,7 +88,9 @@ func AnySlice[T any](values *[]*T) *[]interface{} {
 	return &result
 }
 
-func Time(v time.Time) *time.Time { return &v }
+func Time(v time.Time) *time.Time {
+	return &v
+}
 
 func Times(values ...time.Time) *[]*time.Time {
 	result := make([]*time.Time, len(values))
@@ -96,4 +108,5 @@ func Sprintf(format string, values ...interface{}) *string {
 
 // Close is retained for source compatibility. There is no child runtime to
 // close in purecdk8s.
-func Close() {}
+func Close() {
+}

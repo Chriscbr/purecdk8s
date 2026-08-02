@@ -96,11 +96,17 @@ type constructImpl struct {
 	node Node
 }
 
-func (c *constructImpl) Node() Node { return c.node }
+func (c *constructImpl) Node() Node {
+	return c.node
+}
 
-func (c *constructImpl) setNode(node Node) { c.node = node }
+func (c *constructImpl) setNode(node Node) {
+	c.node = node
+}
 
-func (c *constructImpl) SetNodeInternal(node Node) { c.node = node }
+func (c *constructImpl) SetNodeInternal(node Node) {
+	c.node = node
+}
 
 func (c *constructImpl) ToString() *string {
 	if c.node == nil || value(c.node.Path()) == "" {
@@ -265,7 +271,9 @@ func Construct_IsConstruct(x interface{}) *bool {
 	return &ok
 }
 
-func RootConstruct_IsConstruct(x interface{}) *bool { return Construct_IsConstruct(x) }
+func RootConstruct_IsConstruct(x interface{}) *bool {
+	return Construct_IsConstruct(x)
+}
 
 func (n *nodeImpl) Addr() *string {
 	if n.addr == "" {
@@ -327,7 +335,9 @@ func (n *nodeImpl) Dependencies() *[]IConstruct {
 	return &result
 }
 
-func (n *nodeImpl) Id() *string { return &n.id }
+func (n *nodeImpl) Id() *string {
+	return &n.id
+}
 
 func (n *nodeImpl) Locked() *bool {
 	locked := n.locked
@@ -362,7 +372,9 @@ func (n *nodeImpl) Root() IConstruct {
 	return (*scopes)[0]
 }
 
-func (n *nodeImpl) Scope() IConstruct { return n.scope }
+func (n *nodeImpl) Scope() IConstruct {
+	return n.scope
+}
 
 func (n *nodeImpl) Scopes() *[]IConstruct {
 	result := make([]IConstruct, 0)
@@ -495,7 +507,9 @@ func (n *nodeImpl) GetContext(key *string) interface{} {
 	return result
 }
 
-func (n *nodeImpl) Lock() { n.locked = true }
+func (n *nodeImpl) Lock() {
+	n.locked = true
+}
 
 func (n *nodeImpl) SetContext(key *string, item interface{}) {
 	if key == nil {
@@ -655,7 +669,8 @@ func Dependable_Implement(instance IDependable, trait Dependable) {
 	dependableTraits.Store(instance, trait)
 }
 
-func NewDependable_Override(d Dependable) {}
+func NewDependable_Override(d Dependable) {
+}
 
 func Dependable_Of(instance IDependable) Dependable {
 	if instance == nil {
@@ -678,7 +693,9 @@ func Dependable_Of(instance IDependable) Dependable {
 	panic(fmt.Sprintf(`%v does not implement IDependable. Use "Dependable_Implement()" to implement`, instance))
 }
 
-func Dependable_Get(instance IDependable) Dependable { return Dependable_Of(instance) }
+func Dependable_Get(instance IDependable) Dependable {
+	return Dependable_Of(instance)
+}
 
 type singleDependable struct{ root IConstruct }
 
@@ -747,7 +764,9 @@ func valueBool(pointer *bool) bool {
 	return pointer != nil && *pointer
 }
 
-func stringPointer(value string) *string { return &value }
+func stringPointer(value string) *string {
+	return &value
+}
 
 func sanitizeID(id string) string {
 	return strings.NewReplacer("/", "--", "\n", "--").Replace(id)

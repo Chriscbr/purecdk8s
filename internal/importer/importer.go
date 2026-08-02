@@ -26,8 +26,10 @@ const (
 	kubernetesSchemaURL = "https://raw.githubusercontent.com/cdk8s-team/cdk8s/master/kubernetes-schemas/v%s/_definitions.json"
 )
 
-var kubernetesVersionPattern = regexp.MustCompile(`^[0-9]+\.[0-9]+\.[0-9]+$`)
-var githubCRDSourcePattern = regexp.MustCompile(`^github:([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+)(?:@([0-9]+)\.([0-9]+)(?:\.([0-9]+))?)?$`)
+var (
+	kubernetesVersionPattern = regexp.MustCompile(`^[0-9]+\.[0-9]+\.[0-9]+$`)
+	githubCRDSourcePattern   = regexp.MustCompile(`^github:([A-Za-z0-9_.-]+)/([A-Za-z0-9_.-]+)(?:@([0-9]+)\.([0-9]+)(?:\.([0-9]+))?)?$`)
+)
 
 // Options describes one cdk8s import entry. OutputDir is the imports base
 // directory: a "k8s" source is written to OutputDir/k8s/generated.go, Helm

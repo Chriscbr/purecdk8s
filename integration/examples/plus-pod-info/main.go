@@ -11,7 +11,6 @@ import (
 )
 
 func NewPodInfo(scope constructs.Construct, id string) cdk8s.Chart {
-
 	chart := cdk8s.NewChart(scope, jsii.String(id), nil)
 
 	portNumber := 9898
@@ -55,7 +54,6 @@ func NewPodInfo(scope constructs.Construct, id string) cdk8s.Chart {
 	service.ExposeViaIngress(jsii.String("/*"), nil)
 
 	return chart
-
 }
 
 func main() {

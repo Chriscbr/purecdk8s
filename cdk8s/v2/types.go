@@ -256,5 +256,7 @@ type Size interface {
 	ToTebibytes(opts *SizeConversionOptions) *float64
 }
 
-type Testing interface{}
-type Yaml interface{}
+type (
+	Testing interface{}
+	Yaml    interface{}
+)

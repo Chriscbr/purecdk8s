@@ -101,7 +101,9 @@ func includedObjects(node constructs.Node) *[]ApiObject {
 	return &result
 }
 
-func Include_IsConstruct(value interface{}) *bool { return App_IsConstruct(value) }
+func Include_IsConstruct(value interface{}) *bool {
+	return App_IsConstruct(value)
+}
 
 type helmImpl struct {
 	constructBase
@@ -210,7 +212,14 @@ func initializeHelm(helm *helmImpl, host Helm, scope constructs.Construct, id *s
 	helm.releaseName = *releaseName
 }
 
-func (h *helmImpl) ApiObjects() *[]ApiObject { return includedObjects(h.Node()) }
-func (h *helmImpl) ReleaseName() *string     { return &h.releaseName }
+func (h *helmImpl) ApiObjects() *[]ApiObject {
+	return includedObjects(h.Node())
+}
 
-func Helm_IsConstruct(value interface{}) *bool { return App_IsConstruct(value) }
+func (h *helmImpl) ReleaseName() *string {
+	return &h.releaseName
+}
+
+func Helm_IsConstruct(value interface{}) *bool {
+	return App_IsConstruct(value)
+}

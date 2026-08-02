@@ -30,6 +30,8 @@ type HorizontalPodAutoscalerProps struct {
 	Target      IScalable                `field:"required" json:"target" yaml:"target"`
 	Metrics     *[]Metric                `field:"optional" json:"metrics" yaml:"metrics"`
 	MinReplicas *float64                 `field:"optional" json:"minReplicas" yaml:"minReplicas"`
+	ScaleDown   *ScalingRules            `field:"optional" json:"scaleDown" yaml:"scaleDown"`
+	ScaleUp     *ScalingRules            `field:"optional" json:"scaleUp" yaml:"scaleUp"`
 }
 
 // HorizontalPodAutoscaler is a Kubernetes autoscaling/v2 HPA resource.
@@ -38,6 +40,8 @@ type HorizontalPodAutoscaler interface {
 	MaxReplicas() *float64
 	MinReplicas() *float64
 	Metrics() *[]Metric
+	ScaleDown() *ScalingRules
+	ScaleUp() *ScalingRules
 	Target() IScalable
 }
 
@@ -47,6 +51,8 @@ type horizontalPodAutoscalerImpl struct {
 	minReplicas *float64
 	metrics     []Metric
 	target      IScalable
+	scaleDown   *ScalingRules
+	scaleUp     *ScalingRules
 }
 
 func NewHorizontalPodAutoscaler(scope constructs.Construct, id *string, props *HorizontalPodAutoscalerProps) HorizontalPodAutoscaler {
@@ -64,6 +70,8 @@ func NewHorizontalPodAutoscaler(scope constructs.Construct, id *string, props *H
 		maxReplicas: props.MaxReplicas,
 		minReplicas: minReplicas,
 		target:      props.Target,
+		scaleDown:   normalizedScalingRules(props.ScaleDown, false, minReplicas),
+		scaleUp:     normalizedScalingRules(props.ScaleUp, true, minReplicas),
 	}
 	if props.Metrics != nil {
 		result.metrics = append(result.metrics, (*props.Metrics)...)
@@ -76,15 +84,33 @@ func NewHorizontalPodAutoscaler(scope constructs.Construct, id *string, props *H
 }
 
 func NewHorizontalPodAutoscaler_Override(autoscaler HorizontalPodAutoscaler, scope constructs.Construct, id *string, props *HorizontalPodAutoscalerProps) {
-	panic("native cdk8splus34 overrides are not implemented")
+	applyOverride(autoscaler, NewHorizontalPodAutoscaler(scope, id, props), "HorizontalPodAutoscaler")
 }
 
 func HorizontalPodAutoscaler_IsConstruct(x interface{}) *bool {
 	return constructs.Construct_IsConstruct(x)
 }
-func (h *horizontalPodAutoscalerImpl) MaxReplicas() *float64 { return h.maxReplicas }
-func (h *horizontalPodAutoscalerImpl) MinReplicas() *float64 { return h.minReplicas }
-func (h *horizontalPodAutoscalerImpl) Target() IScalable     { return h.target }
+
+func (h *horizontalPodAutoscalerImpl) MaxReplicas() *float64 {
+	return h.maxReplicas
+}
+
+func (h *horizontalPodAutoscalerImpl) MinReplicas() *float64 {
+	return h.minReplicas
+}
+
+func (h *horizontalPodAutoscalerImpl) Target() IScalable {
+	return h.target
+}
+
+func (h *horizontalPodAutoscalerImpl) ScaleDown() *ScalingRules {
+	return h.scaleDown
+}
+
+func (h *horizontalPodAutoscalerImpl) ScaleUp() *ScalingRules {
+	return h.scaleUp
+}
+
 func (h *horizontalPodAutoscalerImpl) Metrics() *[]Metric {
 	metrics := append([]Metric(nil), h.metrics...)
 	return &metrics
@@ -104,19 +130,8 @@ func (h *horizontalPodAutoscalerImpl) toManifest() interface{} {
 	}
 	result := map[string]interface{}{
 		"behavior": map[string]interface{}{
-			"scaleDown": map[string]interface{}{
-				"policies":                   []interface{}{map[string]interface{}{"periodSeconds": 300, "type": "Pods", "value": h.minReplicas}},
-				"selectPolicy":               "Max",
-				"stabilizationWindowSeconds": 300,
-			},
-			"scaleUp": map[string]interface{}{
-				"policies": []interface{}{
-					map[string]interface{}{"periodSeconds": 60, "type": "Pods", "value": 4},
-					map[string]interface{}{"periodSeconds": 60, "type": "Percent", "value": 200},
-				},
-				"selectPolicy":               "Max",
-				"stabilizationWindowSeconds": 0,
-			},
+			"scaleDown": scalingRulesManifest(h.scaleDown),
+			"scaleUp":   scalingRulesManifest(h.scaleUp),
 		},
 		"maxReplicas": h.maxReplicas,
 		"minReplicas": h.minReplicas,
@@ -143,15 +158,22 @@ type metricImpl struct {
 	manifest map[string]interface{}
 }
 
-func (m *metricImpl) Type() *string           { return jsii.String(m.type_) }
-func (m *metricImpl) toManifest() interface{} { return m.manifest }
+func (m *metricImpl) Type() *string {
+	return jsii.String(m.type_)
+}
+
+func (m *metricImpl) toManifest() interface{} {
+	return m.manifest
+}
 
 // MetricTarget describes the desired value for an autoscaling metric.
 type MetricTarget interface{ toManifest() interface{} }
 
 type metricTarget struct{ manifest map[string]interface{} }
 
-func (m *metricTarget) toManifest() interface{} { return m.manifest }
+func (m *metricTarget) toManifest() interface{} {
+	return m.manifest
+}
 
 func MetricTarget_AverageUtilization(value *float64) MetricTarget {
 	if value == nil {
@@ -184,9 +206,172 @@ func metricResource(name string, target MetricTarget) Metric {
 	}}
 }
 
-func Metric_ResourceCpu(target MetricTarget) Metric     { return metricResource("cpu", target) }
-func Metric_ResourceMemory(target MetricTarget) Metric  { return metricResource("memory", target) }
-func Metric_ResourceStorage(target MetricTarget) Metric { return metricResource("storage", target) }
+func Metric_ResourceCpu(target MetricTarget) Metric {
+	return metricResource("cpu", target)
+}
+
+func Metric_ResourceMemory(target MetricTarget) Metric {
+	return metricResource("memory", target)
+}
+
+func Metric_ResourceStorage(target MetricTarget) Metric {
+	return metricResource("storage", target)
+}
+
 func Metric_ResourceEphemeralStorage(target MetricTarget) Metric {
 	return metricResource("ephemeral-storage", target)
+}
+
+type MetricOptions struct {
+	Name          *string       `field:"required" json:"name" yaml:"name"`
+	Target        MetricTarget  `field:"required" json:"target" yaml:"target"`
+	LabelSelector LabelSelector `field:"optional" json:"labelSelector" yaml:"labelSelector"`
+}
+
+type MetricContainerResourceOptions struct {
+	Container Container    `field:"required" json:"container" yaml:"container"`
+	Target    MetricTarget `field:"required" json:"target" yaml:"target"`
+}
+
+type MetricObjectOptions struct {
+	Name          *string       `field:"required" json:"name" yaml:"name"`
+	Target        MetricTarget  `field:"required" json:"target" yaml:"target"`
+	LabelSelector LabelSelector `field:"optional" json:"labelSelector" yaml:"labelSelector"`
+	Object        IResource     `field:"required" json:"object" yaml:"object"`
+}
+
+func metricContainerResource(name string, options *MetricContainerResourceOptions) Metric {
+	if options == nil || options.Container == nil || options.Target == nil {
+		panic("container and target are required")
+	}
+	return &metricImpl{type_: "ContainerResource", manifest: map[string]interface{}{"type": "ContainerResource", "containerResource": map[string]interface{}{"name": name, "container": options.Container.Name(), "target": options.Target.toManifest()}}}
+}
+
+func Metric_ContainerCpu(options *MetricContainerResourceOptions) Metric {
+	return metricContainerResource("cpu", options)
+}
+
+func Metric_ContainerMemory(options *MetricContainerResourceOptions) Metric {
+	return metricContainerResource("memory", options)
+}
+
+func Metric_ContainerStorage(options *MetricContainerResourceOptions) Metric {
+	return metricContainerResource("storage", options)
+}
+
+func Metric_ContainerEphemeralStorage(options *MetricContainerResourceOptions) Metric {
+	return metricContainerResource("ephemeral-storage", options)
+}
+
+func metricNamedManifest(options *MetricOptions) map[string]interface{} {
+	if options == nil || options.Name == nil || options.Target == nil {
+		panic("name and target are required")
+	}
+	metric := map[string]interface{}{"name": options.Name}
+	if options.LabelSelector != nil {
+		metric["selector"] = labelSelectorManifest(options.LabelSelector)
+	}
+	return metric
+}
+
+func Metric_External(options *MetricOptions) Metric {
+	metric := metricNamedManifest(options)
+	return &metricImpl{type_: "External", manifest: map[string]interface{}{"type": "External", "external": map[string]interface{}{"metric": metric, "target": options.Target.toManifest()}}}
+}
+
+func Metric_Pods(options *MetricOptions) Metric {
+	metric := metricNamedManifest(options)
+	return &metricImpl{type_: "Pods", manifest: map[string]interface{}{"type": "Pods", "pods": map[string]interface{}{"metric": metric, "target": options.Target.toManifest()}}}
+}
+
+func Metric_Object(options *MetricObjectOptions) Metric {
+	if options == nil || options.Object == nil {
+		panic("object is required")
+	}
+	base := metricNamedManifest(&MetricOptions{Name: options.Name, Target: options.Target, LabelSelector: options.LabelSelector})
+	return &metricImpl{type_: "Object", manifest: map[string]interface{}{"type": "Object", "object": map[string]interface{}{"describedObject": map[string]interface{}{"apiVersion": options.Object.ApiVersion(), "kind": options.Object.Kind(), "name": options.Object.Name()}, "metric": base, "target": options.Target.toManifest()}}}
+}
+
+type ScalingStrategy string
+
+const (
+	ScalingStrategy_MAX_CHANGE ScalingStrategy = "MAX_CHANGE"
+	ScalingStrategy_MIN_CHANGE ScalingStrategy = "MIN_CHANGE"
+	ScalingStrategy_DISABLED   ScalingStrategy = "DISABLED"
+)
+
+type ScalingPolicy struct {
+	Replicas Replicas       `field:"required" json:"replicas" yaml:"replicas"`
+	Duration cdk8s.Duration `field:"optional" json:"duration" yaml:"duration"`
+}
+
+type ScalingRules struct {
+	Policies            *[]*ScalingPolicy `field:"optional" json:"policies" yaml:"policies"`
+	StabilizationWindow cdk8s.Duration    `field:"optional" json:"stabilizationWindow" yaml:"stabilizationWindow"`
+	Strategy            ScalingStrategy   `field:"optional" json:"strategy" yaml:"strategy"`
+}
+
+func normalizedScalingRules(rules *ScalingRules, up bool, minReplicas *float64) *ScalingRules {
+	if rules == nil {
+		rules = &ScalingRules{}
+	}
+	result := &ScalingRules{StabilizationWindow: rules.StabilizationWindow, Strategy: rules.Strategy}
+	if result.Strategy == "" {
+		result.Strategy = ScalingStrategy_MAX_CHANGE
+	}
+	if result.StabilizationWindow == nil {
+		if up {
+			result.StabilizationWindow = cdk8s.Duration_Seconds(jsii.Number(0))
+		} else {
+			result.StabilizationWindow = cdk8s.Duration_Minutes(jsii.Number(5))
+		}
+	}
+	if rules.Policies != nil {
+		result.Policies = rules.Policies
+	} else if up {
+		result.Policies = &[]*ScalingPolicy{{Replicas: Replicas_Absolute(jsii.Number(4)), Duration: cdk8s.Duration_Minutes(jsii.Number(1))}, {Replicas: Replicas_Percent(jsii.Number(200)), Duration: cdk8s.Duration_Minutes(jsii.Number(1))}}
+	} else {
+		result.Policies = &[]*ScalingPolicy{{Replicas: Replicas_Absolute(minReplicas), Duration: cdk8s.Duration_Minutes(jsii.Number(5))}}
+	}
+	return result
+}
+
+func scalingRulesManifest(rules *ScalingRules) map[string]interface{} {
+	if rules == nil {
+		return map[string]interface{}{}
+	}
+	result := map[string]interface{}{"selectPolicy": scalingStrategyManifest(rules.Strategy)}
+	if rules.StabilizationWindow != nil {
+		result["stabilizationWindowSeconds"] = rules.StabilizationWindow.ToSeconds(nil)
+	}
+	if rules.Policies != nil {
+		policies := make([]interface{}, 0, len(*rules.Policies))
+		for _, policy := range *rules.Policies {
+			if policy == nil || policy.Replicas == nil {
+				panic("scaling policy replicas are required")
+			}
+			duration := jsii.Number(15)
+			if policy.Duration != nil {
+				duration = policy.Duration.ToSeconds(nil)
+			}
+			entry := policy.Replicas.toManifest()
+			entry["periodSeconds"] = duration
+			policies = append(policies, entry)
+		}
+		result["policies"] = policies
+	}
+	return result
+}
+
+func scalingStrategyManifest(value ScalingStrategy) string {
+	switch value {
+	case ScalingStrategy_MAX_CHANGE:
+		return "Max"
+	case ScalingStrategy_MIN_CHANGE:
+		return "Min"
+	case ScalingStrategy_DISABLED:
+		return "Disabled"
+	default:
+		panic("invalid scaling strategy")
+	}
 }

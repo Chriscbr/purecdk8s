@@ -20,11 +20,15 @@ type constructBase struct {
 	node constructs.Node
 }
 
-func (c *constructBase) Node() constructs.Node { return c.node }
+func (c *constructBase) Node() constructs.Node {
+	return c.node
+}
 
 // SetNodeInternal is used by the native constructs implementation to complete
 // the same host/node initialization that class inheritance provides upstream.
-func (c *constructBase) SetNodeInternal(node constructs.Node) { c.node = node }
+func (c *constructBase) SetNodeInternal(node constructs.Node) {
+	c.node = node
+}
 
 func (c *constructBase) ToString() *string {
 	if c.node == nil || stringValue(c.node.Path()) == "" {
@@ -144,16 +148,22 @@ func (a *appImpl) Charts() *[]Chart {
 	return &result
 }
 
-func (a *appImpl) Outdir() *string { return &a.outdir }
+func (a *appImpl) Outdir() *string {
+	return &a.outdir
+}
 
-func (a *appImpl) OutputFileExtension() *string { return &a.outputFileExtension }
+func (a *appImpl) OutputFileExtension() *string {
+	return &a.outputFileExtension
+}
 
 func (a *appImpl) Resolvers() *[]IResolver {
 	result := append([]IResolver(nil), a.resolvers...)
 	return &result
 }
 
-func (a *appImpl) YamlOutputType() YamlOutputType { return a.yamlOutputType }
+func (a *appImpl) YamlOutputType() YamlOutputType {
+	return a.yamlOutputType
+}
 
 func (a *appImpl) Synth() {
 	if err := os.MkdirAll(a.outdir, 0o755); err != nil {
@@ -350,7 +360,9 @@ func (c *chartImpl) Labels() *map[string]*string {
 	return &result
 }
 
-func (c *chartImpl) Namespace() *string { return c.namespace }
+func (c *chartImpl) Namespace() *string {
+	return c.namespace
+}
 
 func (c *chartImpl) AddDependency(dependencies ...constructs.IConstruct) {
 	values := make([]constructs.IDependable, len(dependencies))
@@ -408,7 +420,9 @@ func Chart_IsChart(value interface{}) *bool {
 	return &ok
 }
 
-func Chart_IsConstruct(value interface{}) *bool { return App_IsConstruct(value) }
+func Chart_IsConstruct(value interface{}) *bool {
+	return App_IsConstruct(value)
+}
 
 type apiObjectImpl struct {
 	constructBase
@@ -473,9 +487,19 @@ func initializeApiObject(result *apiObjectImpl, host ApiObject, scope constructs
 	result.kind = *props.Kind
 	result.apiGroup = parseApiGroup(result.apiVersion)
 
-	rawMetadata := manifestMetadata(manifest)
-	if rawMetadata == nil {
-		rawMetadata = make(map[string]interface{})
+	// ApiObjectProps.Metadata is part of the manifest contract even when the
+	// caller supplies the remaining manifest separately. Start with it, then
+	// let an explicit metadata section in that manifest take precedence.
+	rawMetadata := make(map[string]interface{})
+	if props.Metadata != nil {
+		for key, value := range plainMap(props.Metadata) {
+			rawMetadata[key] = value
+		}
+	}
+	if manifestValues := manifestMetadata(manifest); manifestValues != nil {
+		for key, value := range manifestValues {
+			rawMetadata[key] = value
+		}
 	}
 	if explicit, ok := rawMetadata["name"].(string); ok {
 		result.name = explicit
@@ -527,12 +551,29 @@ func NewApiObject_Override(object ApiObject, scope constructs.Construct, id *str
 	NewApiObjectWithManifest_Override(object, scope, id, props, props)
 }
 
-func (a *apiObjectImpl) ApiGroup() *string                     { return &a.apiGroup }
-func (a *apiObjectImpl) ApiVersion() *string                   { return &a.apiVersion }
-func (a *apiObjectImpl) Chart() Chart                          { return a.chart }
-func (a *apiObjectImpl) Kind() *string                         { return &a.kind }
-func (a *apiObjectImpl) Metadata() ApiObjectMetadataDefinition { return a.metadata }
-func (a *apiObjectImpl) Name() *string                         { return &a.name }
+func (a *apiObjectImpl) ApiGroup() *string {
+	return &a.apiGroup
+}
+
+func (a *apiObjectImpl) ApiVersion() *string {
+	return &a.apiVersion
+}
+
+func (a *apiObjectImpl) Chart() Chart {
+	return a.chart
+}
+
+func (a *apiObjectImpl) Kind() *string {
+	return &a.kind
+}
+
+func (a *apiObjectImpl) Metadata() ApiObjectMetadataDefinition {
+	return a.metadata
+}
+
+func (a *apiObjectImpl) Name() *string {
+	return &a.name
+}
 
 func (a *apiObjectImpl) AddDependency(dependencies ...constructs.IConstruct) {
 	values := make([]constructs.IDependable, len(dependencies))
@@ -592,7 +633,9 @@ func ApiObject_IsApiObject(value interface{}) *bool {
 	return &ok
 }
 
-func ApiObject_IsConstruct(value interface{}) *bool { return App_IsConstruct(value) }
+func ApiObject_IsConstruct(value interface{}) *bool {
+	return App_IsConstruct(value)
+}
 
 func parseApiGroup(apiVersion string) string {
 	parts := strings.Split(apiVersion, "/")
@@ -683,8 +726,13 @@ func newMetadataDefinition(object ApiObject, raw map[string]interface{}) *metada
 	return result
 }
 
-func (m *metadataDefinition) Name() *string      { return m.name }
-func (m *metadataDefinition) Namespace() *string { return m.namespace }
+func (m *metadataDefinition) Name() *string {
+	return m.name
+}
+
+func (m *metadataDefinition) Namespace() *string {
+	return m.namespace
+}
 
 func (m *metadataDefinition) Add(key *string, value interface{}) {
 	if key == nil {

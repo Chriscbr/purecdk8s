@@ -1,6 +1,8 @@
 package cdk8splus34
 
 import (
+	"reflect"
+
 	"github.com/purecdk8s/purecdk8s/cdk8s/v2"
 	"github.com/purecdk8s/purecdk8s/constructs/v10"
 	"github.com/purecdk8s/purecdk8s/jsii"
@@ -17,7 +19,9 @@ func stringValue(value *string) string {
 
 type lazyProducer struct{ produce func() interface{} }
 
-func (p lazyProducer) Produce() interface{} { return p.produce() }
+func (p lazyProducer) Produce() interface{} {
+	return p.produce()
+}
 
 // IApiResource represents a Kubernetes API resource or collection.
 type IApiResource interface {
@@ -59,6 +63,7 @@ type ResourceProps struct {
 
 // ResourcePermissions controls RBAC grants for a resource.
 type ResourcePermissions interface {
+	Instance() Resource
 	GrantRead(subjects ...ISubject) RoleBinding
 	GrantReadWrite(subjects ...ISubject) RoleBinding
 }
@@ -72,11 +77,15 @@ type resourceBase struct {
 	permissions  ResourcePermissions
 }
 
-func (r *resourceBase) Node() constructs.Node { return r.node }
+func (r *resourceBase) Node() constructs.Node {
+	return r.node
+}
 
 // SetNodeInternal lets constructs initialize native subclasses without a JSII
 // subclass proxy.
-func (r *resourceBase) SetNodeInternal(node constructs.Node) { r.node = node }
+func (r *resourceBase) SetNodeInternal(node constructs.Node) {
+	r.node = node
+}
 
 func (r *resourceBase) ToString() *string {
 	if r.node == nil {
@@ -105,7 +114,7 @@ func (r *resourceBase) initializeApiObject(host constructs.Construct, apiVersion
 	r.manifest = manifest
 	r.resource, _ = host.(IResource)
 	if resource, ok := host.(Resource); ok {
-		r.permissions = &resourcePermissions{instance: resource}
+		r.permissions = NewResourcePermissions(resource)
 	}
 	r.apiObject = cdk8s.NewApiObjectWithManifest(host, jsii.String("Resource"), &cdk8s.ApiObjectProps{
 		ApiVersion: jsii.String(apiVersion),
@@ -114,17 +123,57 @@ func (r *resourceBase) initializeApiObject(host constructs.Construct, apiVersion
 	}, manifest)
 }
 
-func (r *resourceBase) ApiObject() cdk8s.ApiObject                  { return r.apiObject }
-func (r *resourceBase) ApiVersion() *string                         { return r.apiObject.ApiVersion() }
-func (r *resourceBase) ApiGroup() *string                           { return r.apiObject.ApiGroup() }
-func (r *resourceBase) Kind() *string                               { return r.apiObject.Kind() }
-func (r *resourceBase) Metadata() cdk8s.ApiObjectMetadataDefinition { return r.apiObject.Metadata() }
-func (r *resourceBase) Name() *string                               { return r.apiObject.Name() }
-func (r *resourceBase) ResourceName() *string                       { return r.apiObject.Name() }
-func (r *resourceBase) ResourceType() *string                       { return jsii.String(r.resourceType) }
-func (r *resourceBase) AsApiResource() IApiResource                 { return r.resource }
-func (r *resourceBase) AsNonApiResource() *string                   { return nil }
-func (r *resourceBase) Permissions() ResourcePermissions            { return r.permissions }
+func (r *resourceBase) ApiObject() cdk8s.ApiObject {
+	return r.apiObject
+}
+
+func (r *resourceBase) ApiVersion() *string {
+	return r.apiObject.ApiVersion()
+}
+
+func (r *resourceBase) ApiGroup() *string {
+	return r.apiObject.ApiGroup()
+}
+
+func (r *resourceBase) Kind() *string {
+	return r.apiObject.Kind()
+}
+
+func (r *resourceBase) Metadata() cdk8s.ApiObjectMetadataDefinition {
+	return r.apiObject.Metadata()
+}
+
+func (r *resourceBase) Name() *string {
+	return r.apiObject.Name()
+}
+
+func (r *resourceBase) ResourceName() *string {
+	return r.apiObject.Name()
+}
+
+func (r *resourceBase) ResourceType() *string {
+	return jsii.String(r.resourceType)
+}
+
+func (r *resourceBase) AsApiResource() IApiResource {
+	return r.resource
+}
+
+func (r *resourceBase) AsNonApiResource() *string {
+	return nil
+}
+
+func (r *resourceBase) Permissions() ResourcePermissions {
+	return r.permissions
+}
+
+func Resource_IsConstruct(x interface{}) *bool {
+	return constructs.Construct_IsConstruct(x)
+}
+
+func NewResource_Override(_ Resource, _ constructs.Construct, _ *string) {
+	panic("Resource is an abstract base; use a concrete resource constructor")
+}
 
 func metadataMap(metadata *cdk8s.ApiObjectMetadata) map[string]interface{} {
 	if metadata == nil {
@@ -161,4 +210,36 @@ func copyLabels(values *map[string]*string) map[string]interface{} {
 		result[key] = value
 	}
 	return result
+}
+
+// applyOverride provides the idiomatic Go equivalent of a JSII `_Override`
+// constructor. A caller can embed one of the public interfaces in its own
+// struct; this replaces that embedded implementation with the native value.
+// Concrete resources are initialized through their ordinary constructor first,
+// so they retain the same manifest behavior as the non-override path.
+func applyOverride(target, implementation interface{}, name string) {
+	if target == nil {
+		panic(name + " override target is required")
+	}
+	targetValue := reflect.ValueOf(target)
+	implementationValue := reflect.ValueOf(implementation)
+	if targetValue.Kind() != reflect.Ptr || targetValue.IsNil() {
+		panic(name + " override target must be a non-nil pointer")
+	}
+	if targetValue.Type() == implementationValue.Type() {
+		targetValue.Elem().Set(implementationValue.Elem())
+		return
+	}
+	value := targetValue.Elem()
+	if value.Kind() != reflect.Struct {
+		panic(name + " override target must embed the public interface")
+	}
+	for index := 0; index < value.NumField(); index++ {
+		field := value.Field(index)
+		if field.CanSet() && implementationValue.Type().AssignableTo(field.Type()) {
+			field.Set(implementationValue)
+			return
+		}
+	}
+	panic(name + " override target must embed the public interface")
 }
