@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
-# Verify that the purecdk8s core package exposes an API compatible with the
-# original cdk8s core package.
+# Verify that the purecdk8s core package exposes an API and Go doc comments
+# compatible with the original cdk8s core package.
 set -euo pipefail
 
 repository_root="$(git rev-parse --show-toplevel)"

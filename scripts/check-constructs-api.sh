@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
-# Verify that the purecdk8s constructs package is compatible with the original
-# constructs-go package.
+# Verify that the purecdk8s constructs package has exactly the API and Go doc
+# comments exposed by the original constructs-go package.
 set -euo pipefail
 
 repository_root="$(git rev-parse --show-toplevel)"
