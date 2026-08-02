@@ -1,0 +1,33 @@
+module github.com/Chriscbr/purecdk8s/tools/cdk8s-api-check
+
+go 1.25.0
+
+require (
+	github.com/Chriscbr/purecdk8s v0.0.0
+	github.com/Chriscbr/purecdk8s/tools/api-check-common v0.0.0
+	github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2 v2.70.87
+	golang.org/x/exp v0.0.0-20260727155853-b88d891fe743
+)
+
+require (
+	github.com/Masterminds/semver/v3 v3.5.0 // indirect
+	github.com/aws/constructs-go/constructs/v10 v10.0.0 // indirect
+	github.com/aws/jsii-runtime-go v1.139.0 // indirect
+	github.com/fatih/color v1.19.0 // indirect
+	github.com/mattn/go-colorable v0.1.14 // indirect
+	github.com/mattn/go-isatty v0.0.23 // indirect
+	github.com/yuin/goldmark v1.7.16 // indirect
+	golang.org/x/lint v0.0.0-20241112194109-818c5a804067 // indirect
+	golang.org/x/mod v0.38.0 // indirect
+	golang.org/x/sync v0.22.0 // indirect
+	golang.org/x/sys v0.47.0 // indirect
+	golang.org/x/telemetry v0.0.0-20260708182218-49f421fb7959 // indirect
+	golang.org/x/tools v0.48.0 // indirect
+	golang.org/x/tools/cmd/godoc v0.1.0-deprecated // indirect
+	golang.org/x/tools/godoc v0.1.0-deprecated // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
+)
+
+replace github.com/Chriscbr/purecdk8s => ../..
+
+replace github.com/Chriscbr/purecdk8s/tools/api-check-common => ../api-check-common

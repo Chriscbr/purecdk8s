@@ -9,7 +9,7 @@ cd "$repository_root"
 
 readonly upstream_package="github.com/aws/constructs-go/constructs/v10"
 readonly local_package="github.com/Chriscbr/purecdk8s/constructs/v10"
-readonly tool_module="$repository_root/tools/api-check"
+readonly tool_module="$repository_root/tools/constructs-api-check"
 
 report="$(mktemp "${TMPDIR:-/tmp}/constructs-api.XXXXXX")"
 trap 'rm -f "$report"' EXIT

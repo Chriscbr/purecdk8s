@@ -5,7 +5,7 @@ CDK8SPLUS_VERSIONS := 34 35 36
 
 .PHONY: help
 help: ## Show available commands
-	@cat $(MAKEFILE_LIST) | grep -E '^[a-zA-Z_-]+:.*?## .*$$' | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
+	@cat $(MAKEFILE_LIST) | grep -E '^[a-zA-Z0-9_-]+:.*?## .*$$' | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
 .PHONY: format
 format: ## Format source code with gofumpt
@@ -41,15 +41,19 @@ unittest: ## Run Go unit tests
 	go test ./...
 
 .PHONY: api
-api: api-constructs api-cdkplus ## Run every API compatibility check
+api: api-constructs api-cdk8s api-cdk8s-plus ## Run every API compatibility check
 
 .PHONY: api-constructs
 api-constructs: ## Check constructs API compatibility
 	./scripts/check-constructs-api.sh
 
-.PHONY: api-cdkplus
-api-cdkplus: ## Check cdk8s+ API compatibility
-	@for version in $(CDK8SPLUS_VERSIONS); do \
+.PHONY: api-cdk8s
+api-cdk8s: ## Check cdk8s API compatibility
+	./scripts/check-cdk8s-api.sh
+
+.PHONY: api-cdk8s-plus
+api-cdk8s-plus: ## Check cdk8s+ API compatibility
+	@set -e; for version in $(CDK8SPLUS_VERSIONS); do \
 		./scripts/check-cdk8splus-api.sh "$$version"; \
 	done
 
