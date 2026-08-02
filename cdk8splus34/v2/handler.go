@@ -1,22 +1,25 @@
 package cdk8splus34
 
-// HandlerFromTcpSocketOptions configures a lifecycle TCP action.
+// Options for `Handler.fromTcpSocket`.
 type HandlerFromTcpSocketOptions struct {
-	Host *string  `field:"optional" json:"host" yaml:"host"`
+	// The host name to connect to on the container. Default: - defaults to the pod IP.
+	Host *string `field:"optional" json:"host" yaml:"host"`
+	// The TCP port to connect to on the container. Default: - defaults to `container.port`.
 	Port *float64 `field:"optional" json:"port" yaml:"port"`
 }
 
-// HandlerFromHttpGetOptions configures a lifecycle HTTP action.
+// Options for `Handler.fromHttpGet`.
 type HandlerFromHttpGetOptions struct {
+	// The TCP port to use when sending the GET request. Default: - defaults to `container.port`.
 	Port *float64 `field:"optional" json:"port" yaml:"port"`
 }
 
-// Handler describes an action performed by a container lifecycle hook.
+// Defines a specific action that should be taken.
 type Handler interface {
 	toManifest(container *containerImpl) map[string]interface{}
 }
 
-// Handler_FromCommand returns a handler that executes command in its container.
+// Defines a handler based on a command which is executed within the container.
 func Handler_FromCommand(command *[]*string) Handler {
 	if command == nil {
 		panic("command is required")
@@ -30,7 +33,7 @@ func (h *commandHandler) toManifest(_ *containerImpl) map[string]interface{} {
 	return map[string]interface{}{"exec": map[string]interface{}{"command": h.command}}
 }
 
-// Handler_FromHttpGet returns a handler that performs an HTTP GET request.
+// Defines a handler based on an HTTP GET request to the IP address of the container.
 func Handler_FromHttpGet(path *string, options *HandlerFromHttpGetOptions) Handler {
 	if path == nil {
 		panic("path is required")
@@ -54,7 +57,7 @@ func (h *httpGetHandler) toManifest(container *containerImpl) map[string]interfa
 	}}
 }
 
-// Handler_FromTcpSocket returns a handler that opens a TCP socket.
+// Defines a handler based opening a connection to a TCP socket on the container.
 func Handler_FromTcpSocket(options *HandlerFromTcpSocketOptions) Handler {
 	return &tcpSocketHandler{options: options}
 }
@@ -74,8 +77,16 @@ func (h *tcpSocketHandler) toManifest(container *containerImpl) map[string]inter
 	return map[string]interface{}{"tcpSocket": tcpSocket}
 }
 
-// ContainerLifecycle configures handlers for container start and stop events.
+// Container lifecycle properties.
 type ContainerLifecycle struct {
+	// This hook is executed immediately after a container is created.
+	//
+	// However, there is no guarantee that the hook will execute before the container ENTRYPOINT. Default: - No post start handler.
 	PostStart Handler `field:"optional" json:"postStart" yaml:"postStart"`
-	PreStop   Handler `field:"optional" json:"preStop" yaml:"preStop"`
+	// This hook is called immediately before a container is terminated due to an API request or management event such as a liveness/startup probe failure, preemption, resource contention and others.
+	//
+	// A call to the PreStop hook fails if the container is already in a terminated or completed state and the hook must complete before the TERM signal to stop the container can be sent. The Pod's termination grace period countdown begins before the PreStop hook is executed, so regardless of the outcome of the handler, the container will eventually terminate within the Pod's termination grace period. No parameters are passed to the handler. See: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#pod-termination
+	//
+	// Default: - No pre stop handler.
+	PreStop Handler `field:"optional" json:"preStop" yaml:"preStop"`
 }

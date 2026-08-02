@@ -8,16 +8,30 @@ import (
 	"github.com/Chriscbr/purecdk8s/jsii"
 )
 
-// ISubject can be bound to a Kubernetes RBAC role.
+// Represents an object that can be used as a role binding subject.
 type ISubject interface {
 	constructs.IConstruct
+	// Return the subject configuration.
 	ToSubjectConfiguration() *SubjectConfiguration
 }
 
+// Subject contains a reference to the object or user identities a role binding applies to.
+//
+// This can either hold a direct API object reference, or a value for non-objects such as user and group names.
 type SubjectConfiguration struct {
-	Kind      *string `field:"required" json:"kind" yaml:"kind"`
-	Name      *string `field:"required" json:"name" yaml:"name"`
-	ApiGroup  *string `field:"optional" json:"apiGroup" yaml:"apiGroup"`
+	// Kind of object being referenced.
+	//
+	// Values defined by this API group are "User", "Group", and "ServiceAccount". If the Authorizer does not recognized the kind value, the Authorizer should report an error.
+	Kind *string `field:"required" json:"kind" yaml:"kind"`
+	// Name of the object being referenced.
+	Name *string `field:"required" json:"name" yaml:"name"`
+	// APIGroup holds the API group of the referenced subject.
+	//
+	// Defaults to "" for ServiceAccount subjects. Defaults to "rbac.authorization.k8s.io" for User and Group subjects.
+	ApiGroup *string `field:"optional" json:"apiGroup" yaml:"apiGroup"`
+	// Namespace of the referenced object.
+	//
+	// If the object kind is non-namespace, such as "User" or "Group", and this value is not empty the Authorizer should report an error.
 	Namespace *string `field:"optional" json:"namespace" yaml:"namespace"`
 }
 
@@ -39,7 +53,7 @@ func subjectManifest(subject ISubject) map[string]interface{} {
 	return result
 }
 
-// Group is an RBAC group subject.
+// Represents a group.
 type Group interface {
 	constructs.Construct
 	ISubject
@@ -85,6 +99,7 @@ func (g *groupImpl) ToSubjectConfiguration() *SubjectConfiguration {
 	return &SubjectConfiguration{ApiGroup: g.ApiGroup(), Kind: g.Kind(), Name: g.Name()}
 }
 
+// Reference a group by name.
 func Group_FromName(scope constructs.Construct, id, name *string) Group {
 	if scope == nil || id == nil || name == nil {
 		panic("scope, id and name are required")
@@ -94,15 +109,23 @@ func Group_FromName(scope constructs.Construct, id, name *string) Group {
 	return result
 }
 
+// Checks if `x` is a construct.
+//
+// Use this method instead of `instanceof` to properly detect `Construct` instances, even when the construct library is symlinked.
+//
+// Explanation: in JavaScript, multiple copies of the `constructs` library on disk are seen as independent, completely different libraries. As a consequence, the class `Construct` in each copy of the `constructs` library is seen as a different class, and an instance of one class will not test as `instanceof` the other class. `npm install` will not create installations like this, but users may manually symlink construct libraries together or use a monorepo tool: in those cases, multiple copies of the `constructs` library can be accidentally installed, and `instanceof` will behave unpredictably. It is safest to avoid using `instanceof`, and using this type-testing method instead.
+//
+// Returns: true if `x` is an object created from a class which extends `Construct`.
 func Group_IsConstruct(x interface{}) *bool {
 	return constructs.Construct_IsConstruct(x)
 }
 
-// RoleBinding is a namespaced role binding resource.
+// A RoleBinding grants permissions within a specific namespace to a user or set of users.
 type RoleBinding interface {
 	Resource
 	Role() IRole
 	Subjects() *[]ISubject
+	// Adds a subject to the role.
 	AddSubjects(subjects ...ISubject)
 }
 
@@ -112,14 +135,22 @@ type roleBindingImpl struct {
 	subjects []ISubject
 }
 
+// Properties for `RoleBinding`.
 type RoleBindingProps struct {
+	// Metadata that all persisted resources must have, which includes all objects users must create.
 	Metadata *cdk8s.ApiObjectMetadata `field:"optional" json:"metadata" yaml:"metadata"`
-	Role     IRole                    `field:"required" json:"role" yaml:"role"`
+	// The role to bind to.
+	//
+	// A RoleBinding can reference a Role or a ClusterRole.
+	Role IRole `field:"required" json:"role" yaml:"role"`
 }
 
+// Properties for `ClusterRoleBinding`.
 type ClusterRoleBindingProps struct {
+	// Metadata that all persisted resources must have, which includes all objects users must create.
 	Metadata *cdk8s.ApiObjectMetadata `field:"optional" json:"metadata" yaml:"metadata"`
-	Role     IClusterRole             `field:"required" json:"role" yaml:"role"`
+	// The role to bind to.
+	Role IClusterRole `field:"required" json:"role" yaml:"role"`
 }
 
 func NewRoleBinding(scope constructs.Construct, id *string, props *RoleBindingProps) RoleBinding {
@@ -138,6 +169,13 @@ func NewRoleBinding_Override(binding RoleBinding, scope constructs.Construct, id
 	applyOverride(binding, NewRoleBinding(scope, id, props), "RoleBinding")
 }
 
+// Checks if `x` is a construct.
+//
+// Use this method instead of `instanceof` to properly detect `Construct` instances, even when the construct library is symlinked.
+//
+// Explanation: in JavaScript, multiple copies of the `constructs` library on disk are seen as independent, completely different libraries. As a consequence, the class `Construct` in each copy of the `constructs` library is seen as a different class, and an instance of one class will not test as `instanceof` the other class. `npm install` will not create installations like this, but users may manually symlink construct libraries together or use a monorepo tool: in those cases, multiple copies of the `constructs` library can be accidentally installed, and `instanceof` will behave unpredictably. It is safest to avoid using `instanceof`, and using this type-testing method instead.
+//
+// Returns: true if `x` is an object created from a class which extends `Construct`.
 func RoleBinding_IsConstruct(x interface{}) *bool {
 	return constructs.Construct_IsConstruct(x)
 }
@@ -168,10 +206,12 @@ func (r *roleBindingImpl) subjectManifests() interface{} {
 	return result
 }
 
+// A ClusterRoleBinding grants permissions cluster-wide to a user or set of users.
 type ClusterRoleBinding interface {
 	Resource
 	Role() IClusterRole
 	Subjects() *[]ISubject
+	// Adds a subject to the role.
 	AddSubjects(subjects ...ISubject)
 }
 
@@ -197,6 +237,13 @@ func NewClusterRoleBinding_Override(binding ClusterRoleBinding, scope constructs
 	applyOverride(binding, NewClusterRoleBinding(scope, id, props), "ClusterRoleBinding")
 }
 
+// Checks if `x` is a construct.
+//
+// Use this method instead of `instanceof` to properly detect `Construct` instances, even when the construct library is symlinked.
+//
+// Explanation: in JavaScript, multiple copies of the `constructs` library on disk are seen as independent, completely different libraries. As a consequence, the class `Construct` in each copy of the `constructs` library is seen as a different class, and an instance of one class will not test as `instanceof` the other class. `npm install` will not create installations like this, but users may manually symlink construct libraries together or use a monorepo tool: in those cases, multiple copies of the `constructs` library can be accidentally installed, and `instanceof` will behave unpredictably. It is safest to avoid using `instanceof`, and using this type-testing method instead.
+//
+// Returns: true if `x` is an object created from a class which extends `Construct`.
 func ClusterRoleBinding_IsConstruct(x interface{}) *bool {
 	return constructs.Construct_IsConstruct(x)
 }

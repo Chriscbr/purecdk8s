@@ -6,25 +6,37 @@ import (
 	"github.com/Chriscbr/purecdk8s/jsii"
 )
 
-// ServiceAccountProps configures a Kubernetes ServiceAccount.
+// Properties for initialization of `ServiceAccount`.
 type ServiceAccountProps struct {
-	Metadata       *cdk8s.ApiObjectMetadata `field:"optional" json:"metadata" yaml:"metadata"`
-	AutomountToken *bool                    `field:"optional" json:"automountToken" yaml:"automountToken"`
-	Secrets        *[]ISecret               `field:"optional" json:"secrets" yaml:"secrets"`
+	// Metadata that all persisted resources must have, which includes all objects users must create.
+	Metadata *cdk8s.ApiObjectMetadata `field:"optional" json:"metadata" yaml:"metadata"`
+	// Indicates whether pods running as this service account should have an API token automatically mounted.
+	//
+	// Can be overridden at the pod level. See: https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#use-the-default-service-account-to-access-the-api-server
+	//
+	// Default: false.
+	AutomountToken *bool `field:"optional" json:"automountToken" yaml:"automountToken"`
+	// List of secrets allowed to be used by pods running using this ServiceAccount. See: https://kubernetes.io/docs/concepts/configuration/secret
+	Secrets *[]ISecret `field:"optional" json:"secrets" yaml:"secrets"`
 }
 
-// ServiceAccount is a native Kubernetes ServiceAccount construct.
+// A service account provides an identity for processes that run in a Pod.
+//
+// When you (a human) access the cluster (for example, using kubectl), you are authenticated by the apiserver as a particular User Account (currently this is usually admin, unless your cluster administrator has customized your cluster). Processes in containers inside pods can also contact the apiserver. When they do, they are authenticated as a particular Service Account (for example, default). See: https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account
 type ServiceAccount interface {
 	Resource
 	IServiceAccount
 	ISubject
+	// Whether or not a token is automatically mounted for this service account.
 	AutomountToken() *bool
+	// List of secrets allowed to be used by pods running using this service account.
+	//
+	// Returns a copy. To add a secret, use `addSecret()`.
 	Secrets() *[]ISecret
+	// Allow a secret to be accessed by pods using this service account.
 	AddSecret(secret ISecret)
 }
 
-// IServiceAccount identifies a service account resource and is a valid RBAC
-// role-binding subject.
 type IServiceAccount interface {
 	IResource
 	ISubject
@@ -67,11 +79,18 @@ func NewServiceAccount_Override(account ServiceAccount, scope constructs.Constru
 	applyOverride(account, NewServiceAccount(scope, id, props), "ServiceAccount")
 }
 
+// Checks if `x` is a construct.
+//
+// Use this method instead of `instanceof` to properly detect `Construct` instances, even when the construct library is symlinked.
+//
+// Explanation: in JavaScript, multiple copies of the `constructs` library on disk are seen as independent, completely different libraries. As a consequence, the class `Construct` in each copy of the `constructs` library is seen as a different class, and an instance of one class will not test as `instanceof` the other class. `npm install` will not create installations like this, but users may manually symlink construct libraries together or use a monorepo tool: in those cases, multiple copies of the `constructs` library can be accidentally installed, and `instanceof` will behave unpredictably. It is safest to avoid using `instanceof`, and using this type-testing method instead.
+//
+// Returns: true if `x` is an object created from a class which extends `Construct`.
 func ServiceAccount_IsConstruct(x interface{}) *bool {
 	return constructs.Construct_IsConstruct(x)
 }
 
-// ServiceAccount_FromServiceAccountName imports an existing ServiceAccount by name.
+// Imports a service account from the cluster as a reference.
 func ServiceAccount_FromServiceAccountName(scope constructs.Construct, id, name *string, options *FromServiceAccountNameOptions) IServiceAccount {
 	if scope == nil || id == nil || name == nil {
 		panic("scope, id and name are required")
@@ -85,6 +104,7 @@ func ServiceAccount_FromServiceAccountName(scope constructs.Construct, id, name 
 }
 
 type FromServiceAccountNameOptions struct {
+	// The name of the namespace the service account belongs to. Default: "default".
 	NamespaceName *string `field:"optional" json:"namespaceName" yaml:"namespaceName"`
 }
 

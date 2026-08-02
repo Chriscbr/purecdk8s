@@ -6,42 +6,106 @@ import (
 	"github.com/Chriscbr/purecdk8s/jsii"
 )
 
-// ScalingTarget describes a workload that can be scaled by an autoscaler.
+// Properties used to configure the target of an Autoscaler.
 type ScalingTarget struct {
-	ApiVersion *string      `field:"required" json:"apiVersion" yaml:"apiVersion"`
+	// The object's API version (e.g. "authorization.k8s.io/v1").
+	ApiVersion *string `field:"required" json:"apiVersion" yaml:"apiVersion"`
+	// Container definitions associated with the target.
 	Containers *[]Container `field:"required" json:"containers" yaml:"containers"`
-	Kind       *string      `field:"required" json:"kind" yaml:"kind"`
-	Name       *string      `field:"required" json:"name" yaml:"name"`
-	Replicas   *float64     `field:"optional" json:"replicas" yaml:"replicas"`
+	// The object kind (e.g. "Deployment").
+	Kind *string `field:"required" json:"kind" yaml:"kind"`
+	// The Kubernetes name of this resource.
+	Name *string `field:"required" json:"name" yaml:"name"`
+	// The fixed number of replicas defined on the target.
+	//
+	// This is used for validation purposes as Scalable targets should not have a fixed number of replicas.
+	Replicas *float64 `field:"optional" json:"replicas" yaml:"replicas"`
 }
 
-// IScalable is implemented by workload resources supported by an HPA.
+// Represents a scalable workload.
 type IScalable interface {
+	// Called on all IScalable targets when they are associated with an autoscaler.
 	MarkHasAutoscaler()
+	// Return the target spec properties of this Scalable.
 	ToScalingTarget() *ScalingTarget
+	// If this is a target of an autoscaler.
 	HasAutoscaler() *bool
 	SetHasAutoscaler(value *bool)
 }
 
-// HorizontalPodAutoscalerProps configures an autoscaler for a workload.
+// Properties for HorizontalPodAutoscaler.
 type HorizontalPodAutoscalerProps struct {
-	Metadata    *cdk8s.ApiObjectMetadata `field:"optional" json:"metadata" yaml:"metadata"`
-	MaxReplicas *float64                 `field:"required" json:"maxReplicas" yaml:"maxReplicas"`
-	Target      IScalable                `field:"required" json:"target" yaml:"target"`
-	Metrics     *[]Metric                `field:"optional" json:"metrics" yaml:"metrics"`
-	MinReplicas *float64                 `field:"optional" json:"minReplicas" yaml:"minReplicas"`
-	ScaleDown   *ScalingRules            `field:"optional" json:"scaleDown" yaml:"scaleDown"`
-	ScaleUp     *ScalingRules            `field:"optional" json:"scaleUp" yaml:"scaleUp"`
+	// Metadata that all persisted resources must have, which includes all objects users must create.
+	Metadata *cdk8s.ApiObjectMetadata `field:"optional" json:"metadata" yaml:"metadata"`
+	// The maximum number of replicas that can be scaled up to.
+	MaxReplicas *float64 `field:"required" json:"maxReplicas" yaml:"maxReplicas"`
+	// The workload to scale up or down.
+	//
+	// Scalable workload types: * Deployment * StatefulSet.
+	Target IScalable `field:"required" json:"target" yaml:"target"`
+	// The metric conditions that trigger a scale up or scale down. Default: - If metrics are not provided, then the target resource constraints (e.g. cpu limit) will be used as scaling metrics.
+	Metrics *[]Metric `field:"optional" json:"metrics" yaml:"metrics"`
+	// The minimum number of replicas that can be scaled down to.
+	//
+	// Can be set to 0 if the alpha feature gate `HPAScaleToZero` is enabled and at least one Object or External metric is configured. Default: 1.
+	MinReplicas *float64 `field:"optional" json:"minReplicas" yaml:"minReplicas"`
+	// The scaling behavior when scaling down. Default: - Scale down to minReplica count with a 5 minute stabilization window.
+	ScaleDown *ScalingRules `field:"optional" json:"scaleDown" yaml:"scaleDown"`
+	// The scaling behavior when scaling up. Default: - Is the higher of: * Increase no more than 4 pods per 60 seconds * Double the number of pods per 60 seconds.
+	ScaleUp *ScalingRules `field:"optional" json:"scaleUp" yaml:"scaleUp"`
 }
 
-// HorizontalPodAutoscaler is a Kubernetes autoscaling/v2 HPA resource.
+// A HorizontalPodAutoscaler scales a workload up or down in response to a metric change.
+//
+// This allows your services to scale up when demand is high and scale down when they are no longer needed.
+//
+// Typical use cases for HorizontalPodAutoscaler:
+//
+//   - When Memory usage is above 70%, scale up the number of replicas to meet the demand.
+//   - When CPU usage is below 30%, scale down the number of replicas to save resources.
+//   - When a service is experiencing a spike in traffic, scale up the number of replicas to meet the demand. Then, when the traffic subsides, scale down the number of replicas to save resources.
+//
+// The autoscaler uses the following algorithm to determine the number of replicas to scale:
+//
+// `desiredReplicas = ceil[currentReplicas * ( currentMetricValue / desiredMetricValue )]`
+//
+// HorizontalPodAutoscaler's can be used to with any `Scalable` workload: * Deployment * StatefulSet
+//
+// **Targets that already have a replica count defined:**
+//
+// Remove any replica counts from the target resource before associating with a HorizontalPodAutoscaler. If this isn't done, then any time a change to that object is applied, Kubernetes will scale the current number of Pods to the value of the target.replicas key. This may not be desired and could lead to unexpected behavior.
+//
+// Example:
+//
+//	const backend = new kplus.Deployment(this, 'Backend', ...);
+//
+//	const hpa = new kplus.HorizontalPodAutoscaler(chart, 'Hpa', {
+//	 target: backend,
+//	 maxReplicas: 10,
+//	 scaleUp: {
+//	   policies: [
+//	     {
+//	       replicas: kplus.Replicas.absolute(3),
+//	       duration: Duration.minutes(5),
+//	     },
+//	   ],
+//	 },
+//	});
+//
+// See: https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/#implicit-maintenance-mode-deactivation
 type HorizontalPodAutoscaler interface {
 	Resource
+	// The maximum number of replicas that can be scaled up to.
 	MaxReplicas() *float64
+	// The minimum number of replicas that can be scaled down to.
 	MinReplicas() *float64
+	// The metric conditions that trigger a scale up or scale down.
 	Metrics() *[]Metric
+	// The scaling behavior when scaling down.
 	ScaleDown() *ScalingRules
+	// The scaling behavior when scaling up.
 	ScaleUp() *ScalingRules
+	// The workload to scale up or down.
 	Target() IScalable
 }
 
@@ -87,6 +151,13 @@ func NewHorizontalPodAutoscaler_Override(autoscaler HorizontalPodAutoscaler, sco
 	applyOverride(autoscaler, NewHorizontalPodAutoscaler(scope, id, props), "HorizontalPodAutoscaler")
 }
 
+// Checks if `x` is a construct.
+//
+// Use this method instead of `instanceof` to properly detect `Construct` instances, even when the construct library is symlinked.
+//
+// Explanation: in JavaScript, multiple copies of the `constructs` library on disk are seen as independent, completely different libraries. As a consequence, the class `Construct` in each copy of the `constructs` library is seen as a different class, and an instance of one class will not test as `instanceof` the other class. `npm install` will not create installations like this, but users may manually symlink construct libraries together or use a monorepo tool: in those cases, multiple copies of the `constructs` library can be accidentally installed, and `instanceof` will behave unpredictably. It is safest to avoid using `instanceof`, and using this type-testing method instead.
+//
+// Returns: true if `x` is an object created from a class which extends `Construct`.
 func HorizontalPodAutoscaler_IsConstruct(x interface{}) *bool {
 	return constructs.Construct_IsConstruct(x)
 }
@@ -147,7 +218,7 @@ func (h *horizontalPodAutoscalerImpl) toManifest() interface{} {
 	return result
 }
 
-// Metric is an autoscaling metric specification.
+// A metric condition that HorizontalPodAutoscaler's scale on.
 type Metric interface {
 	Type() *string
 	toManifest() interface{}
@@ -166,7 +237,11 @@ func (m *metricImpl) toManifest() interface{} {
 	return m.manifest
 }
 
-// MetricTarget describes the desired value for an autoscaling metric.
+// A metric condition that will trigger scaling behavior when satisfied.
+//
+// Example:
+//
+//	MetricTarget.averageUtilization(70); // 70% average utilization
 type MetricTarget interface{ toManifest() interface{} }
 
 type metricTarget struct{ manifest map[string]interface{} }
@@ -175,6 +250,7 @@ func (m *metricTarget) toManifest() interface{} {
 	return m.manifest
 }
 
+// Target a percentage value across all relevant pods.
 func MetricTarget_AverageUtilization(value *float64) MetricTarget {
 	if value == nil {
 		panic("averageUtilization is required")
@@ -182,6 +258,7 @@ func MetricTarget_AverageUtilization(value *float64) MetricTarget {
 	return &metricTarget{manifest: map[string]interface{}{"type": "Utilization", "averageUtilization": value}}
 }
 
+// Target the average value across all relevant pods.
 func MetricTarget_AverageValue(value *float64) MetricTarget {
 	if value == nil {
 		panic("averageValue is required")
@@ -189,6 +266,7 @@ func MetricTarget_AverageValue(value *float64) MetricTarget {
 	return &metricTarget{manifest: map[string]interface{}{"type": "AverageValue", "averageValue": value}}
 }
 
+// Target a specific target value.
 func MetricTarget_Value(value *float64) MetricTarget {
 	if value == nil {
 		panic("value is required")
@@ -206,38 +284,70 @@ func metricResource(name string, target MetricTarget) Metric {
 	}}
 }
 
+// Tracks the available CPU of the pods in a target.
+//
+// Note: Since the resource usages of all the containers are summed up the total pod utilization may not accurately represent the individual container resource usage. This could lead to situations where a single container might be running with high usage and the HPA will not scale out because the overall pod usage is still within acceptable limits.
+//
+// Use case: * Scale up when CPU is above 40%.
 func Metric_ResourceCpu(target MetricTarget) Metric {
 	return metricResource("cpu", target)
 }
 
+// Tracks the available Memory of the pods in a target.
+//
+// Note: Since the resource usages of all the containers are summed up the total pod utilization may not accurately represent the individual container resource usage. This could lead to situations where a single container might be running with high usage and the HPA will not scale out because the overall pod usage is still within acceptable limits.
+//
+// Use case: * Scale up when Memory is above 512MB.
 func Metric_ResourceMemory(target MetricTarget) Metric {
 	return metricResource("memory", target)
 }
 
+// Tracks the available Storage of the pods in a target.
+//
+// Note: Since the resource usages of all the containers are summed up the total pod utilization may not accurately represent the individual container resource usage. This could lead to situations where a single container might be running with high usage and the HPA will not scale out because the overall pod usage is still within acceptable limits.
 func Metric_ResourceStorage(target MetricTarget) Metric {
 	return metricResource("storage", target)
 }
 
+// Tracks the available Ephemeral Storage of the pods in a target.
+//
+// Note: Since the resource usages of all the containers are summed up the total pod utilization may not accurately represent the individual container resource usage. This could lead to situations where a single container might be running with high usage and the HPA will not scale out because the overall pod usage is still within acceptable limits.
 func Metric_ResourceEphemeralStorage(target MetricTarget) Metric {
 	return metricResource("ephemeral-storage", target)
 }
 
+// Base options for a Metric.
 type MetricOptions struct {
-	Name          *string       `field:"required" json:"name" yaml:"name"`
-	Target        MetricTarget  `field:"required" json:"target" yaml:"target"`
+	// The name of the metric to scale on.
+	Name *string `field:"required" json:"name" yaml:"name"`
+	// The target metric value that will trigger scaling.
+	Target MetricTarget `field:"required" json:"target" yaml:"target"`
+	// A selector to find a metric by label.
+	//
+	// When set, it is passed as an additional parameter to the metrics server for more specific metrics scoping. Default: - Just the metric 'name' will be used to gather metrics.
 	LabelSelector LabelSelector `field:"optional" json:"labelSelector" yaml:"labelSelector"`
 }
 
+// Options for `Metric.containerResource()`.
 type MetricContainerResourceOptions struct {
-	Container Container    `field:"required" json:"container" yaml:"container"`
-	Target    MetricTarget `field:"required" json:"target" yaml:"target"`
+	// Container where the metric can be found.
+	Container Container `field:"required" json:"container" yaml:"container"`
+	// Target metric value that will trigger scaling.
+	Target MetricTarget `field:"required" json:"target" yaml:"target"`
 }
 
+// Options for `Metric.object()`.
 type MetricObjectOptions struct {
-	Name          *string       `field:"required" json:"name" yaml:"name"`
-	Target        MetricTarget  `field:"required" json:"target" yaml:"target"`
+	// The name of the metric to scale on.
+	Name *string `field:"required" json:"name" yaml:"name"`
+	// The target metric value that will trigger scaling.
+	Target MetricTarget `field:"required" json:"target" yaml:"target"`
+	// A selector to find a metric by label.
+	//
+	// When set, it is passed as an additional parameter to the metrics server for more specific metrics scoping. Default: - Just the metric 'name' will be used to gather metrics.
 	LabelSelector LabelSelector `field:"optional" json:"labelSelector" yaml:"labelSelector"`
-	Object        IResource     `field:"required" json:"object" yaml:"object"`
+	// Resource where the metric can be found.
+	Object IResource `field:"required" json:"object" yaml:"object"`
 }
 
 func metricContainerResource(name string, options *MetricContainerResourceOptions) Metric {
@@ -247,18 +357,30 @@ func metricContainerResource(name string, options *MetricContainerResourceOption
 	return &metricImpl{type_: "ContainerResource", manifest: map[string]interface{}{"type": "ContainerResource", "containerResource": map[string]interface{}{"name": name, "container": options.Container.Name(), "target": options.Target.toManifest()}}}
 }
 
+// Metric that tracks the CPU of a container.
+//
+// This metric will be tracked across all pods of the current scale target.
 func Metric_ContainerCpu(options *MetricContainerResourceOptions) Metric {
 	return metricContainerResource("cpu", options)
 }
 
+// Metric that tracks the Memory of a container.
+//
+// This metric will be tracked across all pods of the current scale target.
 func Metric_ContainerMemory(options *MetricContainerResourceOptions) Metric {
 	return metricContainerResource("memory", options)
 }
 
+// Metric that tracks the volume size of a container.
+//
+// This metric will be tracked across all pods of the current scale target.
 func Metric_ContainerStorage(options *MetricContainerResourceOptions) Metric {
 	return metricContainerResource("storage", options)
 }
 
+// Metric that tracks the local ephemeral storage of a container.
+//
+// This metric will be tracked across all pods of the current scale target.
 func Metric_ContainerEphemeralStorage(options *MetricContainerResourceOptions) Metric {
 	return metricContainerResource("ephemeral-storage", options)
 }
@@ -274,16 +396,27 @@ func metricNamedManifest(options *MetricOptions) map[string]interface{} {
 	return metric
 }
 
+// A global metric that is not associated with any Kubernetes object.
+//
+// Allows for autoscaling based on information coming from components running outside of the cluster.
+//
+// Use case: * Scale up when the length of an SQS queue is greater than 10 messages. * Scale down when an outside load balancer's queries are less than 10000 per second.
 func Metric_External(options *MetricOptions) Metric {
 	metric := metricNamedManifest(options)
 	return &metricImpl{type_: "External", manifest: map[string]interface{}{"type": "External", "external": map[string]interface{}{"metric": metric, "target": options.Target.toManifest()}}}
 }
 
+// A pod metric that will be averaged across all pods of the current scale target.
+//
+// Use case: * Average CPU utilization across all pods * Transactions processed per second across all pods.
 func Metric_Pods(options *MetricOptions) Metric {
 	metric := metricNamedManifest(options)
 	return &metricImpl{type_: "Pods", manifest: map[string]interface{}{"type": "Pods", "pods": map[string]interface{}{"metric": metric, "target": options.Target.toManifest()}}}
 }
 
+// Metric that describes a metric of a kubernetes object.
+//
+// Use case: * Scale on a Kubernetes Ingress's hits-per-second metric.
 func Metric_Object(options *MetricObjectOptions) Metric {
 	if options == nil || options.Object == nil {
 		panic("object is required")
@@ -295,20 +428,44 @@ func Metric_Object(options *MetricObjectOptions) Metric {
 type ScalingStrategy string
 
 const (
+	// Use the policy that provisions the most changes.
 	ScalingStrategy_MAX_CHANGE ScalingStrategy = "MAX_CHANGE"
+	// Use the policy that provisions the least amount of changes.
 	ScalingStrategy_MIN_CHANGE ScalingStrategy = "MIN_CHANGE"
-	ScalingStrategy_DISABLED   ScalingStrategy = "DISABLED"
+	// Disables scaling in this direction. Deprecated: - Omit the ScalingRule instead.
+	ScalingStrategy_DISABLED ScalingStrategy = "DISABLED"
 )
 
 type ScalingPolicy struct {
-	Replicas Replicas       `field:"required" json:"replicas" yaml:"replicas"`
+	// The type and quantity of replicas to change.
+	Replicas Replicas `field:"required" json:"replicas" yaml:"replicas"`
+	// The amount of time the scaling policy has to continue scaling before the target metric must be revalidated.
+	//
+	// Must be greater than 0 seconds and no longer than 30 minutes. Default: - 15 seconds.
 	Duration cdk8s.Duration `field:"optional" json:"duration" yaml:"duration"`
 }
 
+// Defines the scaling behavior for one direction.
 type ScalingRules struct {
-	Policies            *[]*ScalingPolicy `field:"optional" json:"policies" yaml:"policies"`
-	StabilizationWindow cdk8s.Duration    `field:"optional" json:"stabilizationWindow" yaml:"stabilizationWindow"`
-	Strategy            ScalingStrategy   `field:"optional" json:"strategy" yaml:"strategy"`
+	// The scaling policies. Default: * Scale up
+	//   - Increase no more than 4 pods per 60 seconds
+	//   - Double the number of pods per 60 seconds
+	//
+	// * Scale down * Decrease to minReplica count.
+	Policies *[]*ScalingPolicy `field:"optional" json:"policies" yaml:"policies"`
+	// Defines the window of past metrics that the autoscaler should consider when calculating wether or not autoscaling should occur.
+	//
+	// Minimum duration is 1 second, max is 1 hour.
+	//
+	// Example:
+	//
+	//	stabilizationWindow: Duration.minutes(30)
+	//	// Autoscaler considers the last 30 minutes of metrics when deciding whether to scale.
+	//
+	// Default: * On scale down no stabilization is performed. * On scale up stabilization is performed for 5 minutes.
+	StabilizationWindow cdk8s.Duration `field:"optional" json:"stabilizationWindow" yaml:"stabilizationWindow"`
+	// The strategy to use when scaling. Default: MAX_CHANGE.
+	Strategy ScalingStrategy `field:"optional" json:"strategy" yaml:"strategy"`
 }
 
 func normalizedScalingRules(rules *ScalingRules, up bool, minReplicas *float64) *ScalingRules {

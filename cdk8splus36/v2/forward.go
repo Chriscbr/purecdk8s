@@ -11,372 +11,1404 @@ import (
 )
 
 type AbstractPod = plus34.AbstractPod
+
+// Properties for `AbstractPod`.
 type AbstractPodProps = plus34.AbstractPodProps
+
+// Options to add a deployment to a service.
 type AddDeploymentOptions = plus34.AddDeploymentOptions
+
+// Options for `configmap.addDirectory()`.
 type AddDirectoryOptions = plus34.AddDirectoryOptions
+
+// Represents information about an API resource type.
 type ApiResource = plus34.ApiResource
+
+// Options for `ApiResource`.
 type ApiResourceOptions = plus34.ApiResourceOptions
+
+// Represents an AWS Disk resource that is attached to a
+// kubelet's host machine and then exposed to the pod. See:
+// https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore
 type AwsElasticBlockStorePersistentVolume = plus34.AwsElasticBlockStorePersistentVolume
+
+// Properties for `AwsElasticBlockStorePersistentVolume`.
 type AwsElasticBlockStorePersistentVolumeProps = plus34.AwsElasticBlockStorePersistentVolumeProps
+
+// Options of `Volume.fromAwsElasticBlockStore`.
 type AwsElasticBlockStoreVolumeOptions = plus34.AwsElasticBlockStoreVolumeOptions
+
+// AzureDisk represents an Azure Data Disk mount on the host and bind mount to the
+// pod.
 type AzureDiskPersistentVolume = plus34.AzureDiskPersistentVolume
+
+// Azure disk caching modes.
 type AzureDiskPersistentVolumeCachingMode = plus34.AzureDiskPersistentVolumeCachingMode
+
+// Azure Disk kinds.
 type AzureDiskPersistentVolumeKind = plus34.AzureDiskPersistentVolumeKind
+
+// Properties for `AzureDiskPersistentVolume`.
 type AzureDiskPersistentVolumeProps = plus34.AzureDiskPersistentVolumeProps
+
+// Options of `Volume.fromAzureDisk`.
 type AzureDiskVolumeOptions = plus34.AzureDiskVolumeOptions
+
+// Create a secret for basic authentication. See:
+// https://kubernetes.io/docs/concepts/configuration/secret/#basic-authentication-secret
 type BasicAuthSecret = plus34.BasicAuthSecret
+
+// Options for `BasicAuthSecret`.
 type BasicAuthSecretProps = plus34.BasicAuthSecretProps
+
+// Capability - complete list of POSIX capabilities.
 type Capability = plus34.Capability
+
+// ClusterRole is a cluster level, logical grouping of PolicyRules that can be
+// referenced as a unit by a RoleBinding or ClusterRoleBinding.
 type ClusterRole = plus34.ClusterRole
+
+// A ClusterRoleBinding grants permissions cluster-wide to a user or set of users.
 type ClusterRoleBinding = plus34.ClusterRoleBinding
+
+// Properties for `ClusterRoleBinding`.
 type ClusterRoleBindingProps = plus34.ClusterRoleBindingProps
+
+// Policy rule of a `ClusterRole.
 type ClusterRolePolicyRule = plus34.ClusterRolePolicyRule
+
+// Properties for `ClusterRole`.
 type ClusterRoleProps = plus34.ClusterRoleProps
+
+// Options for `Probe.fromCommand()`.
 type CommandProbeOptions = plus34.CommandProbeOptions
+
+// Common properties for `Secret`.
 type CommonSecretProps = plus34.CommonSecretProps
+
+// Concurrency policy for CronJobs.
 type ConcurrencyPolicy = plus34.ConcurrencyPolicy
+
+// ConfigMap holds configuration data for pods to consume.
 type ConfigMap = plus34.ConfigMap
+
+// Properties for initialization of `ConfigMap`.
 type ConfigMapProps = plus34.ConfigMapProps
+
+// Options for the ConfigMap-based volume.
 type ConfigMapVolumeOptions = plus34.ConfigMapVolumeOptions
 type ConnectionScheme = plus34.ConnectionScheme
+
+// A single application container that you want to run within a pod.
 type Container = plus34.Container
+
+// Container lifecycle properties.
 type ContainerLifecycle = plus34.ContainerLifecycle
+
+// Optional properties of a container.
 type ContainerOpts = plus34.ContainerOpts
+
+// Represents a network port in a single container.
 type ContainerPort = plus34.ContainerPort
+
+// Properties for creating a container.
 type ContainerProps = plus34.ContainerProps
+
+// CPU and memory compute resources.
 type ContainerResources = plus34.ContainerResources
+
+// RestartPolicy defines the restart behavior of individual containers in a pod.
+//
+// This field may only be set for init containers, and the only allowed value
+// is "Always". For non-init containers or when this field is not specified,
+// the restart behavior is defined by the Pod's restart policy and the
+// container type. Setting the RestartPolicy as "Always" for the init
+// container will have the following effect: this init container will be
+// continually restarted on exit until all regular containers have terminated.
+// Once all regular containers have completed, all init containers with
+// restartPolicy "Always" will be shut down. This lifecycle differs from normal
+// init containers and is often referred to as a "sidecar" container. See:
+// https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/
 type ContainerRestartPolicy = plus34.ContainerRestartPolicy
+
+// Container security attributes and settings.
 type ContainerSecurityContext = plus34.ContainerSecurityContext
+
+// Properties for `ContainerSecurityContext`.
 type ContainerSecurityContextProps = plus34.ContainerSecurityContextProps
 type ContainerSecutiryContextCapabilities = plus34.ContainerSecutiryContextCapabilities
+
+// Represents the amount of CPU.
+//
+// The amount can be passed as millis or units.
 type Cpu = plus34.Cpu
+
+// CPU request and limit.
 type CpuResources = plus34.CpuResources
+
+// A CronJob is responsible for creating a Job and scheduling it based on provided
+// cron schedule.
+//
+// This helps running Jobs in a recurring manner.
 type CronJob = plus34.CronJob
+
+// Properties for `CronJob`.
 type CronJobProps = plus34.CronJobProps
+
+// Options for the CSI driver based volume.
 type CsiVolumeOptions = plus34.CsiVolumeOptions
+
+// A DaemonSet ensures that all (or some) Nodes run a copy of a Pod.
+//
+// As nodes are added to the cluster, Pods are added to them. As nodes are removed
+// from the cluster, those Pods are garbage collected. Deleting a DaemonSet will
+// clean up the Pods it created.
+//
+// Some typical uses of a DaemonSet are:
+//
+// - running a cluster storage daemon on every node - running a logs collection
+// daemon on every node - running a node monitoring daemon on every node
+//
+// In a simple case, one DaemonSet, covering all nodes, would be used for each type
+// of daemon. A more complex setup might use multiple DaemonSets for a single type
+// of daemon, but with different flags and/or different memory and cpu requests for
+// different hardware types.
 type DaemonSet = plus34.DaemonSet
+
+// Properties for `DaemonSet`.
 type DaemonSetProps = plus34.DaemonSetProps
+
+// A Deployment provides declarative updates for Pods and ReplicaSets.
+//
+// You describe a desired state in a Deployment, and the Deployment Controller
+// changes the actual state to the desired state at a controlled rate. You can
+// define Deployments to create new ReplicaSets, or to remove existing Deployments
+// and adopt all their resources with new Deployments.
+//
+// > Note: Do not manage ReplicaSets owned by a Deployment. Consider opening an
+// issue in the main Kubernetes repository if your use case is not covered below.
+//
+// # Use Case
+//
+// The following are typical use cases for Deployments:
+//
+//   - Create a Deployment to rollout a ReplicaSet. The ReplicaSet creates Pods
+//     in the background. Check the status of the rollout to see if it succeeds or
+//     not.
+//   - Declare the new state of the Pods by updating the PodTemplateSpec of the
+//     Deployment. A new ReplicaSet is created and the Deployment manages moving
+//     the Pods from the old ReplicaSet to the new one at a controlled rate.
+//     Each new ReplicaSet updates the revision of the Deployment.
+//   - Rollback to an earlier Deployment revision if the current state of the
+//     Deployment is not stable. Each rollback updates the revision of the
+//     Deployment.
+//   - Scale up the Deployment to facilitate more load.
+//   - Pause the Deployment to apply multiple fixes to its PodTemplateSpec and then
+//     resume it to start a new rollout.
+//   - Use the status of the Deployment as an indicator that a rollout has stuck.
+//   - Clean up older ReplicaSets that you don't need anymore.
 type Deployment = plus34.Deployment
+
+// Options for `Deployment.exposeViaService`.
 type DeploymentExposeViaServiceOptions = plus34.DeploymentExposeViaServiceOptions
+
+// Properties for `Deployment`.
 type DeploymentProps = plus34.DeploymentProps
+
+// Deployment strategies.
 type DeploymentStrategy = plus34.DeploymentStrategy
+
+// Options for `DeploymentStrategy.rollingUpdate`.
 type DeploymentStrategyRollingUpdateOptions = plus34.DeploymentStrategyRollingUpdateOptions
+
+// Custom DNS option.
 type DnsOption = plus34.DnsOption
+
+// Pod DNS policies.
 type DnsPolicy = plus34.DnsPolicy
+
+// Create a secret for storing credentials for
+// accessing a container image registry. See:
+// https://kubernetes.io/docs/concepts/configuration/secret/#docker-config-secrets
 type DockerConfigSecret = plus34.DockerConfigSecret
+
+// Options for `DockerConfigSecret`.
 type DockerConfigSecretProps = plus34.DockerConfigSecretProps
+
+// The medium on which to store the volume.
 type EmptyDirMedium = plus34.EmptyDirMedium
+
+// Options for volumes populated with an empty directory.
 type EmptyDirVolumeOptions = plus34.EmptyDirVolumeOptions
+
+// Container environment variables.
 type Env = plus34.Env
 type EnvFieldPaths = plus34.EnvFieldPaths
+
+// A collection of env variables defined in other resources.
 type EnvFrom = plus34.EnvFrom
+
+// Utility class for creating reading env values from various sources.
 type EnvValue = plus34.EnvValue
+
+// Options to specify an envionment variable value from a ConfigMap key.
 type EnvValueFromConfigMapOptions = plus34.EnvValueFromConfigMapOptions
+
+// Options to specify an environment variable value from a field reference.
 type EnvValueFromFieldRefOptions = plus34.EnvValueFromFieldRefOptions
+
+// Options to specify an environment variable value from the process environment.
 type EnvValueFromProcessOptions = plus34.EnvValueFromProcessOptions
+
+// Options to specify an environment variable value from a resource.
 type EnvValueFromResourceOptions = plus34.EnvValueFromResourceOptions
+
+// Options to specify an environment variable value from a Secret.
 type EnvValueFromSecretOptions = plus34.EnvValueFromSecretOptions
+
+// Emphemeral storage request and limit.
 type EphemeralStorageResources = plus34.EphemeralStorageResources
+
+// Options for exposing a deployment via an ingress.
 type ExposeDeploymentViaIngressOptions = plus34.ExposeDeploymentViaIngressOptions
+
+// Options for exposing a service using an ingress.
 type ExposeServiceViaIngressOptions = plus34.ExposeServiceViaIngressOptions
 type FromServiceAccountNameOptions = plus34.FromServiceAccountNameOptions
 type FsGroupChangePolicy = plus34.FsGroupChangePolicy
+
+// GCEPersistentDisk represents a GCE Disk resource that is attached to a kubelet's
+// host machine and then exposed to the pod.
+//
+// Provisioned by an admin. See:
+// https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk
 type GCEPersistentDiskPersistentVolume = plus34.GCEPersistentDiskPersistentVolume
+
+// Properties for `GCEPersistentDiskPersistentVolume`.
 type GCEPersistentDiskPersistentVolumeProps = plus34.GCEPersistentDiskPersistentVolumeProps
+
+// Options of `Volume.fromGcePersistentDisk`.
 type GCEPersistentDiskVolumeOptions = plus34.GCEPersistentDiskVolumeOptions
+
+// Represents a group.
 type Group = plus34.Group
+
+// Options for `Probe.fromGrpc()`.
 type GrpcProbeOptions = plus34.GrpcProbeOptions
+
+// Defines a specific action that should be taken.
 type Handler = plus34.Handler
+
+// Options for `Handler.fromHttpGet`.
 type HandlerFromHttpGetOptions = plus34.HandlerFromHttpGetOptions
+
+// Options for `Handler.fromTcpSocket`.
 type HandlerFromTcpSocketOptions = plus34.HandlerFromTcpSocketOptions
+
+// A HorizontalPodAutoscaler scales a workload up or down in response to a metric
+// change.
+//
+// This allows your services to scale up when demand is high and scale down when
+// they are no longer needed.
+//
+// Typical use cases for HorizontalPodAutoscaler:
+//
+//   - When Memory usage is above 70%, scale up the number of replicas to meet the
+//     demand.
+//   - When CPU usage is below 30%, scale down the number of replicas to save
+//     resources.
+//   - When a service is experiencing a spike in traffic, scale up the number of
+//     replicas to meet the demand. Then, when the traffic subsides, scale down the
+//     number of replicas to save resources.
+//
+// The autoscaler uses the following algorithm to determine the number of replicas
+// to scale:
+//
+// `desiredReplicas = ceil[currentReplicas * ( currentMetricValue /
+// desiredMetricValue )]`
+//
+// HorizontalPodAutoscaler's can be used to with any `Scalable` workload:
+// * Deployment * StatefulSet
+//
+// **Targets that already have a replica count defined:**
+//
+// Remove any replica counts from the target resource before associating with a
+// HorizontalPodAutoscaler. If this isn't done, then any time a change to that
+// object is applied, Kubernetes will scale the current number of Pods to the value
+// of the target.replicas key. This may not be desired and could lead to unexpected
+// behavior.
+//
+// Example:
+//
+//	const backend = new kplus.Deployment(this, 'Backend', ...);
+//
+//	const hpa = new kplus.HorizontalPodAutoscaler(chart, 'Hpa', {
+//	 target: backend,
+//	 maxReplicas: 10,
+//	 scaleUp: {
+//	   policies: [
+//	     {
+//	       replicas: kplus.Replicas.absolute(3),
+//	       duration: Duration.minutes(5),
+//	     },
+//	   ],
+//	 },
+//	});
+//
+// See:
+// https://kubernetes.io/docs/tasks/run-application/horizontal-pod-autoscale/#implicit-maintenance-mode-deactivation
 type HorizontalPodAutoscaler = plus34.HorizontalPodAutoscaler
+
+// Properties for HorizontalPodAutoscaler.
 type HorizontalPodAutoscalerProps = plus34.HorizontalPodAutoscalerProps
+
+// HostAlias holds the mapping between IP and hostnames that will be injected as an
+// entry in the pod's /etc/hosts file.
 type HostAlias = plus34.HostAlias
+
+// Options for a HostPathVolume-based volume.
 type HostPathVolumeOptions = plus34.HostPathVolumeOptions
+
+// Host path types.
 type HostPathVolumeType = plus34.HostPathVolumeType
+
+// Options for `Probe.fromHttpGet()`.
 type HttpGetProbeOptions = plus34.HttpGetProbeOptions
 type HttpHeader = plus34.HttpHeader
+
+// Specify how the path is matched against request paths. See:
+// https://kubernetes.io/docs/concepts/services-networking/ingress/#path-types
 type HttpIngressPathType = plus34.HttpIngressPathType
+
+// An API Endpoint can either be a resource descriptor (e.g /pods) or a non
+// resource url (e.g /healthz). It must be one or the other, and not both.
 type IApiEndpoint = plus34.IApiEndpoint
+
+// Represents a resource or collection of resources.
 type IApiResource = plus34.IApiResource
+
+// Represents a cluster-level role.
 type IClusterRole = plus34.IClusterRole
+
+// Represents a config map.
 type IConfigMap = plus34.IConfigMap
+
+// Represents an object that can select namespaces.
 type INamespaceSelector = plus34.INamespaceSelector
+
+// Describes a peer to allow traffic to/from.
 type INetworkPolicyPeer = plus34.INetworkPolicyPeer
+
+// Contract of a `PersistentVolumeClaim`.
 type IPersistentVolume = plus34.IPersistentVolume
+
+// Contract of a `PersistentVolumeClaim`.
 type IPersistentVolumeClaim = plus34.IPersistentVolumeClaim
+
+// Represents an object that can select pods.
 type IPodSelector = plus34.IPodSelector
+
+// Represents a resource.
 type IResource = plus34.IResource
+
+// A reference to any Role or ClusterRole.
 type IRole = plus34.IRole
+
+// Represents a scalable workload.
 type IScalable = plus34.IScalable
 type ISecret = plus34.ISecret
 type IServiceAccount = plus34.IServiceAccount
+
+// Represents a piece of storage in the cluster.
 type IStorage = plus34.IStorage
+
+// Represents an object that can be used as a role binding subject.
 type ISubject = plus34.ISubject
 type ImagePullPolicy = plus34.ImagePullPolicy
+
+// Ingress is a collection of rules that allow inbound connections to reach the
+// endpoints defined by a backend.
+//
+// An Ingress can be configured to give services externally-reachable urls,
+// load balance traffic, terminate SSL, offer name based virtual hosting etc.
 type Ingress = plus34.Ingress
+
+// The backend for an ingress path.
 type IngressBackend = plus34.IngressBackend
+
+// Properties for `Ingress`.
 type IngressProps = plus34.IngressProps
+
+// Represents the rules mapping the paths under a specified host to the related
+// backend services.
+//
+// Incoming requests are first evaluated for a host match, then routed to the
+// backend associated with the matching path.
 type IngressRule = plus34.IngressRule
+
+// Represents the TLS configuration mapping that is passed to the ingress
+// controller for SSL termination.
 type IngressTls = plus34.IngressTls
+
+// A Job creates one or more Pods and ensures that a specified number of them
+// successfully terminate.
+//
+// As pods successfully complete, the Job tracks the successful completions.
+// When a specified number of successful completions is reached, the task (ie,
+// Job) is complete. Deleting a Job will clean up the Pods it created. A simple
+// case is to create one Job object in order to reliably run one Pod to completion.
+// The Job object will start a new Pod if the first Pod fails or is deleted (for
+// example due to a node hardware failure or a node reboot). You can also use a Job
+// to run multiple Pods in parallel.
 type Job = plus34.Job
+
+// Properties for `Job`.
 type JobProps = plus34.JobProps
+
+// Represents a query that can be performed against resources with labels.
 type LabelExpression = plus34.LabelExpression
+
+// Match a resource by labels.
 type LabelSelector = plus34.LabelSelector
+
+// Options for `LabelSelector.of`.
 type LabelSelectorOptions = plus34.LabelSelectorOptions
+
+// A label selector requirement is a selector that contains values, a key, and an
+// operator that relates the key and values.
 type LabelSelectorRequirement = plus34.LabelSelectorRequirement
+
+// A node that is matched by label selectors.
 type LabeledNode = plus34.LabeledNode
+
+// Memory request and limit.
 type MemoryResources = plus34.MemoryResources
+
+// A metric condition that HorizontalPodAutoscaler's scale on.
 type Metric = plus34.Metric
+
+// Options for `Metric.containerResource()`.
 type MetricContainerResourceOptions = plus34.MetricContainerResourceOptions
+
+// Options for `Metric.object()`.
 type MetricObjectOptions = plus34.MetricObjectOptions
+
+// Base options for a Metric.
 type MetricOptions = plus34.MetricOptions
+
+// A metric condition that will trigger scaling behavior when satisfied.
+//
+// Example:
+//
+//	MetricTarget.averageUtilization(70); // 70% average utilization
 type MetricTarget = plus34.MetricTarget
+
+// Options for mounts.
 type MountOptions = plus34.MountOptions
 type MountPropagation = plus34.MountPropagation
+
+// A node that is matched by its name.
 type NamedNode = plus34.NamedNode
+
+// In Kubernetes, namespaces provides a mechanism for isolating groups of resources
+// within a single cluster.
+//
+// Names of resources need to be unique within a namespace, but not across
+// namespaces. Namespace-based scoping is applicable only for namespaced objects
+// (e.g. Deployments, Services, etc) and not for cluster-wide objects (e.g.
+// StorageClass, Nodes, PersistentVolumes, etc).
 type Namespace = plus34.Namespace
+
+// Properties for `Namespace`.
 type NamespaceProps = plus34.NamespaceProps
+
+// Configuration for selecting namespaces.
 type NamespaceSelectorConfig = plus34.NamespaceSelectorConfig
+
+// Represents a group of namespaces.
 type Namespaces = plus34.Namespaces
+
+// Options for `Namespaces.select`.
 type NamespacesSelectOptions = plus34.NamespacesSelectOptions
+
+// Control traffic flow at the IP address or port level (OSI layer 3 or 4),
+// network policies are an application-centric construct which allow you to specify
+// how a pod is allowed to communicate with various network peers.
+//
+//   - Outgoing traffic is allowed if there are no network policies selecting the
+//     pod (and cluster policy otherwise allows the traffic), OR if the traffic
+//     matches at least one egress rule across all of the network policies that
+//     select the pod.
+//
+//   - Incoming traffic is allowed to a pod if there are no network policies
+//     selecting the pod (and cluster policy otherwise allows the traffic),
+//     OR if the traffic source is the pod's local node, OR if the traffic matches
+//     at least one ingress rule across all of the network policies that select the
+//     pod.
+//
+// Network policies do not conflict; they are additive. If any policy or policies
+// apply to a given pod for a given direction, the connections allowed in that
+// direction from that pod is the union of what the applicable policies allow.
+// Thus, order of evaluation does not affect the policy result.
+//
+// For a connection from a source pod to a destination pod to be allowed,
+// both the egress policy on the source pod and the ingress policy
+// on the destination pod need to allow the connection. If either
+// side does not allow the connection, it will not happen. See:
+// https://kubernetes.io/docs/concepts/services-networking/network-policies/#networkpolicy-resource
 type NetworkPolicy = plus34.NetworkPolicy
+
+// Options for `NetworkPolicy.addEgressRule`.
 type NetworkPolicyAddEgressRuleOptions = plus34.NetworkPolicyAddEgressRuleOptions
+
+// Describes a particular CIDR (Ex.
+//
+// "192.168.1.1/24","2001:db9::/64") that is allowed to the pods matched by a
+// network policy selector. The except entry describes CIDRs that should not be
+// included within this rule.
 type NetworkPolicyIpBlock = plus34.NetworkPolicyIpBlock
+
+// Configuration for network peers.
+//
+// A peer can either by an ip block, or a selection of pods, not both.
 type NetworkPolicyPeerConfig = plus34.NetworkPolicyPeerConfig
+
+// Describes a port to allow traffic on.
 type NetworkPolicyPort = plus34.NetworkPolicyPort
+
+// Properties for `NetworkPolicyPort`.
 type NetworkPolicyPortProps = plus34.NetworkPolicyPortProps
+
+// Properties for `NetworkPolicy`.
 type NetworkPolicyProps = plus34.NetworkPolicyProps
+
+// Describes a rule allowing traffic from / to pods matched by a network policy
+// selector.
 type NetworkPolicyRule = plus34.NetworkPolicyRule
+
+// Describes how the network policy should configure egress / ingress traffic.
 type NetworkPolicyTraffic = plus34.NetworkPolicyTraffic
+
+// Default behaviors of network traffic in policies.
 type NetworkPolicyTrafficDefault = plus34.NetworkPolicyTrafficDefault
+
+// Network protocols.
 type NetworkProtocol = plus34.NetworkProtocol
+
+// Options for the NFS based volume.
 type NfsVolumeOptions = plus34.NfsVolumeOptions
+
+// Represents a node in the cluster.
 type Node = plus34.Node
+
+// Represents a query that can be performed against nodes with labels.
 type NodeLabelQuery = plus34.NodeLabelQuery
+
+// Taint queries that can be perfomed against nodes.
 type NodeTaintQuery = plus34.NodeTaintQuery
+
+// Options for `NodeTaintQuery`.
 type NodeTaintQueryOptions = plus34.NodeTaintQueryOptions
+
+// Factory for creating non api resources.
 type NonApiResource = plus34.NonApiResource
+
+// Maps a string key to a path within a volume.
 type PathMapping = plus34.PathMapping
+
+// Union like class repsenting either a ration in percents or an absolute number.
 type PercentOrAbsolute = plus34.PercentOrAbsolute
+
+// A PersistentVolume (PV) is a piece of storage in the cluster that has been
+// provisioned by an administrator or dynamically provisioned using Storage
+// Classes.
+//
+// It is a resource in the cluster just like a node is a cluster resource. PVs are
+// volume plugins like Volumes, but have a lifecycle independent of any individual
+// Pod that uses the PV. This API object captures the details of the implementation
+// of the storage, be that NFS, iSCSI, or a cloud-provider-specific storage system.
 type PersistentVolume = plus34.PersistentVolume
+
+// Access Modes.
 type PersistentVolumeAccessMode = plus34.PersistentVolumeAccessMode
+
+// A PersistentVolumeClaim (PVC) is a request for storage by a user.
+//
+// It is similar to a Pod. Pods consume node resources and PVCs consume PV
+// resources. Pods can request specific levels of resources (CPU and Memory).
+// Claims can request specific size and access modes.
 type PersistentVolumeClaim = plus34.PersistentVolumeClaim
+
+// Properties for `PersistentVolumeClaim`.
 type PersistentVolumeClaimProps = plus34.PersistentVolumeClaimProps
+
+// A PersistentVolumeClaim template for StatefulSets.
 type PersistentVolumeClaimTemplateProps = plus34.PersistentVolumeClaimTemplateProps
+
+// Options for a PersistentVolumeClaim-based volume.
 type PersistentVolumeClaimVolumeOptions = plus34.PersistentVolumeClaimVolumeOptions
+
+// Volume Modes.
 type PersistentVolumeMode = plus34.PersistentVolumeMode
+
+// Properties for `PersistentVolume`.
 type PersistentVolumeProps = plus34.PersistentVolumeProps
+
+// Reclaim Policies.
 type PersistentVolumeReclaimPolicy = plus34.PersistentVolumeReclaimPolicy
+
+// Pod is a collection of containers that can run on a host.
+//
+// This resource is created by clients and scheduled onto hosts.
 type Pod = plus34.Pod
+
+// Controls network isolation rules for inter-pod communication.
 type PodConnections = plus34.PodConnections
+
+// Options for `PodConnections.allowFrom`.
 type PodConnectionsAllowFromOptions = plus34.PodConnectionsAllowFromOptions
+
+// Options for `PodConnections.allowTo`.
 type PodConnectionsAllowToOptions = plus34.PodConnectionsAllowToOptions
+
+// Isolation determines which policies are created when allowing connections from a
+// a pod / workload to peers.
 type PodConnectionsIsolation = plus34.PodConnectionsIsolation
+
+// Holds dns settings of the pod.
 type PodDns = plus34.PodDns
+
+// Properties for `PodDns`.
 type PodDnsProps = plus34.PodDnsProps
+
+// Controls how pods are created during initial scale up, when replacing pods on
+// nodes, or when scaling down.
+//
+// The default policy is `OrderedReady`, where pods are created in increasing order
+// (pod-0, then pod-1, etc) and the controller will wait until each pod is ready
+// before continuing. When scaling down, the pods are removed in the opposite
+// order.
+//
+// The alternative policy is `Parallel` which will create pods in parallel to match
+// the desired scale without waiting, and on scale down will delete all pods at
+// once.
 type PodManagementPolicy = plus34.PodManagementPolicy
+
+// Properties for `Pod`.
 type PodProps = plus34.PodProps
+
+// Controls the pod scheduling strategy.
 type PodScheduling = plus34.PodScheduling
+
+// Options for `PodScheduling.attract`.
 type PodSchedulingAttractOptions = plus34.PodSchedulingAttractOptions
+
+// Options for `PodScheduling.colocate`.
 type PodSchedulingColocateOptions = plus34.PodSchedulingColocateOptions
+
+// Options for `PodScheduling.separate`.
 type PodSchedulingSeparateOptions = plus34.PodSchedulingSeparateOptions
+
+// Holds pod-level security attributes and common container settings.
 type PodSecurityContext = plus34.PodSecurityContext
+
+// Properties for `PodSecurityContext`.
 type PodSecurityContextProps = plus34.PodSecurityContextProps
+
+// Configuration for selecting pods, optionally in particular namespaces.
 type PodSelectorConfig = plus34.PodSelectorConfig
+
+// Represents a group of pods.
 type Pods = plus34.Pods
+
+// Options for `Pods.all`.
 type PodsAllOptions = plus34.PodsAllOptions
+
+// Options for `Pods.select`.
 type PodsSelectOptions = plus34.PodsSelectOptions
+
+// Probe describes a health check to be performed against a container to determine
+// whether it is alive or ready to receive traffic.
 type Probe = plus34.Probe
+
+// Probe options.
 type ProbeOptions = plus34.ProbeOptions
+
+// Network protocols.
 type Protocol = plus34.Protocol
+
+// The amount of replicas that will change.
 type Replicas = plus34.Replicas
+
+// Base class for all Kubernetes objects in stdk8s.
+//
+// Represents a single resource.
 type Resource = plus34.Resource
 type ResourceFieldPaths = plus34.ResourceFieldPaths
+
+// Controls permissions for operations on resources.
 type ResourcePermissions = plus34.ResourcePermissions
+
+// Initialization properties for resources.
 type ResourceProps = plus34.ResourceProps
+
+// Restart policy for all containers within the pod.
 type RestartPolicy = plus34.RestartPolicy
+
+// Role is a namespaced, logical grouping of PolicyRules that can be referenced as
+// a unit by a RoleBinding.
 type Role = plus34.Role
+
+// A RoleBinding grants permissions within a specific namespace to a user or set of
+// users.
 type RoleBinding = plus34.RoleBinding
+
+// Properties for `RoleBinding`.
 type RoleBindingProps = plus34.RoleBindingProps
+
+// Policy rule of a `Role.
 type RolePolicyRule = plus34.RolePolicyRule
+
+// Properties for `Role`.
 type RoleProps = plus34.RoleProps
 type ScalingPolicy = plus34.ScalingPolicy
+
+// Defines the scaling behavior for one direction.
 type ScalingRules = plus34.ScalingRules
 type ScalingStrategy = plus34.ScalingStrategy
+
+// Properties used to configure the target of an Autoscaler.
 type ScalingTarget = plus34.ScalingTarget
 type SeccompProfile = plus34.SeccompProfile
 type SeccompProfileType = plus34.SeccompProfileType
+
+// Kubernetes Secrets let you store and manage sensitive information, such as
+// passwords, OAuth tokens, and ssh keys.
+//
+// Storing confidential information in a Secret is safer and more flexible
+// than putting it verbatim in a Pod definition or in a container image. See:
+// https://kubernetes.io/docs/concepts/configuration/secret
 type Secret = plus34.Secret
+
+// Options for `Secret`.
 type SecretProps = plus34.SecretProps
+
+// Represents a specific value in JSON secret.
 type SecretValue = plus34.SecretValue
+
+// Options for the Secret-based volume.
 type SecretVolumeOptions = plus34.SecretVolumeOptions
+
+// An abstract way to expose an application running on a set of Pods as a network
+// service.
+//
+// With Kubernetes you don't need to modify your application to use an unfamiliar
+// service discovery mechanism. Kubernetes gives Pods their own IP addresses and a
+// single DNS name for a set of Pods, and can load-balance across them.
+//
+// For example, consider a stateless image-processing backend which is running with
+// 3 replicas. Those replicas are fungible—frontends do not care which backend
+// they use. While the actual Pods that compose the backend set may change,
+// the frontend clients should not need to be aware of that, nor should they need
+// to keep track of the set of backends themselves. The Service abstraction enables
+// this decoupling.
+//
+// If you're able to use Kubernetes APIs for service discovery in your application,
+// you can query the API server for Endpoints, that get updated whenever the set of
+// Pods in a Service changes. For non-native applications, Kubernetes offers ways
+// to place a network port or load balancer in between your application and the
+// backend Pods.
 type Service = plus34.Service
+
+// A service account provides an identity for processes that run in a Pod.
+//
+// When you (a human) access the cluster (for example, using kubectl),
+// you are authenticated by the apiserver as a particular User Account
+// (currently this is usually admin, unless your cluster administrator
+// has customized your cluster). Processes in containers inside pods
+// can also contact the apiserver. When they do, they are authenticated
+// as a particular Service Account (for example, default). See:
+// https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account
 type ServiceAccount = plus34.ServiceAccount
+
+// Properties for initialization of `ServiceAccount`.
 type ServiceAccountProps = plus34.ServiceAccountProps
+
+// Create a secret for a service account token. See:
+// https://kubernetes.io/docs/concepts/configuration/secret/#service-account-token-secrets
 type ServiceAccountTokenSecret = plus34.ServiceAccountTokenSecret
+
+// Options for `ServiceAccountTokenSecret`.
 type ServiceAccountTokenSecretProps = plus34.ServiceAccountTokenSecretProps
+
+// Options for `Service.bind`.
 type ServiceBindOptions = plus34.ServiceBindOptions
+
+// Options for setting up backends for ingress rules.
 type ServiceIngressBackendOptions = plus34.ServiceIngressBackendOptions
+
+// Definition of a service port.
 type ServicePort = plus34.ServicePort
+
+// Properties for `Service`.
 type ServiceProps = plus34.ServiceProps
+
+// For some parts of your application (for example, frontends) you may want to
+// expose a Service onto an external IP address, that's outside of your cluster.
+//
+// Kubernetes ServiceTypes allow you to specify what kind of Service you want.
+// The default is ClusterIP.
 type ServiceType = plus34.ServiceType
+
+// Create a secret for ssh authentication. See:
+// https://kubernetes.io/docs/concepts/configuration/secret/#ssh-authentication-secrets
 type SshAuthSecret = plus34.SshAuthSecret
+
+// Options for `SshAuthSecret`.
 type SshAuthSecretProps = plus34.SshAuthSecretProps
+
+// StatefulSet is the workload API object used to manage stateful applications.
+//
+// Manages the deployment and scaling of a set of Pods, and provides guarantees
+// about the ordering and uniqueness of these Pods.
+//
+// Like a Deployment, a StatefulSet manages Pods that are based on an identical
+// container spec. Unlike a Deployment, a StatefulSet maintains a sticky identity
+// for each of their Pods. These pods are created from the same spec, but are not
+// interchangeable: each has a persistent identifier that it maintains across any
+// rescheduling.
+//
+// If you want to use storage volumes to provide persistence for your workload,
+// you can use a StatefulSet as part of the solution. Although individual Pods in
+// a StatefulSet are susceptible to failure, the persistent Pod identifiers make
+// it easier to match existing volumes to the new Pods that replace any that have
+// failed.
+//
+// Using StatefulSets ------------------ StatefulSets are valuable for applications
+// that require one or more of the following.
+//
+// - Stable, unique network identifiers. - Stable, persistent storage. - Ordered,
+// graceful deployment and scaling. - Ordered, automated rolling updates.
 type StatefulSet = plus34.StatefulSet
+
+// Properties for initialization of `StatefulSet`.
 type StatefulSetProps = plus34.StatefulSetProps
+
+// StatefulSet update strategies.
 type StatefulSetUpdateStrategy = plus34.StatefulSetUpdateStrategy
+
+// Options for `StatefulSetUpdateStrategy.rollingUpdate`.
 type StatefulSetUpdateStrategyRollingUpdateOptions = plus34.StatefulSetUpdateStrategyRollingUpdateOptions
+
+// Subject contains a reference to the object or user identities a role binding
+// applies to.
+//
+// This can either hold a direct API object reference, or a value for non-objects
+// such as user and group names.
 type SubjectConfiguration = plus34.SubjectConfiguration
+
+// Sysctl defines a kernel parameter to be set.
 type Sysctl = plus34.Sysctl
+
+// Taint effects.
 type TaintEffect = plus34.TaintEffect
+
+// A node that is matched by taint selectors.
 type TaintedNode = plus34.TaintedNode
+
+// Options for `Probe.fromTcpSocket()`.
 type TcpSocketProbeOptions = plus34.TcpSocketProbeOptions
+
+// Create a secret for storing a TLS certificate and its associated key. See:
+// https://kubernetes.io/docs/concepts/configuration/secret/#tls-secrets
 type TlsSecret = plus34.TlsSecret
+
+// Options for `TlsSecret`.
 type TlsSecretProps = plus34.TlsSecretProps
+
+// Available topology domains.
 type Topology = plus34.Topology
+
+// Represents a user.
 type User = plus34.User
+
+// Volume represents a named volume in a pod that may be accessed by any container
+// in the pod.
+//
+// Docker also has a concept of volumes, though it is somewhat looser and less
+// managed. In Docker, a volume is simply a directory on disk or in another
+// Container. Lifetimes are not managed and until very recently there were
+// only local-disk-backed volumes. Docker now provides volume drivers, but the
+// functionality is very limited for now (e.g. as of Docker 1.7 only one volume
+// driver is allowed per Container and there is no way to pass parameters to
+// volumes).
+//
+// A Kubernetes volume, on the other hand, has an explicit lifetime - the same
+// as the Pod that encloses it. Consequently, a volume outlives any Containers
+// that run within the Pod, and data is preserved across Container restarts.
+// Of course, when a Pod ceases to exist, the volume will cease to exist, too.
+// Perhaps more importantly than this, Kubernetes supports many types of volumes,
+// and a Pod can use any number of them simultaneously.
+//
+// At its core, a volume is just a directory, possibly with some data in it, which
+// is accessible to the Containers in a Pod. How that directory comes to be, the
+// medium that backs it, and the contents of it are determined by the particular
+// volume type used.
+//
+// To use a volume, a Pod specifies what volumes to provide for the Pod
+// (the .spec.volumes field) and where to mount those into Containers (the
+// .spec.containers[*].volumeMounts field).
+//
+// A process in a container sees a filesystem view composed from their Docker
+// image and volumes. The Docker image is at the root of the filesystem hierarchy,
+// and any volumes are mounted at the specified paths within the image. Volumes can
+// not mount onto other volumes
 type Volume = plus34.Volume
+
+// Mount a volume from the pod to the container.
 type VolumeMount = plus34.VolumeMount
+
+// A workload is an application running on Kubernetes.
+//
+// Whether your workload is a single component or several that work together,
+// on Kubernetes you run it inside a set of pods. In Kubernetes, a Pod represents a
+// set of running containers on your cluster.
 type Workload = plus34.Workload
+
+// Properties for `Workload`.
 type WorkloadProps = plus34.WorkloadProps
+
+// Controls the pod scheduling strategy of this workload.
+//
+// It offers some additional API's on top of the core pod scheduling.
 type WorkloadScheduling = plus34.WorkloadScheduling
+
+// Options for `WorkloadScheduling.spread`.
 type WorkloadSchedulingSpreadOptions = plus34.WorkloadSchedulingSpreadOptions
 
 const (
-	AzureDiskPersistentVolumeCachingMode_NONE       = plus34.AzureDiskPersistentVolumeCachingMode_NONE
-	AzureDiskPersistentVolumeCachingMode_READ_ONLY  = plus34.AzureDiskPersistentVolumeCachingMode_READ_ONLY
+	// None.
+	AzureDiskPersistentVolumeCachingMode_NONE = plus34.AzureDiskPersistentVolumeCachingMode_NONE
+	// ReadOnly.
+	AzureDiskPersistentVolumeCachingMode_READ_ONLY = plus34.AzureDiskPersistentVolumeCachingMode_READ_ONLY
+	// ReadWrite.
 	AzureDiskPersistentVolumeCachingMode_READ_WRITE = plus34.AzureDiskPersistentVolumeCachingMode_READ_WRITE
-	AzureDiskPersistentVolumeKind_DEDICATED         = plus34.AzureDiskPersistentVolumeKind_DEDICATED
-	AzureDiskPersistentVolumeKind_MANAGED           = plus34.AzureDiskPersistentVolumeKind_MANAGED
-	AzureDiskPersistentVolumeKind_SHARED            = plus34.AzureDiskPersistentVolumeKind_SHARED
-	Capability_ALL                                  = plus34.Capability_ALL
-	Capability_AUDIT_CONTROL                        = plus34.Capability_AUDIT_CONTROL
-	Capability_AUDIT_READ                           = plus34.Capability_AUDIT_READ
-	Capability_AUDIT_WRITE                          = plus34.Capability_AUDIT_WRITE
-	Capability_BLOCK_SUSPEND                        = plus34.Capability_BLOCK_SUSPEND
-	Capability_BPF                                  = plus34.Capability_BPF
-	Capability_CHECKPOINT_RESTORE                   = plus34.Capability_CHECKPOINT_RESTORE
-	Capability_CHOWN                                = plus34.Capability_CHOWN
-	Capability_DAC_OVERRIDE                         = plus34.Capability_DAC_OVERRIDE
-	Capability_DAC_READ_SEARCH                      = plus34.Capability_DAC_READ_SEARCH
-	Capability_FOWNER                               = plus34.Capability_FOWNER
-	Capability_FSETID                               = plus34.Capability_FSETID
-	Capability_IPC_LOCK                             = plus34.Capability_IPC_LOCK
-	Capability_IPC_OWNER                            = plus34.Capability_IPC_OWNER
-	Capability_KILL                                 = plus34.Capability_KILL
-	Capability_LEASE                                = plus34.Capability_LEASE
-	Capability_LINUX_IMMUTABLE                      = plus34.Capability_LINUX_IMMUTABLE
-	Capability_MAC_ADMIN                            = plus34.Capability_MAC_ADMIN
-	Capability_MAC_OVERRIDE                         = plus34.Capability_MAC_OVERRIDE
-	Capability_MKNOD                                = plus34.Capability_MKNOD
-	Capability_NET_ADMIN                            = plus34.Capability_NET_ADMIN
-	Capability_NET_BIND_SERVICE                     = plus34.Capability_NET_BIND_SERVICE
-	Capability_NET_BROADCAST                        = plus34.Capability_NET_BROADCAST
-	Capability_NET_RAW                              = plus34.Capability_NET_RAW
-	Capability_PERFMON                              = plus34.Capability_PERFMON
-	Capability_SETFCAP                              = plus34.Capability_SETFCAP
-	Capability_SETGID                               = plus34.Capability_SETGID
-	Capability_SETPCAP                              = plus34.Capability_SETPCAP
-	Capability_SETUID                               = plus34.Capability_SETUID
-	Capability_SYSLOG                               = plus34.Capability_SYSLOG
-	Capability_SYS_ADMIN                            = plus34.Capability_SYS_ADMIN
-	Capability_SYS_BOOT                             = plus34.Capability_SYS_BOOT
-	Capability_SYS_CHROOT                           = plus34.Capability_SYS_CHROOT
-	Capability_SYS_MODULE                           = plus34.Capability_SYS_MODULE
-	Capability_SYS_NICE                             = plus34.Capability_SYS_NICE
-	Capability_SYS_PACCT                            = plus34.Capability_SYS_PACCT
-	Capability_SYS_PTRACE                           = plus34.Capability_SYS_PTRACE
-	Capability_SYS_RAWIO                            = plus34.Capability_SYS_RAWIO
-	Capability_SYS_RESOURCE                         = plus34.Capability_SYS_RESOURCE
-	Capability_SYS_TIME                             = plus34.Capability_SYS_TIME
-	Capability_SYS_TTY_CONFIG                       = plus34.Capability_SYS_TTY_CONFIG
-	Capability_WAKE_ALARM                           = plus34.Capability_WAKE_ALARM
-	ConcurrencyPolicy_ALLOW                         = plus34.ConcurrencyPolicy_ALLOW
-	ConcurrencyPolicy_FORBID                        = plus34.ConcurrencyPolicy_FORBID
-	ConcurrencyPolicy_REPLACE                       = plus34.ConcurrencyPolicy_REPLACE
-	ConnectionScheme_HTTP                           = plus34.ConnectionScheme_HTTP
-	ConnectionScheme_HTTPS                          = plus34.ConnectionScheme_HTTPS
-	ContainerRestartPolicy_ALWAYS                   = plus34.ContainerRestartPolicy_ALWAYS
-	DnsPolicy_CLUSTER_FIRST                         = plus34.DnsPolicy_CLUSTER_FIRST
-	DnsPolicy_CLUSTER_FIRST_WITH_HOST_NET           = plus34.DnsPolicy_CLUSTER_FIRST_WITH_HOST_NET
-	DnsPolicy_DEFAULT                               = plus34.DnsPolicy_DEFAULT
-	DnsPolicy_NONE                                  = plus34.DnsPolicy_NONE
-	EmptyDirMedium_DEFAULT                          = plus34.EmptyDirMedium_DEFAULT
-	EmptyDirMedium_MEMORY                           = plus34.EmptyDirMedium_MEMORY
-	EnvFieldPaths_NODE_IP                           = plus34.EnvFieldPaths_NODE_IP
-	EnvFieldPaths_NODE_NAME                         = plus34.EnvFieldPaths_NODE_NAME
-	EnvFieldPaths_POD_ANNOTATION                    = plus34.EnvFieldPaths_POD_ANNOTATION
-	EnvFieldPaths_POD_IP                            = plus34.EnvFieldPaths_POD_IP
-	EnvFieldPaths_POD_IPS                           = plus34.EnvFieldPaths_POD_IPS
-	EnvFieldPaths_POD_LABEL                         = plus34.EnvFieldPaths_POD_LABEL
-	EnvFieldPaths_POD_NAME                          = plus34.EnvFieldPaths_POD_NAME
-	EnvFieldPaths_POD_NAMESPACE                     = plus34.EnvFieldPaths_POD_NAMESPACE
-	EnvFieldPaths_POD_UID                           = plus34.EnvFieldPaths_POD_UID
-	EnvFieldPaths_SERVICE_ACCOUNT_NAME              = plus34.EnvFieldPaths_SERVICE_ACCOUNT_NAME
-	FsGroupChangePolicy_ALWAYS                      = plus34.FsGroupChangePolicy_ALWAYS
-	FsGroupChangePolicy_ON_ROOT_MISMATCH            = plus34.FsGroupChangePolicy_ON_ROOT_MISMATCH
-	HostPathVolumeType_BLOCK_DEVICE                 = plus34.HostPathVolumeType_BLOCK_DEVICE
-	HostPathVolumeType_CHAR_DEVICE                  = plus34.HostPathVolumeType_CHAR_DEVICE
-	HostPathVolumeType_DEFAULT                      = plus34.HostPathVolumeType_DEFAULT
-	HostPathVolumeType_DIRECTORY                    = plus34.HostPathVolumeType_DIRECTORY
-	HostPathVolumeType_DIRECTORY_OR_CREATE          = plus34.HostPathVolumeType_DIRECTORY_OR_CREATE
-	HostPathVolumeType_FILE                         = plus34.HostPathVolumeType_FILE
-	HostPathVolumeType_FILE_OR_CREATE               = plus34.HostPathVolumeType_FILE_OR_CREATE
-	HostPathVolumeType_SOCKET                       = plus34.HostPathVolumeType_SOCKET
-	HttpIngressPathType_EXACT                       = plus34.HttpIngressPathType_EXACT
-	HttpIngressPathType_IMPLEMENTATION_SPECIFIC     = plus34.HttpIngressPathType_IMPLEMENTATION_SPECIFIC
-	HttpIngressPathType_PREFIX                      = plus34.HttpIngressPathType_PREFIX
-	ImagePullPolicy_ALWAYS                          = plus34.ImagePullPolicy_ALWAYS
-	ImagePullPolicy_IF_NOT_PRESENT                  = plus34.ImagePullPolicy_IF_NOT_PRESENT
-	ImagePullPolicy_NEVER                           = plus34.ImagePullPolicy_NEVER
-	MountPropagation_BIDIRECTIONAL                  = plus34.MountPropagation_BIDIRECTIONAL
-	MountPropagation_HOST_TO_CONTAINER              = plus34.MountPropagation_HOST_TO_CONTAINER
-	MountPropagation_NONE                           = plus34.MountPropagation_NONE
-	NetworkPolicyTrafficDefault_ALLOW               = plus34.NetworkPolicyTrafficDefault_ALLOW
-	NetworkPolicyTrafficDefault_DENY                = plus34.NetworkPolicyTrafficDefault_DENY
-	NetworkProtocol_SCTP                            = plus34.NetworkProtocol_SCTP
-	NetworkProtocol_TCP                             = plus34.NetworkProtocol_TCP
-	NetworkProtocol_UDP                             = plus34.NetworkProtocol_UDP
-	PersistentVolumeAccessMode_READ_ONLY_MANY       = plus34.PersistentVolumeAccessMode_READ_ONLY_MANY
-	PersistentVolumeAccessMode_READ_WRITE_MANY      = plus34.PersistentVolumeAccessMode_READ_WRITE_MANY
-	PersistentVolumeAccessMode_READ_WRITE_ONCE      = plus34.PersistentVolumeAccessMode_READ_WRITE_ONCE
-	PersistentVolumeAccessMode_READ_WRITE_ONCE_POD  = plus34.PersistentVolumeAccessMode_READ_WRITE_ONCE_POD
-	PersistentVolumeMode_BLOCK                      = plus34.PersistentVolumeMode_BLOCK
-	PersistentVolumeMode_FILE_SYSTEM                = plus34.PersistentVolumeMode_FILE_SYSTEM
-	PersistentVolumeReclaimPolicy_DELETE            = plus34.PersistentVolumeReclaimPolicy_DELETE
-	PersistentVolumeReclaimPolicy_RETAIN            = plus34.PersistentVolumeReclaimPolicy_RETAIN
-	PodConnectionsIsolation_PEER                    = plus34.PodConnectionsIsolation_PEER
-	PodConnectionsIsolation_POD                     = plus34.PodConnectionsIsolation_POD
-	PodManagementPolicy_ORDERED_READY               = plus34.PodManagementPolicy_ORDERED_READY
-	PodManagementPolicy_PARALLEL                    = plus34.PodManagementPolicy_PARALLEL
-	Protocol_SCTP                                   = plus34.Protocol_SCTP
-	Protocol_TCP                                    = plus34.Protocol_TCP
-	Protocol_UDP                                    = plus34.Protocol_UDP
-	ResourceFieldPaths_CPU_LIMIT                    = plus34.ResourceFieldPaths_CPU_LIMIT
-	ResourceFieldPaths_CPU_REQUEST                  = plus34.ResourceFieldPaths_CPU_REQUEST
-	ResourceFieldPaths_MEMORY_LIMIT                 = plus34.ResourceFieldPaths_MEMORY_LIMIT
-	ResourceFieldPaths_MEMORY_REQUEST               = plus34.ResourceFieldPaths_MEMORY_REQUEST
-	ResourceFieldPaths_STORAGE_LIMIT                = plus34.ResourceFieldPaths_STORAGE_LIMIT
-	ResourceFieldPaths_STORAGE_REQUEST              = plus34.ResourceFieldPaths_STORAGE_REQUEST
-	RestartPolicy_ALWAYS                            = plus34.RestartPolicy_ALWAYS
-	RestartPolicy_NEVER                             = plus34.RestartPolicy_NEVER
-	RestartPolicy_ON_FAILURE                        = plus34.RestartPolicy_ON_FAILURE
-	ScalingStrategy_DISABLED                        = plus34.ScalingStrategy_DISABLED
-	ScalingStrategy_MAX_CHANGE                      = plus34.ScalingStrategy_MAX_CHANGE
-	ScalingStrategy_MIN_CHANGE                      = plus34.ScalingStrategy_MIN_CHANGE
-	SeccompProfileType_LOCALHOST                    = plus34.SeccompProfileType_LOCALHOST
-	SeccompProfileType_RUNTIME_DEFAULT              = plus34.SeccompProfileType_RUNTIME_DEFAULT
-	SeccompProfileType_UNCONFINED                   = plus34.SeccompProfileType_UNCONFINED
-	ServiceType_CLUSTER_IP                          = plus34.ServiceType_CLUSTER_IP
-	ServiceType_EXTERNAL_NAME                       = plus34.ServiceType_EXTERNAL_NAME
-	ServiceType_LOAD_BALANCER                       = plus34.ServiceType_LOAD_BALANCER
-	ServiceType_NODE_PORT                           = plus34.ServiceType_NODE_PORT
-	TaintEffect_NO_EXECUTE                          = plus34.TaintEffect_NO_EXECUTE
-	TaintEffect_NO_SCHEDULE                         = plus34.TaintEffect_NO_SCHEDULE
-	TaintEffect_PREFER_NO_SCHEDULE                  = plus34.TaintEffect_PREFER_NO_SCHEDULE
+	// Single blob disk per storage account.
+	AzureDiskPersistentVolumeKind_DEDICATED = plus34.AzureDiskPersistentVolumeKind_DEDICATED
+	// Azure managed data disk.
+	AzureDiskPersistentVolumeKind_MANAGED = plus34.AzureDiskPersistentVolumeKind_MANAGED
+	// Multiple blob disks per storage account.
+	AzureDiskPersistentVolumeKind_SHARED = plus34.AzureDiskPersistentVolumeKind_SHARED
+	// ALL.
+	Capability_ALL = plus34.Capability_ALL
+	// CAP_AUDIT_CONTROL.
+	Capability_AUDIT_CONTROL = plus34.Capability_AUDIT_CONTROL
+	// CAP_AUDIT_READ.
+	Capability_AUDIT_READ = plus34.Capability_AUDIT_READ
+	// CAP_AUDIT_WRITE.
+	Capability_AUDIT_WRITE = plus34.Capability_AUDIT_WRITE
+	// CAP_BLOCK_SUSPEND.
+	Capability_BLOCK_SUSPEND = plus34.Capability_BLOCK_SUSPEND
+	// CAP_BPF.
+	Capability_BPF = plus34.Capability_BPF
+	// CAP_CHECKPOINT_RESTORE.
+	Capability_CHECKPOINT_RESTORE = plus34.Capability_CHECKPOINT_RESTORE
+	// CAP_CHOWN.
+	Capability_CHOWN = plus34.Capability_CHOWN
+	// CAP_DAC_OVERRIDE.
+	Capability_DAC_OVERRIDE = plus34.Capability_DAC_OVERRIDE
+	// CAP_DAC_READ_SEARCH.
+	Capability_DAC_READ_SEARCH = plus34.Capability_DAC_READ_SEARCH
+	// CAP_FOWNER.
+	Capability_FOWNER = plus34.Capability_FOWNER
+	// CAP_FSETID.
+	Capability_FSETID = plus34.Capability_FSETID
+	// CAP_IPC_LOCK.
+	Capability_IPC_LOCK = plus34.Capability_IPC_LOCK
+	// CAP_IPC_OWNER.
+	Capability_IPC_OWNER = plus34.Capability_IPC_OWNER
+	// CAP_KILL.
+	Capability_KILL = plus34.Capability_KILL
+	// CAP_LEASE.
+	Capability_LEASE = plus34.Capability_LEASE
+	// CAP_LINUX_IMMUTABLE.
+	Capability_LINUX_IMMUTABLE = plus34.Capability_LINUX_IMMUTABLE
+	// CAP_MAC_ADMIN.
+	Capability_MAC_ADMIN = plus34.Capability_MAC_ADMIN
+	// CAP_MAC_OVERRIDE.
+	Capability_MAC_OVERRIDE = plus34.Capability_MAC_OVERRIDE
+	// CAP_MKNOD.
+	Capability_MKNOD = plus34.Capability_MKNOD
+	// CAP_NET_ADMIN.
+	Capability_NET_ADMIN = plus34.Capability_NET_ADMIN
+	// CAP_NET_BIND_SERVICE.
+	Capability_NET_BIND_SERVICE = plus34.Capability_NET_BIND_SERVICE
+	// CAP_NET_BROADCAST.
+	Capability_NET_BROADCAST = plus34.Capability_NET_BROADCAST
+	// CAP_NET_RAW.
+	Capability_NET_RAW = plus34.Capability_NET_RAW
+	// CAP_PERFMON.
+	Capability_PERFMON = plus34.Capability_PERFMON
+	// CAP_SETFCAP.
+	Capability_SETFCAP = plus34.Capability_SETFCAP
+	// CAP_SETGID.
+	Capability_SETGID = plus34.Capability_SETGID
+	// CAP_SETPCAP.
+	Capability_SETPCAP = plus34.Capability_SETPCAP
+	// CAP_SETUID.
+	Capability_SETUID = plus34.Capability_SETUID
+	// CAP_SYSLOG.
+	Capability_SYSLOG = plus34.Capability_SYSLOG
+	// CAP_SYS_ADMIN.
+	Capability_SYS_ADMIN = plus34.Capability_SYS_ADMIN
+	// CAP_SYS_BOOT.
+	Capability_SYS_BOOT = plus34.Capability_SYS_BOOT
+	// CAP_SYS_CHROOT.
+	Capability_SYS_CHROOT = plus34.Capability_SYS_CHROOT
+	// CAP_SYS_MODULE.
+	Capability_SYS_MODULE = plus34.Capability_SYS_MODULE
+	// CAP_SYS_NICE.
+	Capability_SYS_NICE = plus34.Capability_SYS_NICE
+	// CAP_SYS_PACCT.
+	Capability_SYS_PACCT = plus34.Capability_SYS_PACCT
+	// CAP_SYS_PTRACE.
+	Capability_SYS_PTRACE = plus34.Capability_SYS_PTRACE
+	// CAP_SYS_RAWIO.
+	Capability_SYS_RAWIO = plus34.Capability_SYS_RAWIO
+	// CAP_SYS_RESOURCE.
+	Capability_SYS_RESOURCE = plus34.Capability_SYS_RESOURCE
+	// CAP_SYS_TIME.
+	Capability_SYS_TIME = plus34.Capability_SYS_TIME
+	// CAP_SYS_TTY_CONFIG.
+	Capability_SYS_TTY_CONFIG = plus34.Capability_SYS_TTY_CONFIG
+	// CAP_WAKE_ALARM.
+	Capability_WAKE_ALARM = plus34.Capability_WAKE_ALARM
+	// This policy allows to run job concurrently.
+	ConcurrencyPolicy_ALLOW = plus34.ConcurrencyPolicy_ALLOW
+	// This policy does not allow to run job concurrently.
+	//
+	// It does not let a new job to be scheduled if the previous one is not finished
+	// yet.
+	ConcurrencyPolicy_FORBID = plus34.ConcurrencyPolicy_FORBID
+	// This policy replaces the currently running job if a new job is being scheduled.
+	ConcurrencyPolicy_REPLACE = plus34.ConcurrencyPolicy_REPLACE
+	// Use HTTP request for connecting to host.
+	ConnectionScheme_HTTP = plus34.ConnectionScheme_HTTP
+	// Use HTTPS request for connecting to host.
+	ConnectionScheme_HTTPS = plus34.ConnectionScheme_HTTPS
+	// If an init container is created with its restartPolicy set to Always, it will
+	// start and remain running during the entire life of the Pod.
+	//
+	// For regular containers, this is ignored by Kubernetes.
+	ContainerRestartPolicy_ALWAYS = plus34.ContainerRestartPolicy_ALWAYS
+	// Any DNS query that does not match the configured cluster domain suffix,
+	// such as "www.kubernetes.io", is forwarded to the upstream nameserver inherited
+	// from the node. Cluster administrators may have extra stub-domain and upstream
+	// DNS servers configured.
+	DnsPolicy_CLUSTER_FIRST = plus34.DnsPolicy_CLUSTER_FIRST
+	// For Pods running with hostNetwork, you should explicitly set its DNS policy
+	// "ClusterFirstWithHostNet".
+	DnsPolicy_CLUSTER_FIRST_WITH_HOST_NET = plus34.DnsPolicy_CLUSTER_FIRST_WITH_HOST_NET
+	// The Pod inherits the name resolution configuration from the node that the pods
+	// run on.
+	DnsPolicy_DEFAULT = plus34.DnsPolicy_DEFAULT
+	// It allows a Pod to ignore DNS settings from the Kubernetes environment.
+	//
+	// All DNS settings are supposed to be provided using the dnsConfig field in the
+	// Pod Spec.
+	DnsPolicy_NONE = plus34.DnsPolicy_NONE
+	// The default volume of the backing node.
+	EmptyDirMedium_DEFAULT = plus34.EmptyDirMedium_DEFAULT
+	// Mount a tmpfs (RAM-backed filesystem) for you instead.
+	//
+	// While tmpfs is very fast, be aware that unlike disks, tmpfs is cleared on
+	// node reboot and any files you write will count against your Container's memory
+	// limit.
+	EmptyDirMedium_MEMORY = plus34.EmptyDirMedium_MEMORY
+	// The ipAddress of the node.
+	EnvFieldPaths_NODE_IP = plus34.EnvFieldPaths_NODE_IP
+	// The name of the node.
+	EnvFieldPaths_NODE_NAME = plus34.EnvFieldPaths_NODE_NAME
+	// The annotations of the pod.
+	EnvFieldPaths_POD_ANNOTATION = plus34.EnvFieldPaths_POD_ANNOTATION
+	// The ipAddress of the pod.
+	EnvFieldPaths_POD_IP = plus34.EnvFieldPaths_POD_IP
+	// The ipAddresess of the pod.
+	EnvFieldPaths_POD_IPS = plus34.EnvFieldPaths_POD_IPS
+	// The labels of the pod.
+	EnvFieldPaths_POD_LABEL = plus34.EnvFieldPaths_POD_LABEL
+	// The name of the pod.
+	EnvFieldPaths_POD_NAME = plus34.EnvFieldPaths_POD_NAME
+	// The namespace of the pod.
+	EnvFieldPaths_POD_NAMESPACE = plus34.EnvFieldPaths_POD_NAMESPACE
+	// The uid of the pod.
+	EnvFieldPaths_POD_UID = plus34.EnvFieldPaths_POD_UID
+	// The service account name of the pod.
+	EnvFieldPaths_SERVICE_ACCOUNT_NAME = plus34.EnvFieldPaths_SERVICE_ACCOUNT_NAME
+	// Always change permission and ownership of the volume when volume is mounted.
+	FsGroupChangePolicy_ALWAYS = plus34.FsGroupChangePolicy_ALWAYS
+	// Only change permissions and ownership if permission and ownership of root
+	// directory does not match with expected permissions of the volume.
+	//
+	// This could help shorten the time it takes to change ownership and permission of
+	// a volume.
+	FsGroupChangePolicy_ON_ROOT_MISMATCH = plus34.FsGroupChangePolicy_ON_ROOT_MISMATCH
+	// A block device must exist at the given path.
+	HostPathVolumeType_BLOCK_DEVICE = plus34.HostPathVolumeType_BLOCK_DEVICE
+	// A character device must exist at the given path.
+	HostPathVolumeType_CHAR_DEVICE = plus34.HostPathVolumeType_CHAR_DEVICE
+	// Empty string (default) is for backward compatibility, which means that no
+	// checks will be performed before mounting the hostPath volume.
+	HostPathVolumeType_DEFAULT = plus34.HostPathVolumeType_DEFAULT
+	// A directory must exist at the given path.
+	HostPathVolumeType_DIRECTORY = plus34.HostPathVolumeType_DIRECTORY
+	// If nothing exists at the given path, an empty directory will be created there
+	// as needed with permission set to 0755, having the same group and ownership with
+	// Kubelet.
+	HostPathVolumeType_DIRECTORY_OR_CREATE = plus34.HostPathVolumeType_DIRECTORY_OR_CREATE
+	// A file must exist at the given path.
+	HostPathVolumeType_FILE = plus34.HostPathVolumeType_FILE
+	// If nothing exists at the given path, an empty file will be created there as
+	// needed with permission set to 0644, having the same group and ownership with
+	// Kubelet.
+	HostPathVolumeType_FILE_OR_CREATE = plus34.HostPathVolumeType_FILE_OR_CREATE
+	// A UNIX socket must exist at the given path.
+	HostPathVolumeType_SOCKET = plus34.HostPathVolumeType_SOCKET
+	// Matches based on a URL path prefix split by '/'.
+	HttpIngressPathType_EXACT = plus34.HttpIngressPathType_EXACT
+	// Matching is specified by the underlying IngressClass.
+	HttpIngressPathType_IMPLEMENTATION_SPECIFIC = plus34.HttpIngressPathType_IMPLEMENTATION_SPECIFIC
+	// Matches the URL path exactly.
+	HttpIngressPathType_PREFIX = plus34.HttpIngressPathType_PREFIX
+	// Every time the kubelet launches a container, the kubelet queries the container
+	// image registry to resolve the name to an image digest.
+	//
+	// If the kubelet has a container image with that exact digest cached locally,
+	// the kubelet uses its cached image; otherwise, the kubelet downloads (pulls) the
+	// image with the resolved digest, and uses that image to launch the container.
+	//
+	// Default is Always if ImagePullPolicy is omitted and either the image tag is
+	// :latest or the image tag is omitted.
+	ImagePullPolicy_ALWAYS = plus34.ImagePullPolicy_ALWAYS
+	// The image is pulled only if it is not already present locally.
+	//
+	// Default is IfNotPresent if ImagePullPolicy is omitted and the image tag is
+	// present but not :latest.
+	ImagePullPolicy_IF_NOT_PRESENT = plus34.ImagePullPolicy_IF_NOT_PRESENT
+	// The image is assumed to exist locally.
+	//
+	// No attempt is made to pull the image.
+	ImagePullPolicy_NEVER = plus34.ImagePullPolicy_NEVER
+	// This volume mount behaves the same the HostToContainer mount.
+	//
+	// In addition, all volume mounts created by the Container will be propagated back
+	// to the host and to all Containers of all Pods that use the same volume
+	//
+	// A typical use case for this mode is a Pod with a FlexVolume or CSI driver or a
+	// Pod that needs to mount something on the host using a hostPath volume.
+	//
+	// This mode is equal to `rshared` mount propagation as described in the Linux
+	// kernel documentation
+	//
+	// Caution: Bidirectional mount propagation can be dangerous. It can damage
+	// the host operating system and therefore it is allowed only in privileged
+	// Containers. Familiarity with Linux kernel behavior is strongly recommended.
+	// In addition, any volume mounts created by Containers in Pods must be destroyed
+	// (unmounted) by the Containers on termination.
+	MountPropagation_BIDIRECTIONAL = plus34.MountPropagation_BIDIRECTIONAL
+	// This volume mount will receive all subsequent mounts that are mounted to this
+	// volume or any of its subdirectories.
+	//
+	// In other words, if the host mounts anything inside the volume mount, the
+	// Container will see it mounted there.
+	//
+	// Similarly, if any Pod with Bidirectional mount propagation to the same volume
+	// mounts anything there, the Container with HostToContainer mount propagation
+	// will see it.
+	//
+	// This mode is equal to `rslave` mount propagation as described in the Linux
+	// kernel documentation.
+	MountPropagation_HOST_TO_CONTAINER = plus34.MountPropagation_HOST_TO_CONTAINER
+	// This volume mount will not receive any subsequent mounts that are mounted to
+	// this volume or any of its subdirectories by the host.
+	//
+	// In similar fashion, no mounts created by the Container will be visible on the
+	// host.
+	//
+	// This is the default mode.
+	//
+	// This mode is equal to `private` mount propagation as described in the Linux
+	// kernel documentation.
+	MountPropagation_NONE = plus34.MountPropagation_NONE
+	// The policy allows all traffic (either ingress or egress).
+	//
+	// Since rules are additive, no additional rule or policies can subsequently deny
+	// the traffic.
+	NetworkPolicyTrafficDefault_ALLOW = plus34.NetworkPolicyTrafficDefault_ALLOW
+	// The policy denies all traffic.
+	//
+	// Since rules are additive, additional rules or policies can allow specific
+	// traffic.
+	NetworkPolicyTrafficDefault_DENY = plus34.NetworkPolicyTrafficDefault_DENY
+	// SCTP.
+	NetworkProtocol_SCTP = plus34.NetworkProtocol_SCTP
+	// TCP.
+	NetworkProtocol_TCP = plus34.NetworkProtocol_TCP
+	// UDP.
+	NetworkProtocol_UDP = plus34.NetworkProtocol_UDP
+	// The volume can be mounted as read-only by many nodes.
+	PersistentVolumeAccessMode_READ_ONLY_MANY = plus34.PersistentVolumeAccessMode_READ_ONLY_MANY
+	// The volume can be mounted as read-write by many nodes.
+	PersistentVolumeAccessMode_READ_WRITE_MANY = plus34.PersistentVolumeAccessMode_READ_WRITE_MANY
+	// The volume can be mounted as read-write by a single node.
+	//
+	// ReadWriteOnce access mode still can allow multiple pods to access the volume
+	// when the pods are running on the same node.
+	PersistentVolumeAccessMode_READ_WRITE_ONCE = plus34.PersistentVolumeAccessMode_READ_WRITE_ONCE
+	// The volume can be mounted as read-write by a single Pod.
+	//
+	// Use ReadWriteOncePod access mode if you want to ensure that only one pod across
+	// whole cluster can read that PVC or write to it. This is only supported for CSI
+	// volumes and Kubernetes version 1.22+.
+	PersistentVolumeAccessMode_READ_WRITE_ONCE_POD = plus34.PersistentVolumeAccessMode_READ_WRITE_ONCE_POD
+	// Use a volume as a raw block device.
+	//
+	// Such volume is presented into a Pod as a block device, without any filesystem
+	// on it. This mode is useful to provide a Pod the fastest possible way to
+	// access a volume, without any filesystem layer between the Pod and the volume.
+	// On the other hand, the application running in the Pod must know how to handle a
+	// raw block device.
+	PersistentVolumeMode_BLOCK = plus34.PersistentVolumeMode_BLOCK
+	// Volume is ounted into Pods into a directory.
+	//
+	// If the volume is backed by a block device and the device is empty, Kubernetes
+	// creates a filesystem on the device before mounting it for the first time.
+	PersistentVolumeMode_FILE_SYSTEM = plus34.PersistentVolumeMode_FILE_SYSTEM
+	// For volume plugins that support the Delete reclaim policy, deletion removes
+	// both the PersistentVolume object from Kubernetes, as well as the associated
+	// storage asset in the external infrastructure, such as an AWS EBS, GCE PD,
+	// Azure Disk, or Cinder volume.
+	//
+	// Volumes that were dynamically provisioned inherit the reclaim policy of their
+	// StorageClass, which defaults to Delete. The administrator should configure the
+	// StorageClass according to users' expectations; otherwise, the PV must be edited
+	// or patched after it is created.
+	PersistentVolumeReclaimPolicy_DELETE = plus34.PersistentVolumeReclaimPolicy_DELETE
+	// The Retain reclaim policy allows for manual reclamation of the resource.
+	//
+	// When the PersistentVolumeClaim is deleted, the PersistentVolume still exists
+	// and the volume is considered "released". But it is not yet available for
+	// another claim because the previous claimant's data remains on the volume.
+	// An administrator can manually reclaim the volume with the following steps:
+	//
+	//  1. Delete the PersistentVolume. The associated storage asset in external
+	//     infrastructure (such as an AWS EBS, GCE PD, Azure Disk, or Cinder volume)
+	//     still exists after the PV is deleted.
+	//  2. Manually clean up the data on the associated storage asset accordingly.
+	//  3. Manually delete the associated storage asset.
+	//
+	// If you want to reuse the same storage asset, create a new PersistentVolume with
+	// the same storage asset definition.
+	PersistentVolumeReclaimPolicy_RETAIN = plus34.PersistentVolumeReclaimPolicy_RETAIN
+	// Only creates network policies that select the peer.
+	PodConnectionsIsolation_PEER = plus34.PodConnectionsIsolation_PEER
+	// Only creates network policies that select the pod.
+	PodConnectionsIsolation_POD       = plus34.PodConnectionsIsolation_POD
+	PodManagementPolicy_ORDERED_READY = plus34.PodManagementPolicy_ORDERED_READY
+	PodManagementPolicy_PARALLEL      = plus34.PodManagementPolicy_PARALLEL
+	// SCTP.
+	Protocol_SCTP = plus34.Protocol_SCTP
+	// TCP.
+	Protocol_TCP = plus34.Protocol_TCP
+	// UDP.
+	Protocol_UDP = plus34.Protocol_UDP
+	// CPU limit of the container.
+	ResourceFieldPaths_CPU_LIMIT = plus34.ResourceFieldPaths_CPU_LIMIT
+	// CPU request of the container.
+	ResourceFieldPaths_CPU_REQUEST = plus34.ResourceFieldPaths_CPU_REQUEST
+	// Memory limit of the container.
+	ResourceFieldPaths_MEMORY_LIMIT = plus34.ResourceFieldPaths_MEMORY_LIMIT
+	// Memory request of the container.
+	ResourceFieldPaths_MEMORY_REQUEST = plus34.ResourceFieldPaths_MEMORY_REQUEST
+	// Ephemeral storage limit of the container.
+	ResourceFieldPaths_STORAGE_LIMIT = plus34.ResourceFieldPaths_STORAGE_LIMIT
+	// Ephemeral storage request of the container.
+	ResourceFieldPaths_STORAGE_REQUEST = plus34.ResourceFieldPaths_STORAGE_REQUEST
+	// Always restart the pod after it exits.
+	RestartPolicy_ALWAYS = plus34.RestartPolicy_ALWAYS
+	// Never restart the pod.
+	RestartPolicy_NEVER = plus34.RestartPolicy_NEVER
+	// Only restart if the pod exits with a non-zero exit code.
+	RestartPolicy_ON_FAILURE = plus34.RestartPolicy_ON_FAILURE
+	// Disables scaling in this direction. Deprecated: - Omit the ScalingRule instead.
+	ScalingStrategy_DISABLED = plus34.ScalingStrategy_DISABLED
+	// Use the policy that provisions the most changes.
+	ScalingStrategy_MAX_CHANGE = plus34.ScalingStrategy_MAX_CHANGE
+	// Use the policy that provisions the least amount of changes.
+	ScalingStrategy_MIN_CHANGE = plus34.ScalingStrategy_MIN_CHANGE
+	// A profile defined in a file on the node should be used.
+	SeccompProfileType_LOCALHOST = plus34.SeccompProfileType_LOCALHOST
+	// The container runtime default profile should be used.
+	SeccompProfileType_RUNTIME_DEFAULT = plus34.SeccompProfileType_RUNTIME_DEFAULT
+	// No profile should be applied.
+	SeccompProfileType_UNCONFINED = plus34.SeccompProfileType_UNCONFINED
+	// Exposes the Service on a cluster-internal IP.
+	//
+	// Choosing this value makes the Service only reachable from within the cluster.
+	// This is the default ServiceType.
+	ServiceType_CLUSTER_IP = plus34.ServiceType_CLUSTER_IP
+	// Maps the Service to the contents of the externalName field (e.g.
+	// foo.bar.example.com), by returning a CNAME record with its value. No proxying
+	// of any kind is set up.
+	//
+	// > Note: You need either kube-dns version 1.7 or CoreDNS version 0.0.8 or higher
+	// to use the ExternalName type.
+	ServiceType_EXTERNAL_NAME = plus34.ServiceType_EXTERNAL_NAME
+	// Exposes the Service externally using a cloud provider's load balancer.
+	//
+	// NodePort and ClusterIP Services, to which the external load balancer routes,
+	// are automatically created.
+	ServiceType_LOAD_BALANCER = plus34.ServiceType_LOAD_BALANCER
+	// Exposes the Service on each Node's IP at a static port (the NodePort).
+	//
+	// A ClusterIP Service, to which the NodePort Service routes, is automatically
+	// created. You'll be able to contact the NodePort Service, from outside the
+	// cluster, by requesting <NodeIP>:<NodePort>.
+	ServiceType_NODE_PORT = plus34.ServiceType_NODE_PORT
+	// This affects pods that are already running on the node as follows:.
+	//
+	//   - Pods that do not tolerate the taint are evicted immediately.
+	//   - Pods that tolerate the taint without specifying `duration` remain bound
+	//     forever.
+	//   - Pods that tolerate the taint with a specified `duration` remain bound for
+	//     the specified amount of time.
+	TaintEffect_NO_EXECUTE = plus34.TaintEffect_NO_EXECUTE
+	// This means that no pod will be able to schedule onto the node unless it has a
+	// matching toleration.
+	TaintEffect_NO_SCHEDULE = plus34.TaintEffect_NO_SCHEDULE
+	// This is a "preference" or "soft" version of `NO_SCHEDULE` -- the system will
+	// try to avoid placing a pod that does not tolerate the taint on the node,
+	// but it is not required.
+	TaintEffect_PREFER_NO_SCHEDULE = plus34.TaintEffect_PREFER_NO_SCHEDULE
 )
 
+// Checks if `x` is a construct.
+//
+// Use this method instead of `instanceof` to properly detect `Construct`
+// instances, even when the construct library is symlinked.
+//
+// Explanation: in JavaScript, multiple copies of the `constructs` library on disk
+// are seen as independent, completely different libraries. As a consequence,
+// the class `Construct` in each copy of the `constructs` library is seen as a
+// different class, and an instance of one class will not test as `instanceof`
+// the other class. `npm install` will not create installations like this, but
+// users may manually symlink construct libraries together or use a monorepo tool:
+// in those cases, multiple copies of the `constructs` library can be accidentally
+// installed, and `instanceof` will behave unpredictably. It is safest to avoid
+// using `instanceof`, and using this type-testing method instead.
+//
+// Returns: true if `x` is an object created from a class which extends
+// `Construct`.
 func AbstractPod_IsConstruct(x interface{}) *bool {
 	return plus34.AbstractPod_IsConstruct(x)
 }
@@ -433,6 +1465,7 @@ func ApiResource_CUSTOM_RESOURCE_DEFINITIONS() ApiResource {
 	return plus34.ApiResource_CUSTOM_RESOURCE_DEFINITIONS()
 }
 
+// API resource information for a custom resource type.
 func ApiResource_Custom(options *ApiResourceOptions) ApiResource {
 	return plus34.ApiResource_Custom(options)
 }
@@ -601,46 +1634,153 @@ func ApiResource_VOLUME_ATTACHMENTS() ApiResource {
 	return plus34.ApiResource_VOLUME_ATTACHMENTS()
 }
 
+// Imports a pv from the cluster as a reference.
 func AwsElasticBlockStorePersistentVolume_FromPersistentVolumeName(scope constructs.Construct, id, name *string) IPersistentVolume {
 	return plus34.AwsElasticBlockStorePersistentVolume_FromPersistentVolumeName(scope, id, name)
 }
 
+// Checks if `x` is a construct.
+//
+// Use this method instead of `instanceof` to properly detect `Construct`
+// instances, even when the construct library is symlinked.
+//
+// Explanation: in JavaScript, multiple copies of the `constructs` library on disk
+// are seen as independent, completely different libraries. As a consequence,
+// the class `Construct` in each copy of the `constructs` library is seen as a
+// different class, and an instance of one class will not test as `instanceof`
+// the other class. `npm install` will not create installations like this, but
+// users may manually symlink construct libraries together or use a monorepo tool:
+// in those cases, multiple copies of the `constructs` library can be accidentally
+// installed, and `instanceof` will behave unpredictably. It is safest to avoid
+// using `instanceof`, and using this type-testing method instead.
+//
+// Returns: true if `x` is an object created from a class which extends
+// `Construct`.
 func AwsElasticBlockStorePersistentVolume_IsConstruct(x interface{}) *bool {
 	return plus34.AwsElasticBlockStorePersistentVolume_IsConstruct(x)
 }
 
+// Imports a pv from the cluster as a reference.
 func AzureDiskPersistentVolume_FromPersistentVolumeName(scope constructs.Construct, id, name *string) IPersistentVolume {
 	return plus34.AzureDiskPersistentVolume_FromPersistentVolumeName(scope, id, name)
 }
 
+// Checks if `x` is a construct.
+//
+// Use this method instead of `instanceof` to properly detect `Construct`
+// instances, even when the construct library is symlinked.
+//
+// Explanation: in JavaScript, multiple copies of the `constructs` library on disk
+// are seen as independent, completely different libraries. As a consequence,
+// the class `Construct` in each copy of the `constructs` library is seen as a
+// different class, and an instance of one class will not test as `instanceof`
+// the other class. `npm install` will not create installations like this, but
+// users may manually symlink construct libraries together or use a monorepo tool:
+// in those cases, multiple copies of the `constructs` library can be accidentally
+// installed, and `instanceof` will behave unpredictably. It is safest to avoid
+// using `instanceof`, and using this type-testing method instead.
+//
+// Returns: true if `x` is an object created from a class which extends
+// `Construct`.
 func AzureDiskPersistentVolume_IsConstruct(x interface{}) *bool {
 	return plus34.AzureDiskPersistentVolume_IsConstruct(x)
 }
 
+// Imports a secret from the cluster as a reference.
 func BasicAuthSecret_FromSecretName(scope constructs.Construct, id, name *string) ISecret {
 	return plus34.BasicAuthSecret_FromSecretName(scope, id, name)
 }
 
+// Checks if `x` is a construct.
+//
+// Use this method instead of `instanceof` to properly detect `Construct`
+// instances, even when the construct library is symlinked.
+//
+// Explanation: in JavaScript, multiple copies of the `constructs` library on disk
+// are seen as independent, completely different libraries. As a consequence,
+// the class `Construct` in each copy of the `constructs` library is seen as a
+// different class, and an instance of one class will not test as `instanceof`
+// the other class. `npm install` will not create installations like this, but
+// users may manually symlink construct libraries together or use a monorepo tool:
+// in those cases, multiple copies of the `constructs` library can be accidentally
+// installed, and `instanceof` will behave unpredictably. It is safest to avoid
+// using `instanceof`, and using this type-testing method instead.
+//
+// Returns: true if `x` is an object created from a class which extends
+// `Construct`.
 func BasicAuthSecret_IsConstruct(x interface{}) *bool {
 	return plus34.BasicAuthSecret_IsConstruct(x)
 }
 
+// Checks if `x` is a construct.
+//
+// Use this method instead of `instanceof` to properly detect `Construct`
+// instances, even when the construct library is symlinked.
+//
+// Explanation: in JavaScript, multiple copies of the `constructs` library on disk
+// are seen as independent, completely different libraries. As a consequence,
+// the class `Construct` in each copy of the `constructs` library is seen as a
+// different class, and an instance of one class will not test as `instanceof`
+// the other class. `npm install` will not create installations like this, but
+// users may manually symlink construct libraries together or use a monorepo tool:
+// in those cases, multiple copies of the `constructs` library can be accidentally
+// installed, and `instanceof` will behave unpredictably. It is safest to avoid
+// using `instanceof`, and using this type-testing method instead.
+//
+// Returns: true if `x` is an object created from a class which extends
+// `Construct`.
 func ClusterRoleBinding_IsConstruct(x interface{}) *bool {
 	return plus34.ClusterRoleBinding_IsConstruct(x)
 }
 
+// Imports a role from the cluster as a reference.
 func ClusterRole_FromClusterRoleName(scope constructs.Construct, id, name *string) IClusterRole {
 	return plus34.ClusterRole_FromClusterRoleName(scope, id, name)
 }
 
+// Checks if `x` is a construct.
+//
+// Use this method instead of `instanceof` to properly detect `Construct`
+// instances, even when the construct library is symlinked.
+//
+// Explanation: in JavaScript, multiple copies of the `constructs` library on disk
+// are seen as independent, completely different libraries. As a consequence,
+// the class `Construct` in each copy of the `constructs` library is seen as a
+// different class, and an instance of one class will not test as `instanceof`
+// the other class. `npm install` will not create installations like this, but
+// users may manually symlink construct libraries together or use a monorepo tool:
+// in those cases, multiple copies of the `constructs` library can be accidentally
+// installed, and `instanceof` will behave unpredictably. It is safest to avoid
+// using `instanceof`, and using this type-testing method instead.
+//
+// Returns: true if `x` is an object created from a class which extends
+// `Construct`.
 func ClusterRole_IsConstruct(x interface{}) *bool {
 	return plus34.ClusterRole_IsConstruct(x)
 }
 
+// Represents a ConfigMap created elsewhere.
 func ConfigMap_FromConfigMapName(scope constructs.Construct, id, name *string) IConfigMap {
 	return plus34.ConfigMap_FromConfigMapName(scope, id, name)
 }
 
+// Checks if `x` is a construct.
+//
+// Use this method instead of `instanceof` to properly detect `Construct`
+// instances, even when the construct library is symlinked.
+//
+// Explanation: in JavaScript, multiple copies of the `constructs` library on disk
+// are seen as independent, completely different libraries. As a consequence,
+// the class `Construct` in each copy of the `constructs` library is seen as a
+// different class, and an instance of one class will not test as `instanceof`
+// the other class. `npm install` will not create installations like this, but
+// users may manually symlink construct libraries together or use a monorepo tool:
+// in those cases, multiple copies of the `constructs` library can be accidentally
+// installed, and `instanceof` will behave unpredictably. It is safest to avoid
+// using `instanceof`, and using this type-testing method instead.
+//
+// Returns: true if `x` is an object created from a class which extends
+// `Construct`.
 func ConfigMap_IsConstruct(x interface{}) *bool {
 	return plus34.ConfigMap_IsConstruct(x)
 }
@@ -653,14 +1793,50 @@ func Cpu_Units(amount *float64) Cpu {
 	return plus34.Cpu_Units(amount)
 }
 
+// Checks if `x` is a construct.
+//
+// Use this method instead of `instanceof` to properly detect `Construct`
+// instances, even when the construct library is symlinked.
+//
+// Explanation: in JavaScript, multiple copies of the `constructs` library on disk
+// are seen as independent, completely different libraries. As a consequence,
+// the class `Construct` in each copy of the `constructs` library is seen as a
+// different class, and an instance of one class will not test as `instanceof`
+// the other class. `npm install` will not create installations like this, but
+// users may manually symlink construct libraries together or use a monorepo tool:
+// in those cases, multiple copies of the `constructs` library can be accidentally
+// installed, and `instanceof` will behave unpredictably. It is safest to avoid
+// using `instanceof`, and using this type-testing method instead.
+//
+// Returns: true if `x` is an object created from a class which extends
+// `Construct`.
 func CronJob_IsConstruct(x interface{}) *bool {
 	return plus34.CronJob_IsConstruct(x)
 }
 
+// Checks if `x` is a construct.
+//
+// Use this method instead of `instanceof` to properly detect `Construct`
+// instances, even when the construct library is symlinked.
+//
+// Explanation: in JavaScript, multiple copies of the `constructs` library on disk
+// are seen as independent, completely different libraries. As a consequence,
+// the class `Construct` in each copy of the `constructs` library is seen as a
+// different class, and an instance of one class will not test as `instanceof`
+// the other class. `npm install` will not create installations like this, but
+// users may manually symlink construct libraries together or use a monorepo tool:
+// in those cases, multiple copies of the `constructs` library can be accidentally
+// installed, and `instanceof` will behave unpredictably. It is safest to avoid
+// using `instanceof`, and using this type-testing method instead.
+//
+// Returns: true if `x` is an object created from a class which extends
+// `Construct`.
 func DaemonSet_IsConstruct(x interface{}) *bool {
 	return plus34.DaemonSet_IsConstruct(x)
 }
 
+// All existing Pods are killed before new ones are created. See:
+// https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#recreate-deployment
 func DeploymentStrategy_Recreate() DeploymentStrategy {
 	return plus34.DeploymentStrategy_Recreate()
 }
@@ -669,110 +1845,260 @@ func DeploymentStrategy_RollingUpdate(options *DeploymentStrategyRollingUpdateOp
 	return plus34.DeploymentStrategy_RollingUpdate(options)
 }
 
+// Checks if `x` is a construct.
+//
+// Use this method instead of `instanceof` to properly detect `Construct`
+// instances, even when the construct library is symlinked.
+//
+// Explanation: in JavaScript, multiple copies of the `constructs` library on disk
+// are seen as independent, completely different libraries. As a consequence,
+// the class `Construct` in each copy of the `constructs` library is seen as a
+// different class, and an instance of one class will not test as `instanceof`
+// the other class. `npm install` will not create installations like this, but
+// users may manually symlink construct libraries together or use a monorepo tool:
+// in those cases, multiple copies of the `constructs` library can be accidentally
+// installed, and `instanceof` will behave unpredictably. It is safest to avoid
+// using `instanceof`, and using this type-testing method instead.
+//
+// Returns: true if `x` is an object created from a class which extends
+// `Construct`.
 func Deployment_IsConstruct(x interface{}) *bool {
 	return plus34.Deployment_IsConstruct(x)
 }
 
+// Imports a secret from the cluster as a reference.
 func DockerConfigSecret_FromSecretName(scope constructs.Construct, id, name *string) ISecret {
 	return plus34.DockerConfigSecret_FromSecretName(scope, id, name)
 }
 
+// Checks if `x` is a construct.
+//
+// Use this method instead of `instanceof` to properly detect `Construct`
+// instances, even when the construct library is symlinked.
+//
+// Explanation: in JavaScript, multiple copies of the `constructs` library on disk
+// are seen as independent, completely different libraries. As a consequence,
+// the class `Construct` in each copy of the `constructs` library is seen as a
+// different class, and an instance of one class will not test as `instanceof`
+// the other class. `npm install` will not create installations like this, but
+// users may manually symlink construct libraries together or use a monorepo tool:
+// in those cases, multiple copies of the `constructs` library can be accidentally
+// installed, and `instanceof` will behave unpredictably. It is safest to avoid
+// using `instanceof`, and using this type-testing method instead.
+//
+// Returns: true if `x` is an object created from a class which extends
+// `Construct`.
 func DockerConfigSecret_IsConstruct(x interface{}) *bool {
 	return plus34.DockerConfigSecret_IsConstruct(x)
 }
 
+// Create a value by reading a specific key inside a config map.
 func EnvValue_FromConfigMap(configMap IConfigMap, key *string, options *EnvValueFromConfigMapOptions) EnvValue {
 	return plus34.EnvValue_FromConfigMap(configMap, key, options)
 }
 
+// Create a value from a field reference.
 func EnvValue_FromFieldRef(fieldPath EnvFieldPaths, options *EnvValueFromFieldRefOptions) EnvValue {
 	return plus34.EnvValue_FromFieldRef(fieldPath, options)
 }
 
+// Create a value from a key in the current process environment.
 func EnvValue_FromProcess(key *string, options *EnvValueFromProcessOptions) EnvValue {
 	return plus34.EnvValue_FromProcess(key, options)
 }
 
+// Create a value from a resource.
 func EnvValue_FromResource(resource ResourceFieldPaths, options *EnvValueFromResourceOptions) EnvValue {
 	return plus34.EnvValue_FromResource(resource, options)
 }
 
+// Defines an environment value from a secret JSON value.
 func EnvValue_FromSecretValue(secretValue *SecretValue, options *EnvValueFromSecretOptions) EnvValue {
 	return plus34.EnvValue_FromSecretValue(secretValue, options)
 }
 
+// Create a value from the given argument.
 func EnvValue_FromValue(value *string) EnvValue {
 	return plus34.EnvValue_FromValue(value)
 }
 
+// Selects a ConfigMap to populate the environment variables with.
+//
+// The contents of the target ConfigMap's Data field will represent the key-value
+// pairs as environment variables.
 func Env_FromConfigMap(configMap IConfigMap, prefix *string) EnvFrom {
 	return plus34.Env_FromConfigMap(configMap, prefix)
 }
 
+// Selects a Secret to populate the environment variables with.
+//
+// The contents of the target Secret's Data field will represent the key-value
+// pairs as environment variables.
 func Env_FromSecret(secret ISecret) EnvFrom {
 	return plus34.Env_FromSecret(secret)
 }
 
+// Imports a pv from the cluster as a reference.
 func GCEPersistentDiskPersistentVolume_FromPersistentVolumeName(scope constructs.Construct, id, name *string) IPersistentVolume {
 	return plus34.GCEPersistentDiskPersistentVolume_FromPersistentVolumeName(scope, id, name)
 }
 
+// Checks if `x` is a construct.
+//
+// Use this method instead of `instanceof` to properly detect `Construct`
+// instances, even when the construct library is symlinked.
+//
+// Explanation: in JavaScript, multiple copies of the `constructs` library on disk
+// are seen as independent, completely different libraries. As a consequence,
+// the class `Construct` in each copy of the `constructs` library is seen as a
+// different class, and an instance of one class will not test as `instanceof`
+// the other class. `npm install` will not create installations like this, but
+// users may manually symlink construct libraries together or use a monorepo tool:
+// in those cases, multiple copies of the `constructs` library can be accidentally
+// installed, and `instanceof` will behave unpredictably. It is safest to avoid
+// using `instanceof`, and using this type-testing method instead.
+//
+// Returns: true if `x` is an object created from a class which extends
+// `Construct`.
 func GCEPersistentDiskPersistentVolume_IsConstruct(x interface{}) *bool {
 	return plus34.GCEPersistentDiskPersistentVolume_IsConstruct(x)
 }
 
+// Reference a group by name.
 func Group_FromName(scope constructs.Construct, id, name *string) Group {
 	return plus34.Group_FromName(scope, id, name)
 }
 
+// Checks if `x` is a construct.
+//
+// Use this method instead of `instanceof` to properly detect `Construct`
+// instances, even when the construct library is symlinked.
+//
+// Explanation: in JavaScript, multiple copies of the `constructs` library on disk
+// are seen as independent, completely different libraries. As a consequence,
+// the class `Construct` in each copy of the `constructs` library is seen as a
+// different class, and an instance of one class will not test as `instanceof`
+// the other class. `npm install` will not create installations like this, but
+// users may manually symlink construct libraries together or use a monorepo tool:
+// in those cases, multiple copies of the `constructs` library can be accidentally
+// installed, and `instanceof` will behave unpredictably. It is safest to avoid
+// using `instanceof`, and using this type-testing method instead.
+//
+// Returns: true if `x` is an object created from a class which extends
+// `Construct`.
 func Group_IsConstruct(x interface{}) *bool {
 	return plus34.Group_IsConstruct(x)
 }
 
+// Defines a handler based on a command which is executed within the container.
 func Handler_FromCommand(command *[]*string) Handler {
 	return plus34.Handler_FromCommand(command)
 }
 
+// Defines a handler based on an HTTP GET request to the IP address of the
+// container.
 func Handler_FromHttpGet(path *string, options *HandlerFromHttpGetOptions) Handler {
 	return plus34.Handler_FromHttpGet(path, options)
 }
 
+// Defines a handler based opening a connection to a TCP socket on the container.
 func Handler_FromTcpSocket(options *HandlerFromTcpSocketOptions) Handler {
 	return plus34.Handler_FromTcpSocket(options)
 }
 
+// Checks if `x` is a construct.
+//
+// Use this method instead of `instanceof` to properly detect `Construct`
+// instances, even when the construct library is symlinked.
+//
+// Explanation: in JavaScript, multiple copies of the `constructs` library on disk
+// are seen as independent, completely different libraries. As a consequence,
+// the class `Construct` in each copy of the `constructs` library is seen as a
+// different class, and an instance of one class will not test as `instanceof`
+// the other class. `npm install` will not create installations like this, but
+// users may manually symlink construct libraries together or use a monorepo tool:
+// in those cases, multiple copies of the `constructs` library can be accidentally
+// installed, and `instanceof` will behave unpredictably. It is safest to avoid
+// using `instanceof`, and using this type-testing method instead.
+//
+// Returns: true if `x` is an object created from a class which extends
+// `Construct`.
 func HorizontalPodAutoscaler_IsConstruct(x interface{}) *bool {
 	return plus34.HorizontalPodAutoscaler_IsConstruct(x)
 }
 
+// A Resource backend is an ObjectRef to another Kubernetes resource within the
+// same namespace as the Ingress object.
+//
+// A common usage for a Resource backend is to ingress data to an object storage
+// backend with static assets.
 func IngressBackend_FromResource(resource IResource) IngressBackend {
 	return plus34.IngressBackend_FromResource(resource)
 }
 
+// A Kubernetes `Service` to use as the backend for this path.
 func IngressBackend_FromService(service Service, options *ServiceIngressBackendOptions) IngressBackend {
 	return plus34.IngressBackend_FromService(service, options)
 }
 
+// Checks if `x` is a construct.
+//
+// Use this method instead of `instanceof` to properly detect `Construct`
+// instances, even when the construct library is symlinked.
+//
+// Explanation: in JavaScript, multiple copies of the `constructs` library on disk
+// are seen as independent, completely different libraries. As a consequence,
+// the class `Construct` in each copy of the `constructs` library is seen as a
+// different class, and an instance of one class will not test as `instanceof`
+// the other class. `npm install` will not create installations like this, but
+// users may manually symlink construct libraries together or use a monorepo tool:
+// in those cases, multiple copies of the `constructs` library can be accidentally
+// installed, and `instanceof` will behave unpredictably. It is safest to avoid
+// using `instanceof`, and using this type-testing method instead.
+//
+// Returns: true if `x` is an object created from a class which extends
+// `Construct`.
 func Ingress_IsConstruct(x interface{}) *bool {
 	return plus34.Ingress_IsConstruct(x)
 }
 
+// Checks if `x` is a construct.
+//
+// Use this method instead of `instanceof` to properly detect `Construct`
+// instances, even when the construct library is symlinked.
+//
+// Explanation: in JavaScript, multiple copies of the `constructs` library on disk
+// are seen as independent, completely different libraries. As a consequence,
+// the class `Construct` in each copy of the `constructs` library is seen as a
+// different class, and an instance of one class will not test as `instanceof`
+// the other class. `npm install` will not create installations like this, but
+// users may manually symlink construct libraries together or use a monorepo tool:
+// in those cases, multiple copies of the `constructs` library can be accidentally
+// installed, and `instanceof` will behave unpredictably. It is safest to avoid
+// using `instanceof`, and using this type-testing method instead.
+//
+// Returns: true if `x` is an object created from a class which extends
+// `Construct`.
 func Job_IsConstruct(x interface{}) *bool {
 	return plus34.Job_IsConstruct(x)
 }
 
+// Requires label `key` to not exist.
 func LabelExpression_DoesNotExist(key *string) LabelExpression {
 	return plus34.LabelExpression_DoesNotExist(key)
 }
 
+// Requires label `key` to exist.
 func LabelExpression_Exists(key *string) LabelExpression {
 	return plus34.LabelExpression_Exists(key)
 }
 
+// Requires value of label `key` to be one of `values`.
 func LabelExpression_In(key *string, values *[]*string) LabelExpression {
 	return plus34.LabelExpression_In(key, values)
 }
 
+// Requires value of label `key` to be none of `values`.
 func LabelExpression_NotIn(key *string, values *[]*string) LabelExpression {
 	return plus34.LabelExpression_NotIn(key, values)
 }
@@ -781,62 +2107,141 @@ func LabelSelector_Of(options *LabelSelectorOptions) LabelSelector {
 	return plus34.LabelSelector_Of(options)
 }
 
+// Target a percentage value across all relevant pods.
 func MetricTarget_AverageUtilization(value *float64) MetricTarget {
 	return plus34.MetricTarget_AverageUtilization(value)
 }
 
+// Target the average value across all relevant pods.
 func MetricTarget_AverageValue(value *float64) MetricTarget {
 	return plus34.MetricTarget_AverageValue(value)
 }
 
+// Target a specific target value.
 func MetricTarget_Value(value *float64) MetricTarget {
 	return plus34.MetricTarget_Value(value)
 }
 
+// Metric that tracks the CPU of a container.
+//
+// This metric will be tracked across all pods of the current scale target.
 func Metric_ContainerCpu(options *MetricContainerResourceOptions) Metric {
 	return plus34.Metric_ContainerCpu(options)
 }
 
+// Metric that tracks the local ephemeral storage of a container.
+//
+// This metric will be tracked across all pods of the current scale target.
 func Metric_ContainerEphemeralStorage(options *MetricContainerResourceOptions) Metric {
 	return plus34.Metric_ContainerEphemeralStorage(options)
 }
 
+// Metric that tracks the Memory of a container.
+//
+// This metric will be tracked across all pods of the current scale target.
 func Metric_ContainerMemory(options *MetricContainerResourceOptions) Metric {
 	return plus34.Metric_ContainerMemory(options)
 }
 
+// Metric that tracks the volume size of a container.
+//
+// This metric will be tracked across all pods of the current scale target.
 func Metric_ContainerStorage(options *MetricContainerResourceOptions) Metric {
 	return plus34.Metric_ContainerStorage(options)
 }
 
+// A global metric that is not associated with any Kubernetes object.
+//
+// Allows for autoscaling based on information coming from components running
+// outside of the cluster.
+//
+// Use case: * Scale up when the length of an SQS queue is greater than 10
+// messages. * Scale down when an outside load balancer's queries are less than
+// 10000 per second.
 func Metric_External(options *MetricOptions) Metric {
 	return plus34.Metric_External(options)
 }
 
+// Metric that describes a metric of a kubernetes object.
+//
+// Use case: * Scale on a Kubernetes Ingress's hits-per-second metric.
 func Metric_Object(options *MetricObjectOptions) Metric {
 	return plus34.Metric_Object(options)
 }
 
+// A pod metric that will be averaged across all pods of the current scale target.
+//
+// Use case: * Average CPU utilization across all pods * Transactions processed per
+// second across all pods.
 func Metric_Pods(options *MetricOptions) Metric {
 	return plus34.Metric_Pods(options)
 }
 
+// Tracks the available CPU of the pods in a target.
+//
+// Note: Since the resource usages of all the containers are summed up the total
+// pod utilization may not accurately represent the individual container resource
+// usage. This could lead to situations where a single container might be running
+// with high usage and the HPA will not scale out because the overall pod usage is
+// still within acceptable limits.
+//
+// Use case: * Scale up when CPU is above 40%.
 func Metric_ResourceCpu(target MetricTarget) Metric {
 	return plus34.Metric_ResourceCpu(target)
 }
 
+// Tracks the available Ephemeral Storage of the pods in a target.
+//
+// Note: Since the resource usages of all the containers are summed up the total
+// pod utilization may not accurately represent the individual container resource
+// usage. This could lead to situations where a single container might be running
+// with high usage and the HPA will not scale out because the overall pod usage is
+// still within acceptable limits.
 func Metric_ResourceEphemeralStorage(target MetricTarget) Metric {
 	return plus34.Metric_ResourceEphemeralStorage(target)
 }
 
+// Tracks the available Memory of the pods in a target.
+//
+// Note: Since the resource usages of all the containers are summed up the total
+// pod utilization may not accurately represent the individual container resource
+// usage. This could lead to situations where a single container might be running
+// with high usage and the HPA will not scale out because the overall pod usage is
+// still within acceptable limits.
+//
+// Use case: * Scale up when Memory is above 512MB.
 func Metric_ResourceMemory(target MetricTarget) Metric {
 	return plus34.Metric_ResourceMemory(target)
 }
 
+// Tracks the available Storage of the pods in a target.
+//
+// Note: Since the resource usages of all the containers are summed up the total
+// pod utilization may not accurately represent the individual container resource
+// usage. This could lead to situations where a single container might be running
+// with high usage and the HPA will not scale out because the overall pod usage is
+// still within acceptable limits.
 func Metric_ResourceStorage(target MetricTarget) Metric {
 	return plus34.Metric_ResourceStorage(target)
 }
 
+// Checks if `x` is a construct.
+//
+// Use this method instead of `instanceof` to properly detect `Construct`
+// instances, even when the construct library is symlinked.
+//
+// Explanation: in JavaScript, multiple copies of the `constructs` library on disk
+// are seen as independent, completely different libraries. As a consequence,
+// the class `Construct` in each copy of the `constructs` library is seen as a
+// different class, and an instance of one class will not test as `instanceof`
+// the other class. `npm install` will not create installations like this, but
+// users may manually symlink construct libraries together or use a monorepo tool:
+// in those cases, multiple copies of the `constructs` library can be accidentally
+// installed, and `instanceof` will behave unpredictably. It is safest to avoid
+// using `instanceof`, and using this type-testing method instead.
+//
+// Returns: true if `x` is an object created from a class which extends
+// `Construct`.
 func Namespace_IsConstruct(x interface{}) *bool {
 	return plus34.Namespace_IsConstruct(x)
 }
@@ -845,66 +2250,130 @@ func Namespace_NAME_LABEL() *string {
 	return plus34.Namespace_NAME_LABEL()
 }
 
+// Select all namespaces.
 func Namespaces_All(scope constructs.Construct, id *string) Namespaces {
 	return plus34.Namespaces_All(scope, id)
 }
 
+// Checks if `x` is a construct.
+//
+// Use this method instead of `instanceof` to properly detect `Construct`
+// instances, even when the construct library is symlinked.
+//
+// Explanation: in JavaScript, multiple copies of the `constructs` library on disk
+// are seen as independent, completely different libraries. As a consequence,
+// the class `Construct` in each copy of the `constructs` library is seen as a
+// different class, and an instance of one class will not test as `instanceof`
+// the other class. `npm install` will not create installations like this, but
+// users may manually symlink construct libraries together or use a monorepo tool:
+// in those cases, multiple copies of the `constructs` library can be accidentally
+// installed, and `instanceof` will behave unpredictably. It is safest to avoid
+// using `instanceof`, and using this type-testing method instead.
+//
+// Returns: true if `x` is an object created from a class which extends
+// `Construct`.
 func Namespaces_IsConstruct(x interface{}) *bool {
 	return plus34.Namespaces_IsConstruct(x)
 }
 
+// Select specific namespaces.
 func Namespaces_Select(scope constructs.Construct, id *string, options *NamespacesSelectOptions) Namespaces {
 	return plus34.Namespaces_Select(scope, id, options)
 }
 
+// Any IPv4 address.
 func NetworkPolicyIpBlock_AnyIpv4(scope constructs.Construct, id *string) NetworkPolicyIpBlock {
 	return plus34.NetworkPolicyIpBlock_AnyIpv4(scope, id)
 }
 
+// Any IPv6 address.
 func NetworkPolicyIpBlock_AnyIpv6(scope constructs.Construct, id *string) NetworkPolicyIpBlock {
 	return plus34.NetworkPolicyIpBlock_AnyIpv6(scope, id)
 }
 
+// Create an IPv4 peer from a CIDR.
 func NetworkPolicyIpBlock_Ipv4(scope constructs.Construct, id, cidr *string, except *[]*string) NetworkPolicyIpBlock {
 	return plus34.NetworkPolicyIpBlock_Ipv4(scope, id, cidr, except)
 }
 
+// Create an IPv6 peer from a CIDR.
 func NetworkPolicyIpBlock_Ipv6(scope constructs.Construct, id, cidr *string, except *[]*string) NetworkPolicyIpBlock {
 	return plus34.NetworkPolicyIpBlock_Ipv6(scope, id, cidr, except)
 }
 
+// Checks if `x` is a construct.
+//
+// Use this method instead of `instanceof` to properly detect `Construct`
+// instances, even when the construct library is symlinked.
+//
+// Explanation: in JavaScript, multiple copies of the `constructs` library on disk
+// are seen as independent, completely different libraries. As a consequence,
+// the class `Construct` in each copy of the `constructs` library is seen as a
+// different class, and an instance of one class will not test as `instanceof`
+// the other class. `npm install` will not create installations like this, but
+// users may manually symlink construct libraries together or use a monorepo tool:
+// in those cases, multiple copies of the `constructs` library can be accidentally
+// installed, and `instanceof` will behave unpredictably. It is safest to avoid
+// using `instanceof`, and using this type-testing method instead.
+//
+// Returns: true if `x` is an object created from a class which extends
+// `Construct`.
 func NetworkPolicyIpBlock_IsConstruct(x interface{}) *bool {
 	return plus34.NetworkPolicyIpBlock_IsConstruct(x)
 }
 
+// Any TCP traffic.
 func NetworkPolicyPort_AllTcp() NetworkPolicyPort {
 	return plus34.NetworkPolicyPort_AllTcp()
 }
 
+// Any UDP traffic.
 func NetworkPolicyPort_AllUdp() NetworkPolicyPort {
 	return plus34.NetworkPolicyPort_AllUdp()
 }
 
+// Custom port configuration.
 func NetworkPolicyPort_Of(props *NetworkPolicyPortProps) NetworkPolicyPort {
 	return plus34.NetworkPolicyPort_Of(props)
 }
 
+// Distinct TCP ports.
 func NetworkPolicyPort_Tcp(port *float64) NetworkPolicyPort {
 	return plus34.NetworkPolicyPort_Tcp(port)
 }
 
+// A TCP port range.
 func NetworkPolicyPort_TcpRange(startPort, endPort *float64) NetworkPolicyPort {
 	return plus34.NetworkPolicyPort_TcpRange(startPort, endPort)
 }
 
+// Distinct UDP ports.
 func NetworkPolicyPort_Udp(port *float64) NetworkPolicyPort {
 	return plus34.NetworkPolicyPort_Udp(port)
 }
 
+// A UDP port range.
 func NetworkPolicyPort_UdpRange(startPort, endPort *float64) NetworkPolicyPort {
 	return plus34.NetworkPolicyPort_UdpRange(startPort, endPort)
 }
 
+// Checks if `x` is a construct.
+//
+// Use this method instead of `instanceof` to properly detect `Construct`
+// instances, even when the construct library is symlinked.
+//
+// Explanation: in JavaScript, multiple copies of the `constructs` library on disk
+// are seen as independent, completely different libraries. As a consequence,
+// the class `Construct` in each copy of the `constructs` library is seen as a
+// different class, and an instance of one class will not test as `instanceof`
+// the other class. `npm install` will not create installations like this, but
+// users may manually symlink construct libraries together or use a monorepo tool:
+// in those cases, multiple copies of the `constructs` library can be accidentally
+// installed, and `instanceof` will behave unpredictably. It is safest to avoid
+// using `instanceof`, and using this type-testing method instead.
+//
+// Returns: true if `x` is an object created from a class which extends
+// `Construct`.
 func NetworkPolicy_IsConstruct(x interface{}) *bool {
 	return plus34.NetworkPolicy_IsConstruct(x)
 }
@@ -1281,54 +2750,67 @@ func NewWorkload_Override(arg0 Workload, arg1 constructs.Construct, arg2 *string
 	plus34.NewWorkload_Override(arg0, arg1, arg2, arg3)
 }
 
+// Requires label `key` to not exist.
 func NodeLabelQuery_DoesNotExist(key *string) NodeLabelQuery {
 	return plus34.NodeLabelQuery_DoesNotExist(key)
 }
 
+// Requires label `key` to exist.
 func NodeLabelQuery_Exists(key *string) NodeLabelQuery {
 	return plus34.NodeLabelQuery_Exists(key)
 }
 
+// Requires value of label `key` to greater than all elements in `values`.
 func NodeLabelQuery_Gt(key *string, values *[]*string) NodeLabelQuery {
 	return plus34.NodeLabelQuery_Gt(key, values)
 }
 
+// Requires value of label `key` to be one of `values`.
 func NodeLabelQuery_In(key *string, values *[]*string) NodeLabelQuery {
 	return plus34.NodeLabelQuery_In(key, values)
 }
 
+// Requires value of label `key` to equal `value`.
 func NodeLabelQuery_Is(key, value *string) NodeLabelQuery {
 	return plus34.NodeLabelQuery_Is(key, value)
 }
 
+// Requires value of label `key` to less than all elements in `values`.
 func NodeLabelQuery_Lt(key *string, values *[]*string) NodeLabelQuery {
 	return plus34.NodeLabelQuery_Lt(key, values)
 }
 
+// Requires value of label `key` to be none of `values`.
 func NodeLabelQuery_NotIn(key *string, values *[]*string) NodeLabelQuery {
 	return plus34.NodeLabelQuery_NotIn(key, values)
 }
 
+// Matches any taint.
 func NodeTaintQuery_Any() NodeTaintQuery {
 	return plus34.NodeTaintQuery_Any()
 }
 
+// Matches a tain with any value of a specific key.
 func NodeTaintQuery_Exists(key *string, options *NodeTaintQueryOptions) NodeTaintQuery {
 	return plus34.NodeTaintQuery_Exists(key, options)
 }
 
+// Matches a taint with a specific key and value.
 func NodeTaintQuery_Is(key, value *string, options *NodeTaintQueryOptions) NodeTaintQuery {
 	return plus34.NodeTaintQuery_Is(key, value, options)
 }
 
+// Match a node by its labels.
 func Node_Labeled(selectors ...NodeLabelQuery) LabeledNode {
 	return plus34.Node_Labeled(selectors...)
 }
 
+// Match a node by its name.
 func Node_Named(name *string) NamedNode {
 	return plus34.Node_Named(name)
 }
 
+// Match a node by its taints.
 func Node_Tainted(selector ...NodeTaintQuery) TaintedNode {
 	return plus34.Node_Tainted(selector...)
 }
@@ -1337,26 +2819,64 @@ func NonApiResource_Of(url *string) NonApiResource {
 	return plus34.NonApiResource_Of(url)
 }
 
+// Absolute number.
 func PercentOrAbsolute_Absolute(value *float64) PercentOrAbsolute {
 	return plus34.PercentOrAbsolute_Absolute(value)
 }
 
+// Percent ratio.
 func PercentOrAbsolute_Percent(value *float64) PercentOrAbsolute {
 	return plus34.PercentOrAbsolute_Percent(value)
 }
 
+// Imports a pvc from the cluster as a reference.
 func PersistentVolumeClaim_FromClaimName(scope constructs.Construct, id, name *string) IPersistentVolumeClaim {
 	return plus34.PersistentVolumeClaim_FromClaimName(scope, id, name)
 }
 
+// Checks if `x` is a construct.
+//
+// Use this method instead of `instanceof` to properly detect `Construct`
+// instances, even when the construct library is symlinked.
+//
+// Explanation: in JavaScript, multiple copies of the `constructs` library on disk
+// are seen as independent, completely different libraries. As a consequence,
+// the class `Construct` in each copy of the `constructs` library is seen as a
+// different class, and an instance of one class will not test as `instanceof`
+// the other class. `npm install` will not create installations like this, but
+// users may manually symlink construct libraries together or use a monorepo tool:
+// in those cases, multiple copies of the `constructs` library can be accidentally
+// installed, and `instanceof` will behave unpredictably. It is safest to avoid
+// using `instanceof`, and using this type-testing method instead.
+//
+// Returns: true if `x` is an object created from a class which extends
+// `Construct`.
 func PersistentVolumeClaim_IsConstruct(x interface{}) *bool {
 	return plus34.PersistentVolumeClaim_IsConstruct(x)
 }
 
+// Imports a pv from the cluster as a reference.
 func PersistentVolume_FromPersistentVolumeName(scope constructs.Construct, id, name *string) IPersistentVolume {
 	return plus34.PersistentVolume_FromPersistentVolumeName(scope, id, name)
 }
 
+// Checks if `x` is a construct.
+//
+// Use this method instead of `instanceof` to properly detect `Construct`
+// instances, even when the construct library is symlinked.
+//
+// Explanation: in JavaScript, multiple copies of the `constructs` library on disk
+// are seen as independent, completely different libraries. As a consequence,
+// the class `Construct` in each copy of the `constructs` library is seen as a
+// different class, and an instance of one class will not test as `instanceof`
+// the other class. `npm install` will not create installations like this, but
+// users may manually symlink construct libraries together or use a monorepo tool:
+// in those cases, multiple copies of the `constructs` library can be accidentally
+// installed, and `instanceof` will behave unpredictably. It is safest to avoid
+// using `instanceof`, and using this type-testing method instead.
+//
+// Returns: true if `x` is an object created from a class which extends
+// `Construct`.
 func PersistentVolume_IsConstruct(x interface{}) *bool {
 	return plus34.PersistentVolume_IsConstruct(x)
 }
@@ -1365,118 +2885,348 @@ func Pod_ADDRESS_LABEL() *string {
 	return plus34.Pod_ADDRESS_LABEL()
 }
 
+// Checks if `x` is a construct.
+//
+// Use this method instead of `instanceof` to properly detect `Construct`
+// instances, even when the construct library is symlinked.
+//
+// Explanation: in JavaScript, multiple copies of the `constructs` library on disk
+// are seen as independent, completely different libraries. As a consequence,
+// the class `Construct` in each copy of the `constructs` library is seen as a
+// different class, and an instance of one class will not test as `instanceof`
+// the other class. `npm install` will not create installations like this, but
+// users may manually symlink construct libraries together or use a monorepo tool:
+// in those cases, multiple copies of the `constructs` library can be accidentally
+// installed, and `instanceof` will behave unpredictably. It is safest to avoid
+// using `instanceof`, and using this type-testing method instead.
+//
+// Returns: true if `x` is an object created from a class which extends
+// `Construct`.
 func Pod_IsConstruct(x interface{}) *bool {
 	return plus34.Pod_IsConstruct(x)
 }
 
+// Select all pods.
 func Pods_All(scope constructs.Construct, id *string, options *PodsAllOptions) Pods {
 	return plus34.Pods_All(scope, id, options)
 }
 
+// Checks if `x` is a construct.
+//
+// Use this method instead of `instanceof` to properly detect `Construct`
+// instances, even when the construct library is symlinked.
+//
+// Explanation: in JavaScript, multiple copies of the `constructs` library on disk
+// are seen as independent, completely different libraries. As a consequence,
+// the class `Construct` in each copy of the `constructs` library is seen as a
+// different class, and an instance of one class will not test as `instanceof`
+// the other class. `npm install` will not create installations like this, but
+// users may manually symlink construct libraries together or use a monorepo tool:
+// in those cases, multiple copies of the `constructs` library can be accidentally
+// installed, and `instanceof` will behave unpredictably. It is safest to avoid
+// using `instanceof`, and using this type-testing method instead.
+//
+// Returns: true if `x` is an object created from a class which extends
+// `Construct`.
 func Pods_IsConstruct(x interface{}) *bool {
 	return plus34.Pods_IsConstruct(x)
 }
 
+// Select pods in the cluster with various selectors.
 func Pods_Select(scope constructs.Construct, id *string, options *PodsSelectOptions) Pods {
 	return plus34.Pods_Select(scope, id, options)
 }
 
+// Defines a probe based on a command which is executed within the container.
 func Probe_FromCommand(command *[]*string, options *CommandProbeOptions) Probe {
 	return plus34.Probe_FromCommand(command, options)
 }
 
+// Defines a probe based on a gRPC request to the container.
 func Probe_FromGrpc(options *GrpcProbeOptions) Probe {
 	return plus34.Probe_FromGrpc(options)
 }
 
+// Defines a probe based on an HTTP GET request to the IP address of the container.
 func Probe_FromHttpGet(path *string, options *HttpGetProbeOptions) Probe {
 	return plus34.Probe_FromHttpGet(path, options)
 }
 
+// Defines a probe based opening a connection to a TCP socket on the container.
 func Probe_FromTcpSocket(options *TcpSocketProbeOptions) Probe {
 	return plus34.Probe_FromTcpSocket(options)
 }
 
+// Changes the pods by a percentage of the it's current value.
 func Replicas_Absolute(value *float64) Replicas {
 	return plus34.Replicas_Absolute(value)
 }
 
+// Changes the pods by a percentage of the it's current value.
 func Replicas_Percent(value *float64) Replicas {
 	return plus34.Replicas_Percent(value)
 }
 
+// Checks if `x` is a construct.
+//
+// Use this method instead of `instanceof` to properly detect `Construct`
+// instances, even when the construct library is symlinked.
+//
+// Explanation: in JavaScript, multiple copies of the `constructs` library on disk
+// are seen as independent, completely different libraries. As a consequence,
+// the class `Construct` in each copy of the `constructs` library is seen as a
+// different class, and an instance of one class will not test as `instanceof`
+// the other class. `npm install` will not create installations like this, but
+// users may manually symlink construct libraries together or use a monorepo tool:
+// in those cases, multiple copies of the `constructs` library can be accidentally
+// installed, and `instanceof` will behave unpredictably. It is safest to avoid
+// using `instanceof`, and using this type-testing method instead.
+//
+// Returns: true if `x` is an object created from a class which extends
+// `Construct`.
 func Resource_IsConstruct(x interface{}) *bool {
 	return plus34.Resource_IsConstruct(x)
 }
 
+// Checks if `x` is a construct.
+//
+// Use this method instead of `instanceof` to properly detect `Construct`
+// instances, even when the construct library is symlinked.
+//
+// Explanation: in JavaScript, multiple copies of the `constructs` library on disk
+// are seen as independent, completely different libraries. As a consequence,
+// the class `Construct` in each copy of the `constructs` library is seen as a
+// different class, and an instance of one class will not test as `instanceof`
+// the other class. `npm install` will not create installations like this, but
+// users may manually symlink construct libraries together or use a monorepo tool:
+// in those cases, multiple copies of the `constructs` library can be accidentally
+// installed, and `instanceof` will behave unpredictably. It is safest to avoid
+// using `instanceof`, and using this type-testing method instead.
+//
+// Returns: true if `x` is an object created from a class which extends
+// `Construct`.
 func RoleBinding_IsConstruct(x interface{}) *bool {
 	return plus34.RoleBinding_IsConstruct(x)
 }
 
+// Imports a role from the cluster as a reference.
 func Role_FromRoleName(scope constructs.Construct, id, name *string) IRole {
 	return plus34.Role_FromRoleName(scope, id, name)
 }
 
+// Checks if `x` is a construct.
+//
+// Use this method instead of `instanceof` to properly detect `Construct`
+// instances, even when the construct library is symlinked.
+//
+// Explanation: in JavaScript, multiple copies of the `constructs` library on disk
+// are seen as independent, completely different libraries. As a consequence,
+// the class `Construct` in each copy of the `constructs` library is seen as a
+// different class, and an instance of one class will not test as `instanceof`
+// the other class. `npm install` will not create installations like this, but
+// users may manually symlink construct libraries together or use a monorepo tool:
+// in those cases, multiple copies of the `constructs` library can be accidentally
+// installed, and `instanceof` will behave unpredictably. It is safest to avoid
+// using `instanceof`, and using this type-testing method instead.
+//
+// Returns: true if `x` is an object created from a class which extends
+// `Construct`.
 func Role_IsConstruct(x interface{}) *bool {
 	return plus34.Role_IsConstruct(x)
 }
 
+// Imports a secret from the cluster as a reference.
 func Secret_FromSecretName(scope constructs.Construct, id, name *string) ISecret {
 	return plus34.Secret_FromSecretName(scope, id, name)
 }
 
+// Checks if `x` is a construct.
+//
+// Use this method instead of `instanceof` to properly detect `Construct`
+// instances, even when the construct library is symlinked.
+//
+// Explanation: in JavaScript, multiple copies of the `constructs` library on disk
+// are seen as independent, completely different libraries. As a consequence,
+// the class `Construct` in each copy of the `constructs` library is seen as a
+// different class, and an instance of one class will not test as `instanceof`
+// the other class. `npm install` will not create installations like this, but
+// users may manually symlink construct libraries together or use a monorepo tool:
+// in those cases, multiple copies of the `constructs` library can be accidentally
+// installed, and `instanceof` will behave unpredictably. It is safest to avoid
+// using `instanceof`, and using this type-testing method instead.
+//
+// Returns: true if `x` is an object created from a class which extends
+// `Construct`.
 func Secret_IsConstruct(x interface{}) *bool {
 	return plus34.Secret_IsConstruct(x)
 }
 
+// Imports a secret from the cluster as a reference.
 func ServiceAccountTokenSecret_FromSecretName(scope constructs.Construct, id, name *string) ISecret {
 	return plus34.ServiceAccountTokenSecret_FromSecretName(scope, id, name)
 }
 
+// Checks if `x` is a construct.
+//
+// Use this method instead of `instanceof` to properly detect `Construct`
+// instances, even when the construct library is symlinked.
+//
+// Explanation: in JavaScript, multiple copies of the `constructs` library on disk
+// are seen as independent, completely different libraries. As a consequence,
+// the class `Construct` in each copy of the `constructs` library is seen as a
+// different class, and an instance of one class will not test as `instanceof`
+// the other class. `npm install` will not create installations like this, but
+// users may manually symlink construct libraries together or use a monorepo tool:
+// in those cases, multiple copies of the `constructs` library can be accidentally
+// installed, and `instanceof` will behave unpredictably. It is safest to avoid
+// using `instanceof`, and using this type-testing method instead.
+//
+// Returns: true if `x` is an object created from a class which extends
+// `Construct`.
 func ServiceAccountTokenSecret_IsConstruct(x interface{}) *bool {
 	return plus34.ServiceAccountTokenSecret_IsConstruct(x)
 }
 
+// Imports a service account from the cluster as a reference.
 func ServiceAccount_FromServiceAccountName(scope constructs.Construct, id, name *string, options *FromServiceAccountNameOptions) IServiceAccount {
 	return plus34.ServiceAccount_FromServiceAccountName(scope, id, name, options)
 }
 
+// Checks if `x` is a construct.
+//
+// Use this method instead of `instanceof` to properly detect `Construct`
+// instances, even when the construct library is symlinked.
+//
+// Explanation: in JavaScript, multiple copies of the `constructs` library on disk
+// are seen as independent, completely different libraries. As a consequence,
+// the class `Construct` in each copy of the `constructs` library is seen as a
+// different class, and an instance of one class will not test as `instanceof`
+// the other class. `npm install` will not create installations like this, but
+// users may manually symlink construct libraries together or use a monorepo tool:
+// in those cases, multiple copies of the `constructs` library can be accidentally
+// installed, and `instanceof` will behave unpredictably. It is safest to avoid
+// using `instanceof`, and using this type-testing method instead.
+//
+// Returns: true if `x` is an object created from a class which extends
+// `Construct`.
 func ServiceAccount_IsConstruct(x interface{}) *bool {
 	return plus34.ServiceAccount_IsConstruct(x)
 }
 
+// Checks if `x` is a construct.
+//
+// Use this method instead of `instanceof` to properly detect `Construct`
+// instances, even when the construct library is symlinked.
+//
+// Explanation: in JavaScript, multiple copies of the `constructs` library on disk
+// are seen as independent, completely different libraries. As a consequence,
+// the class `Construct` in each copy of the `constructs` library is seen as a
+// different class, and an instance of one class will not test as `instanceof`
+// the other class. `npm install` will not create installations like this, but
+// users may manually symlink construct libraries together or use a monorepo tool:
+// in those cases, multiple copies of the `constructs` library can be accidentally
+// installed, and `instanceof` will behave unpredictably. It is safest to avoid
+// using `instanceof`, and using this type-testing method instead.
+//
+// Returns: true if `x` is an object created from a class which extends
+// `Construct`.
 func Service_IsConstruct(x interface{}) *bool {
 	return plus34.Service_IsConstruct(x)
 }
 
+// Imports a secret from the cluster as a reference.
 func SshAuthSecret_FromSecretName(scope constructs.Construct, id, name *string) ISecret {
 	return plus34.SshAuthSecret_FromSecretName(scope, id, name)
 }
 
+// Checks if `x` is a construct.
+//
+// Use this method instead of `instanceof` to properly detect `Construct`
+// instances, even when the construct library is symlinked.
+//
+// Explanation: in JavaScript, multiple copies of the `constructs` library on disk
+// are seen as independent, completely different libraries. As a consequence,
+// the class `Construct` in each copy of the `constructs` library is seen as a
+// different class, and an instance of one class will not test as `instanceof`
+// the other class. `npm install` will not create installations like this, but
+// users may manually symlink construct libraries together or use a monorepo tool:
+// in those cases, multiple copies of the `constructs` library can be accidentally
+// installed, and `instanceof` will behave unpredictably. It is safest to avoid
+// using `instanceof`, and using this type-testing method instead.
+//
+// Returns: true if `x` is an object created from a class which extends
+// `Construct`.
 func SshAuthSecret_IsConstruct(x interface{}) *bool {
 	return plus34.SshAuthSecret_IsConstruct(x)
 }
 
+// The controller will not automatically update the Pods in a StatefulSet.
+//
+// Users must manually delete Pods to cause the controller to create new Pods that
+// reflect modifications.
 func StatefulSetUpdateStrategy_OnDelete() StatefulSetUpdateStrategy {
 	return plus34.StatefulSetUpdateStrategy_OnDelete()
 }
 
+// The controller will delete and recreate each Pod in the StatefulSet.
+//
+// It will proceed in the same order as Pod termination (from the largest ordinal
+// to the smallest), updating each Pod one at a time. The Kubernetes control
+// plane waits until an updated Pod is Running and Ready prior to updating its
+// predecessor.
 func StatefulSetUpdateStrategy_RollingUpdate(options *StatefulSetUpdateStrategyRollingUpdateOptions) StatefulSetUpdateStrategy {
 	return plus34.StatefulSetUpdateStrategy_RollingUpdate(options)
 }
 
+// Checks if `x` is a construct.
+//
+// Use this method instead of `instanceof` to properly detect `Construct`
+// instances, even when the construct library is symlinked.
+//
+// Explanation: in JavaScript, multiple copies of the `constructs` library on disk
+// are seen as independent, completely different libraries. As a consequence,
+// the class `Construct` in each copy of the `constructs` library is seen as a
+// different class, and an instance of one class will not test as `instanceof`
+// the other class. `npm install` will not create installations like this, but
+// users may manually symlink construct libraries together or use a monorepo tool:
+// in those cases, multiple copies of the `constructs` library can be accidentally
+// installed, and `instanceof` will behave unpredictably. It is safest to avoid
+// using `instanceof`, and using this type-testing method instead.
+//
+// Returns: true if `x` is an object created from a class which extends
+// `Construct`.
 func StatefulSet_IsConstruct(x interface{}) *bool {
 	return plus34.StatefulSet_IsConstruct(x)
 }
 
+// Imports a secret from the cluster as a reference.
 func TlsSecret_FromSecretName(scope constructs.Construct, id, name *string) ISecret {
 	return plus34.TlsSecret_FromSecretName(scope, id, name)
 }
 
+// Checks if `x` is a construct.
+//
+// Use this method instead of `instanceof` to properly detect `Construct`
+// instances, even when the construct library is symlinked.
+//
+// Explanation: in JavaScript, multiple copies of the `constructs` library on disk
+// are seen as independent, completely different libraries. As a consequence,
+// the class `Construct` in each copy of the `constructs` library is seen as a
+// different class, and an instance of one class will not test as `instanceof`
+// the other class. `npm install` will not create installations like this, but
+// users may manually symlink construct libraries together or use a monorepo tool:
+// in those cases, multiple copies of the `constructs` library can be accidentally
+// installed, and `instanceof` will behave unpredictably. It is safest to avoid
+// using `instanceof`, and using this type-testing method instead.
+//
+// Returns: true if `x` is an object created from a class which extends
+// `Construct`.
 func TlsSecret_IsConstruct(x interface{}) *bool {
 	return plus34.TlsSecret_IsConstruct(x)
 }
 
+// Custom key for the node label that the system uses to denote the topology
+// domain.
 func Topology_Custom(key *string) Topology {
 	return plus34.Topology_Custom(key)
 }
@@ -1493,62 +3243,181 @@ func Topology_ZONE() Topology {
 	return plus34.Topology_ZONE()
 }
 
+// Reference a user in the cluster by name.
 func User_FromName(scope constructs.Construct, id, name *string) User {
 	return plus34.User_FromName(scope, id, name)
 }
 
+// Checks if `x` is a construct.
+//
+// Use this method instead of `instanceof` to properly detect `Construct`
+// instances, even when the construct library is symlinked.
+//
+// Explanation: in JavaScript, multiple copies of the `constructs` library on disk
+// are seen as independent, completely different libraries. As a consequence,
+// the class `Construct` in each copy of the `constructs` library is seen as a
+// different class, and an instance of one class will not test as `instanceof`
+// the other class. `npm install` will not create installations like this, but
+// users may manually symlink construct libraries together or use a monorepo tool:
+// in those cases, multiple copies of the `constructs` library can be accidentally
+// installed, and `instanceof` will behave unpredictably. It is safest to avoid
+// using `instanceof`, and using this type-testing method instead.
+//
+// Returns: true if `x` is an object created from a class which extends
+// `Construct`.
 func User_IsConstruct(x interface{}) *bool {
 	return plus34.User_IsConstruct(x)
 }
 
+// Mounts an Amazon Web Services (AWS) EBS volume into your pod.
+//
+// Unlike emptyDir, which is erased when a pod is removed, the contents of an EBS
+// volume are persisted and the volume is unmounted. This means that an EBS volume
+// can be pre-populated with data, and that data can be shared between pods.
+//
+// There are some restrictions when using an awsElasticBlockStore volume:
+//
+// - the nodes on which pods are running must be AWS EC2 instances. - those
+// instances need to be in the same region and availability zone as the EBS volume.
+// - EBS only supports a single EC2 instance mounting a volume.
 func Volume_FromAwsElasticBlockStore(scope constructs.Construct, id, volumeID *string, options *AwsElasticBlockStoreVolumeOptions) Volume {
 	return plus34.Volume_FromAwsElasticBlockStore(scope, id, volumeID, options)
 }
 
+// Mounts a Microsoft Azure Data Disk into a pod.
 func Volume_FromAzureDisk(scope constructs.Construct, id, diskName, diskURI *string, options *AzureDiskVolumeOptions) Volume {
 	return plus34.Volume_FromAzureDisk(scope, id, diskName, diskURI, options)
 }
 
+// Populate the volume from a ConfigMap.
+//
+// The configMap resource provides a way to inject configuration data into Pods.
+// The data stored in a ConfigMap object can be referenced in a volume of type
+// configMap and then consumed by containerized applications running in a Pod.
+//
+// When referencing a configMap object, you can simply provide its name in the
+// volume to reference it. You can also customize the path to use for a specific
+// entry in the ConfigMap.
 func Volume_FromConfigMap(scope constructs.Construct, id *string, configMap IConfigMap, options *ConfigMapVolumeOptions) Volume {
 	return plus34.Volume_FromConfigMap(scope, id, configMap, options)
 }
 
+// Populate the volume from a CSI driver, for example the Secrets Store CSI
+// Driver: https://secrets-store-csi-driver.sigs.k8s.io/introduction.html.
+// Which in turn needs an associated provider to source the secrets, such
+// as the AWS Secrets Manager and Systems Manager Parameter Store provider:
+// https://aws.github.io/secrets-store-csi-driver-provider-aws/.
 func Volume_FromCsi(scope constructs.Construct, id, driver *string, options *CsiVolumeOptions) Volume {
 	return plus34.Volume_FromCsi(scope, id, driver, options)
 }
 
+// An emptyDir volume is first created when a Pod is assigned to a Node, and exists
+// as long as that Pod is running on that node.
+//
+// As the name says, it is initially empty. Containers in the Pod can all read
+// and write the same files in the emptyDir volume, though that volume can be
+// mounted at the same or different paths in each Container. When a Pod is removed
+// from a node for any reason, the data in the emptyDir is deleted forever. See:
+// http://kubernetes.io/docs/user-guide/volumes#emptydir
 func Volume_FromEmptyDir(scope constructs.Construct, id, name *string, options *EmptyDirVolumeOptions) Volume {
 	return plus34.Volume_FromEmptyDir(scope, id, name, options)
 }
 
+// Mounts a Google Compute Engine (GCE) persistent disk (PD) into your Pod.
+//
+// Unlike emptyDir, which is erased when a pod is removed, the contents of a PD
+// are preserved and the volume is merely unmounted. This means that a PD can be
+// pre-populated with data, and that data can be shared between pods.
+//
+// There are some restrictions when using a gcePersistentDisk:
+//
+// - the nodes on which Pods are running must be GCE VMs - those VMs need to be in
+// the same GCE project and zone as the persistent disk.
 func Volume_FromGcePersistentDisk(scope constructs.Construct, id, pdName *string, options *GCEPersistentDiskVolumeOptions) Volume {
 	return plus34.Volume_FromGcePersistentDisk(scope, id, pdName, options)
 }
 
+// Used to mount a file or directory from the host node's filesystem into a Pod.
+//
+// This is not something that most Pods will need, but it
+// offers a powerful escape hatch for some applications. See:
+// https://kubernetes.io/docs/concepts/storage/volumes/#hostpath
 func Volume_FromHostPath(scope constructs.Construct, id, name *string, options *HostPathVolumeOptions) Volume {
 	return plus34.Volume_FromHostPath(scope, id, name, options)
 }
 
+// Create a volume with an arbitrary name and no configuration.
 func Volume_FromName(scope constructs.Construct, id, name *string) Volume {
 	return plus34.Volume_FromName(scope, id, name)
 }
 
+// Used to mount an NFS share into a Pod. See:
+// https://kubernetes.io/docs/concepts/storage/volumes/#nfs
 func Volume_FromNfs(scope constructs.Construct, id, name *string, options *NfsVolumeOptions) Volume {
 	return plus34.Volume_FromNfs(scope, id, name, options)
 }
 
+// Used to mount a PersistentVolume into a Pod.
+//
+// PersistentVolumeClaims are a way for users to "claim" durable
+// storage (such as a GCE PersistentDisk or an iSCSI volume) without
+// knowing the details of the particular cloud environment. See:
+// https://kubernetes.io/docs/concepts/storage/persistent-volumes/
 func Volume_FromPersistentVolumeClaim(scope constructs.Construct, id *string, claim IPersistentVolumeClaim, options *PersistentVolumeClaimVolumeOptions) Volume {
 	return plus34.Volume_FromPersistentVolumeClaim(scope, id, claim, options)
 }
 
+// Populate the volume from a Secret.
+//
+// A secret volume is used to pass sensitive information, such as passwords,
+// to Pods. You can store secrets in the Kubernetes API and mount them as files for
+// use by pods without coupling to Kubernetes directly.
+//
+// secret volumes are backed by tmpfs (a RAM-backed filesystem)
+// so they are never written to non-volatile storage. See:
+// https://kubernetes.io/docs/concepts/storage/volumes/#secret
 func Volume_FromSecret(scope constructs.Construct, id *string, secret ISecret, options *SecretVolumeOptions) Volume {
 	return plus34.Volume_FromSecret(scope, id, secret, options)
 }
 
+// Checks if `x` is a construct.
+//
+// Use this method instead of `instanceof` to properly detect `Construct`
+// instances, even when the construct library is symlinked.
+//
+// Explanation: in JavaScript, multiple copies of the `constructs` library on disk
+// are seen as independent, completely different libraries. As a consequence,
+// the class `Construct` in each copy of the `constructs` library is seen as a
+// different class, and an instance of one class will not test as `instanceof`
+// the other class. `npm install` will not create installations like this, but
+// users may manually symlink construct libraries together or use a monorepo tool:
+// in those cases, multiple copies of the `constructs` library can be accidentally
+// installed, and `instanceof` will behave unpredictably. It is safest to avoid
+// using `instanceof`, and using this type-testing method instead.
+//
+// Returns: true if `x` is an object created from a class which extends
+// `Construct`.
 func Volume_IsConstruct(x interface{}) *bool {
 	return plus34.Volume_IsConstruct(x)
 }
 
+// Checks if `x` is a construct.
+//
+// Use this method instead of `instanceof` to properly detect `Construct`
+// instances, even when the construct library is symlinked.
+//
+// Explanation: in JavaScript, multiple copies of the `constructs` library on disk
+// are seen as independent, completely different libraries. As a consequence,
+// the class `Construct` in each copy of the `constructs` library is seen as a
+// different class, and an instance of one class will not test as `instanceof`
+// the other class. `npm install` will not create installations like this, but
+// users may manually symlink construct libraries together or use a monorepo tool:
+// in those cases, multiple copies of the `constructs` library can be accidentally
+// installed, and `instanceof` will behave unpredictably. It is safest to avoid
+// using `instanceof`, and using this type-testing method instead.
+//
+// Returns: true if `x` is an object created from a class which extends
+// `Construct`.
 func Workload_IsConstruct(x interface{}) *bool {
 	return plus34.Workload_IsConstruct(x)
 }

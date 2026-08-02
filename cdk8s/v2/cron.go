@@ -27,6 +27,7 @@ func NewCron_Override(cron Cron, cronOptions *CronOptions) {
 	}
 }
 
+// Create a cron schedule which runs first day of January every year.
 func Cron_Annually() Cron {
 	return Cron_Schedule(&CronOptions{
 		Minute:  cronString("0"),
@@ -37,6 +38,7 @@ func Cron_Annually() Cron {
 	})
 }
 
+// Create a cron schedule which runs every day at midnight.
 func Cron_Daily() Cron {
 	return Cron_Schedule(&CronOptions{
 		Minute:  cronString("0"),
@@ -47,6 +49,7 @@ func Cron_Daily() Cron {
 	})
 }
 
+// Create a cron schedule which runs every minute.
 func Cron_EveryMinute() Cron {
 	return Cron_Schedule(&CronOptions{
 		Minute:  cronString("*"),
@@ -57,6 +60,7 @@ func Cron_EveryMinute() Cron {
 	})
 }
 
+// Create a cron schedule which runs every hour.
 func Cron_Hourly() Cron {
 	return Cron_Schedule(&CronOptions{
 		Minute:  cronString("0"),
@@ -67,6 +71,7 @@ func Cron_Hourly() Cron {
 	})
 }
 
+// Create a cron schedule which runs first day of every month.
 func Cron_Monthly() Cron {
 	return Cron_Schedule(&CronOptions{
 		Minute:  cronString("0"),
@@ -77,6 +82,7 @@ func Cron_Monthly() Cron {
 	})
 }
 
+// Create a custom cron schedule from a set of cron fields.
 func Cron_Schedule(options *CronOptions) Cron {
 	if options == nil {
 		panic("parameter options is required, but nil was provided")
@@ -84,6 +90,7 @@ func Cron_Schedule(options *CronOptions) Cron {
 	return newCron(options)
 }
 
+// Create a cron schedule which runs every week on Sunday.
 func Cron_Weekly() Cron {
 	return Cron_Schedule(&CronOptions{
 		Minute:  cronString("0"),

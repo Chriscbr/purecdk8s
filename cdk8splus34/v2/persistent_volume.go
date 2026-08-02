@@ -7,75 +7,198 @@ import (
 )
 
 type (
-	IPersistentVolume      interface{ IResource }
+	// Contract of a `PersistentVolumeClaim`.
+	IPersistentVolume interface{ IResource }
+	// Contract of a `PersistentVolumeClaim`.
 	IPersistentVolumeClaim interface{ IResource }
 )
 
+// Access Modes.
 type PersistentVolumeAccessMode string
 
 const (
-	PersistentVolumeAccessMode_READ_WRITE_ONCE     PersistentVolumeAccessMode = "READ_WRITE_ONCE"
-	PersistentVolumeAccessMode_READ_ONLY_MANY      PersistentVolumeAccessMode = "READ_ONLY_MANY"
-	PersistentVolumeAccessMode_READ_WRITE_MANY     PersistentVolumeAccessMode = "READ_WRITE_MANY"
+	// The volume can be mounted as read-write by a single node.
+	//
+	// ReadWriteOnce access mode still can allow multiple pods to access the volume when the pods are running on the same node.
+	PersistentVolumeAccessMode_READ_WRITE_ONCE PersistentVolumeAccessMode = "READ_WRITE_ONCE"
+	// The volume can be mounted as read-only by many nodes.
+	PersistentVolumeAccessMode_READ_ONLY_MANY PersistentVolumeAccessMode = "READ_ONLY_MANY"
+	// The volume can be mounted as read-write by many nodes.
+	PersistentVolumeAccessMode_READ_WRITE_MANY PersistentVolumeAccessMode = "READ_WRITE_MANY"
+	// The volume can be mounted as read-write by a single Pod.
+	//
+	// Use ReadWriteOncePod access mode if you want to ensure that only one pod across whole cluster can read that PVC or write to it. This is only supported for CSI volumes and Kubernetes version 1.22+.
 	PersistentVolumeAccessMode_READ_WRITE_ONCE_POD PersistentVolumeAccessMode = "READ_WRITE_ONCE_POD"
 )
 
+// Volume Modes.
 type PersistentVolumeMode string
 
 const (
+	// Volume is ounted into Pods into a directory.
+	//
+	// If the volume is backed by a block device and the device is empty, Kubernetes creates a filesystem on the device before mounting it for the first time.
 	PersistentVolumeMode_FILE_SYSTEM PersistentVolumeMode = "FILE_SYSTEM"
-	PersistentVolumeMode_BLOCK       PersistentVolumeMode = "BLOCK"
+	// Use a volume as a raw block device.
+	//
+	// Such volume is presented into a Pod as a block device, without any filesystem on it. This mode is useful to provide a Pod the fastest possible way to access a volume, without any filesystem layer between the Pod and the volume. On the other hand, the application running in the Pod must know how to handle a raw block device.
+	PersistentVolumeMode_BLOCK PersistentVolumeMode = "BLOCK"
 )
 
+// Reclaim Policies.
 type PersistentVolumeReclaimPolicy string
 
 const (
+	// The Retain reclaim policy allows for manual reclamation of the resource.
+	//
+	// When the PersistentVolumeClaim is deleted, the PersistentVolume still exists and the volume is considered "released". But it is not yet available for another claim because the previous claimant's data remains on the volume. An administrator can manually reclaim the volume with the following steps:
+	//
+	//  1. Delete the PersistentVolume. The associated storage asset in external infrastructure (such as an AWS EBS, GCE PD, Azure Disk, or Cinder volume) still exists after the PV is deleted.
+	//  2. Manually clean up the data on the associated storage asset accordingly.
+	//  3. Manually delete the associated storage asset.
+	//
+	// If you want to reuse the same storage asset, create a new PersistentVolume with the same storage asset definition.
 	PersistentVolumeReclaimPolicy_RETAIN PersistentVolumeReclaimPolicy = "RETAIN"
+	// For volume plugins that support the Delete reclaim policy, deletion removes both the PersistentVolume object from Kubernetes, as well as the associated storage asset in the external infrastructure, such as an AWS EBS, GCE PD, Azure Disk, or Cinder volume.
+	//
+	// Volumes that were dynamically provisioned inherit the reclaim policy of their StorageClass, which defaults to Delete. The administrator should configure the StorageClass according to users' expectations; otherwise, the PV must be edited or patched after it is created.
 	PersistentVolumeReclaimPolicy_DELETE PersistentVolumeReclaimPolicy = "DELETE"
 )
 
+// Properties for `PersistentVolume`.
 type PersistentVolumeProps struct {
-	Metadata         *cdk8s.ApiObjectMetadata      `field:"optional" json:"metadata" yaml:"metadata"`
-	AccessModes      *[]PersistentVolumeAccessMode `field:"optional" json:"accessModes" yaml:"accessModes"`
-	Claim            IPersistentVolumeClaim        `field:"optional" json:"claim" yaml:"claim"`
-	MountOptions     *[]*string                    `field:"optional" json:"mountOptions" yaml:"mountOptions"`
-	ReclaimPolicy    PersistentVolumeReclaimPolicy `field:"optional" json:"reclaimPolicy" yaml:"reclaimPolicy"`
-	Storage          cdk8s.Size                    `field:"optional" json:"storage" yaml:"storage"`
-	StorageClassName *string                       `field:"optional" json:"storageClassName" yaml:"storageClassName"`
-	VolumeMode       PersistentVolumeMode          `field:"optional" json:"volumeMode" yaml:"volumeMode"`
+	// Metadata that all persisted resources must have, which includes all objects users must create.
+	Metadata *cdk8s.ApiObjectMetadata `field:"optional" json:"metadata" yaml:"metadata"`
+	// Contains all ways the volume can be mounted. See: https://kubernetes.io/docs/concepts/storage/persistent-volumes#access-modes
+	//
+	// Default: - No access modes.
+	AccessModes *[]PersistentVolumeAccessMode `field:"optional" json:"accessModes" yaml:"accessModes"`
+	// Part of a bi-directional binding between PersistentVolume and PersistentVolumeClaim.
+	//
+	// Expected to be non-nil when bound. See: https://kubernetes.io/docs/concepts/storage/persistent-volumes#binding
+	//
+	// Default: - Not bound to a specific claim.
+	Claim IPersistentVolumeClaim `field:"optional" json:"claim" yaml:"claim"`
+	// A list of mount options, e.g. ["ro", "soft"]. Not validated - mount will simply fail if one is invalid. See: https://kubernetes.io/docs/concepts/storage/persistent-volumes/#mount-options
+	//
+	// Default: - No options.
+	MountOptions *[]*string `field:"optional" json:"mountOptions" yaml:"mountOptions"`
+	// When a user is done with their volume, they can delete the PVC objects from the API that allows reclamation of the resource.
+	//
+	// The reclaim policy tells the cluster what to do with the volume after it has been released of its claim. See: https://kubernetes.io/docs/concepts/storage/persistent-volumes#reclaiming
+	//
+	// Default: PersistentVolumeReclaimPolicy.RETAIN
+	ReclaimPolicy PersistentVolumeReclaimPolicy `field:"optional" json:"reclaimPolicy" yaml:"reclaimPolicy"`
+	// What is the storage capacity of this volume. See: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
+	//
+	// Default: - No specified.
+	Storage cdk8s.Size `field:"optional" json:"storage" yaml:"storage"`
+	// Name of StorageClass to which this persistent volume belongs. Default: - Volume does not belong to any storage class.
+	StorageClassName *string `field:"optional" json:"storageClassName" yaml:"storageClassName"`
+	// Defines what type of volume is required by the claim. Default: VolumeMode.FILE_SYSTEM
+	VolumeMode PersistentVolumeMode `field:"optional" json:"volumeMode" yaml:"volumeMode"`
 }
 
+// Properties for `PersistentVolumeClaim`.
 type PersistentVolumeClaimProps struct {
-	Metadata         *cdk8s.ApiObjectMetadata      `field:"optional" json:"metadata" yaml:"metadata"`
-	AccessModes      *[]PersistentVolumeAccessMode `field:"optional" json:"accessModes" yaml:"accessModes"`
-	Storage          cdk8s.Size                    `field:"optional" json:"storage" yaml:"storage"`
-	StorageClassName *string                       `field:"optional" json:"storageClassName" yaml:"storageClassName"`
-	Volume           IPersistentVolume             `field:"optional" json:"volume" yaml:"volume"`
-	VolumeMode       PersistentVolumeMode          `field:"optional" json:"volumeMode" yaml:"volumeMode"`
+	// Metadata that all persisted resources must have, which includes all objects users must create.
+	Metadata *cdk8s.ApiObjectMetadata `field:"optional" json:"metadata" yaml:"metadata"`
+	// Contains the access modes the volume should support. See: https://kubernetes.io/docs/concepts/storage/persistent-volumes#access-modes-1
+	//
+	// Default: - No access modes requirement.
+	AccessModes *[]PersistentVolumeAccessMode `field:"optional" json:"accessModes" yaml:"accessModes"`
+	// Minimum storage size the volume should have. See: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
+	//
+	// Default: - No storage requirement.
+	Storage cdk8s.Size `field:"optional" json:"storage" yaml:"storage"`
+	// Name of the StorageClass required by the claim. When this property is not set, the behavior is as follows:.
+	//
+	// - If the admission plugin is turned on, the storage class marked as default will be used. - If the admission plugin is turned off, the pvc can only be bound to volumes without a storage class. See: https://kubernetes.io/docs/concepts/storage/persistent-volumes#class-1
+	//
+	// Default: - Not set.
+	StorageClassName *string `field:"optional" json:"storageClassName" yaml:"storageClassName"`
+	// The PersistentVolume backing this claim.
+	//
+	// The control plane still checks that storage class, access modes, and requested storage size on the volume are valid.
+	//
+	// Note that in order to guarantee a proper binding, the volume should also define a `claimRef` referring to this claim. Otherwise, the volume may be claimed be other pvc's before it gets a chance to bind to this one.
+	//
+	// If the volume is managed (i.e not imported), you can use `pv.claim()` to easily create a bi-directional bounded claim. See: https://kubernetes.io/docs/concepts/storage/persistent-volumes/#binding.
+	//
+	// Default: - No specific volume binding.
+	Volume IPersistentVolume `field:"optional" json:"volume" yaml:"volume"`
+	// Defines what type of volume is required by the claim. Default: VolumeMode.FILE_SYSTEM
+	VolumeMode PersistentVolumeMode `field:"optional" json:"volumeMode" yaml:"volumeMode"`
 }
 
+// A PersistentVolumeClaim template for StatefulSets.
 type PersistentVolumeClaimTemplateProps struct {
-	Metadata         *cdk8s.ApiObjectMetadata      `field:"optional" json:"metadata" yaml:"metadata"`
-	AccessModes      *[]PersistentVolumeAccessMode `field:"optional" json:"accessModes" yaml:"accessModes"`
-	Storage          cdk8s.Size                    `field:"optional" json:"storage" yaml:"storage"`
-	StorageClassName *string                       `field:"optional" json:"storageClassName" yaml:"storageClassName"`
-	Volume           IPersistentVolume             `field:"optional" json:"volume" yaml:"volume"`
-	VolumeMode       PersistentVolumeMode          `field:"optional" json:"volumeMode" yaml:"volumeMode"`
-	Name             *string                       `field:"required" json:"name" yaml:"name"`
+	// Metadata that all persisted resources must have, which includes all objects users must create.
+	Metadata *cdk8s.ApiObjectMetadata `field:"optional" json:"metadata" yaml:"metadata"`
+	// Contains the access modes the volume should support. See: https://kubernetes.io/docs/concepts/storage/persistent-volumes#access-modes-1
+	//
+	// Default: - No access modes requirement.
+	AccessModes *[]PersistentVolumeAccessMode `field:"optional" json:"accessModes" yaml:"accessModes"`
+	// Minimum storage size the volume should have. See: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
+	//
+	// Default: - No storage requirement.
+	Storage cdk8s.Size `field:"optional" json:"storage" yaml:"storage"`
+	// Name of the StorageClass required by the claim. When this property is not set, the behavior is as follows:.
+	//
+	// - If the admission plugin is turned on, the storage class marked as default will be used. - If the admission plugin is turned off, the pvc can only be bound to volumes without a storage class. See: https://kubernetes.io/docs/concepts/storage/persistent-volumes#class-1
+	//
+	// Default: - Not set.
+	StorageClassName *string `field:"optional" json:"storageClassName" yaml:"storageClassName"`
+	// The PersistentVolume backing this claim.
+	//
+	// The control plane still checks that storage class, access modes, and requested storage size on the volume are valid.
+	//
+	// Note that in order to guarantee a proper binding, the volume should also define a `claimRef` referring to this claim. Otherwise, the volume may be claimed be other pvc's before it gets a chance to bind to this one.
+	//
+	// If the volume is managed (i.e not imported), you can use `pv.claim()` to easily create a bi-directional bounded claim. See: https://kubernetes.io/docs/concepts/storage/persistent-volumes/#binding.
+	//
+	// Default: - No specific volume binding.
+	Volume IPersistentVolume `field:"optional" json:"volume" yaml:"volume"`
+	// Defines what type of volume is required by the claim. Default: VolumeMode.FILE_SYSTEM
+	VolumeMode PersistentVolumeMode `field:"optional" json:"volumeMode" yaml:"volumeMode"`
+	// The name of the claim that the StatefulSet controller will create for each pod.
+	//
+	// This will be used to name the created PVC in the format <claim-name>-<pod-name>
+	//
+	// This name should match the name of a volume mount in one of the containers.
+	Name *string `field:"required" json:"name" yaml:"name"`
 }
 
+// A PersistentVolume (PV) is a piece of storage in the cluster that has been provisioned by an administrator or dynamically provisioned using Storage Classes.
+//
+// It is a resource in the cluster just like a node is a cluster resource. PVs are volume plugins like Volumes, but have a lifecycle independent of any individual Pod that uses the PV. This API object captures the details of the implementation of the storage, be that NFS, iSCSI, or a cloud-provider-specific storage system.
 type PersistentVolume interface {
 	Resource
 	IPersistentVolume
 	IStorage
+	// Access modes requirement of this claim.
 	AccessModes() *[]PersistentVolumeAccessMode
+	// PVC this volume is bound to.
+	//
+	// Undefined means this volume is not yet claimed by any PVC.
 	Claim() IPersistentVolumeClaim
+	// Volume mode of this volume.
 	Mode() PersistentVolumeMode
+	// Mount options of this volume.
 	MountOptions() *[]*string
+	// Reclaim policy of this volume.
 	ReclaimPolicy() PersistentVolumeReclaimPolicy
+	// Storage size of this volume.
 	Storage() cdk8s.Size
+	// Storage class this volume belongs to.
 	StorageClassName() *string
+	// Bind a volume to a specific claim.
+	//
+	// Note that you must also bind the claim to the volume. See: https://kubernetes.io/docs/concepts/storage/persistent-volumes/#binding
 	Bind(claim IPersistentVolumeClaim)
+	// Reserve a `PersistentVolume` by creating a `PersistentVolumeClaim` that is wired to claim this volume.
+	//
+	// Note that this method will throw in case the volume is already claimed. See: https://kubernetes.io/docs/concepts/storage/persistent-volumes/#reserving-a-persistentvolume
 	Reserve() PersistentVolumeClaim
 }
 
@@ -130,6 +253,13 @@ func NewPersistentVolume_Override(volume PersistentVolume, scope constructs.Cons
 	applyOverride(volume, NewPersistentVolume(scope, id, props), "PersistentVolume")
 }
 
+// Checks if `x` is a construct.
+//
+// Use this method instead of `instanceof` to properly detect `Construct` instances, even when the construct library is symlinked.
+//
+// Explanation: in JavaScript, multiple copies of the `constructs` library on disk are seen as independent, completely different libraries. As a consequence, the class `Construct` in each copy of the `constructs` library is seen as a different class, and an instance of one class will not test as `instanceof` the other class. `npm install` will not create installations like this, but users may manually symlink construct libraries together or use a monorepo tool: in those cases, multiple copies of the `constructs` library can be accidentally installed, and `instanceof` will behave unpredictably. It is safest to avoid using `instanceof`, and using this type-testing method instead.
+//
+// Returns: true if `x` is an object created from a class which extends `Construct`.
 func PersistentVolume_IsConstruct(x interface{}) *bool {
 	return constructs.Construct_IsConstruct(x)
 }
@@ -208,14 +338,27 @@ func (p *persistentVolumeImpl) toManifest() map[string]interface{} {
 	return result
 }
 
+// A PersistentVolumeClaim (PVC) is a request for storage by a user.
+//
+// It is similar to a Pod. Pods consume node resources and PVCs consume PV resources. Pods can request specific levels of resources (CPU and Memory). Claims can request specific size and access modes.
 type PersistentVolumeClaim interface {
 	Resource
 	IPersistentVolumeClaim
+	// Access modes requirement of this claim.
 	AccessModes() *[]PersistentVolumeAccessMode
+	// Storage requirement of this claim.
 	Storage() cdk8s.Size
+	// Storage class requirment of this claim.
 	StorageClassName() *string
+	// PV this claim is bound to.
+	//
+	// Undefined means the claim is not bound to any specific volume.
 	Volume() IPersistentVolume
+	// Volume mode requirement of this claim.
 	VolumeMode() PersistentVolumeMode
+	// Bind a claim to a specific volume.
+	//
+	// Note that you must also bind the volume to the claim. See: https://kubernetes.io/docs/concepts/storage/persistent-volumes/#binding
 	Bind(volume IPersistentVolume)
 }
 
@@ -252,6 +395,13 @@ func NewPersistentVolumeClaim_Override(claim PersistentVolumeClaim, scope constr
 	applyOverride(claim, NewPersistentVolumeClaim(scope, id, props), "PersistentVolumeClaim")
 }
 
+// Checks if `x` is a construct.
+//
+// Use this method instead of `instanceof` to properly detect `Construct` instances, even when the construct library is symlinked.
+//
+// Explanation: in JavaScript, multiple copies of the `constructs` library on disk are seen as independent, completely different libraries. As a consequence, the class `Construct` in each copy of the `constructs` library is seen as a different class, and an instance of one class will not test as `instanceof` the other class. `npm install` will not create installations like this, but users may manually symlink construct libraries together or use a monorepo tool: in those cases, multiple copies of the `constructs` library can be accidentally installed, and `instanceof` will behave unpredictably. It is safest to avoid using `instanceof`, and using this type-testing method instead.
+//
+// Returns: true if `x` is an object created from a class which extends `Construct`.
 func PersistentVolumeClaim_IsConstruct(x interface{}) *bool {
 	return constructs.Construct_IsConstruct(x)
 }
@@ -349,6 +499,7 @@ func (p *importedPersistentVolume) ResourceType() *string {
 	return jsii.String("persistentvolumes")
 }
 
+// Imports a pv from the cluster as a reference.
 func PersistentVolume_FromPersistentVolumeName(scope constructs.Construct, id, name *string) IPersistentVolume {
 	if scope == nil || id == nil || name == nil {
 		panic("scope, id and volumeName are required")
@@ -403,6 +554,7 @@ func (p *importedPersistentVolumeClaim) ResourceType() *string {
 	return jsii.String("persistentvolumeclaims")
 }
 
+// Imports a pvc from the cluster as a reference.
 func PersistentVolumeClaim_FromClaimName(scope constructs.Construct, id, name *string) IPersistentVolumeClaim {
 	if scope == nil || id == nil || name == nil {
 		panic("scope, id and claimName are required")
@@ -412,26 +564,68 @@ func PersistentVolumeClaim_FromClaimName(scope constructs.Construct, id, name *s
 	return result
 }
 
+// Properties for `AwsElasticBlockStorePersistentVolume`.
 type AwsElasticBlockStorePersistentVolumeProps struct {
-	Metadata         *cdk8s.ApiObjectMetadata      `field:"optional" json:"metadata" yaml:"metadata"`
-	AccessModes      *[]PersistentVolumeAccessMode `field:"optional" json:"accessModes" yaml:"accessModes"`
-	Claim            IPersistentVolumeClaim        `field:"optional" json:"claim" yaml:"claim"`
-	MountOptions     *[]*string                    `field:"optional" json:"mountOptions" yaml:"mountOptions"`
-	ReclaimPolicy    PersistentVolumeReclaimPolicy `field:"optional" json:"reclaimPolicy" yaml:"reclaimPolicy"`
-	Storage          cdk8s.Size                    `field:"optional" json:"storage" yaml:"storage"`
-	StorageClassName *string                       `field:"optional" json:"storageClassName" yaml:"storageClassName"`
-	VolumeMode       PersistentVolumeMode          `field:"optional" json:"volumeMode" yaml:"volumeMode"`
-	VolumeId         *string                       `field:"required" json:"volumeId" yaml:"volumeId"`
-	FsType           *string                       `field:"optional" json:"fsType" yaml:"fsType"`
-	Partition        *float64                      `field:"optional" json:"partition" yaml:"partition"`
-	ReadOnly         *bool                         `field:"optional" json:"readOnly" yaml:"readOnly"`
+	// Metadata that all persisted resources must have, which includes all objects users must create.
+	Metadata *cdk8s.ApiObjectMetadata `field:"optional" json:"metadata" yaml:"metadata"`
+	// Contains all ways the volume can be mounted. See: https://kubernetes.io/docs/concepts/storage/persistent-volumes#access-modes
+	//
+	// Default: - No access modes.
+	AccessModes *[]PersistentVolumeAccessMode `field:"optional" json:"accessModes" yaml:"accessModes"`
+	// Part of a bi-directional binding between PersistentVolume and PersistentVolumeClaim.
+	//
+	// Expected to be non-nil when bound. See: https://kubernetes.io/docs/concepts/storage/persistent-volumes#binding
+	//
+	// Default: - Not bound to a specific claim.
+	Claim IPersistentVolumeClaim `field:"optional" json:"claim" yaml:"claim"`
+	// A list of mount options, e.g. ["ro", "soft"]. Not validated - mount will simply fail if one is invalid. See: https://kubernetes.io/docs/concepts/storage/persistent-volumes/#mount-options
+	//
+	// Default: - No options.
+	MountOptions *[]*string `field:"optional" json:"mountOptions" yaml:"mountOptions"`
+	// When a user is done with their volume, they can delete the PVC objects from the API that allows reclamation of the resource.
+	//
+	// The reclaim policy tells the cluster what to do with the volume after it has been released of its claim. See: https://kubernetes.io/docs/concepts/storage/persistent-volumes#reclaiming
+	//
+	// Default: PersistentVolumeReclaimPolicy.RETAIN
+	ReclaimPolicy PersistentVolumeReclaimPolicy `field:"optional" json:"reclaimPolicy" yaml:"reclaimPolicy"`
+	// What is the storage capacity of this volume. See: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
+	//
+	// Default: - No specified.
+	Storage cdk8s.Size `field:"optional" json:"storage" yaml:"storage"`
+	// Name of StorageClass to which this persistent volume belongs. Default: - Volume does not belong to any storage class.
+	StorageClassName *string `field:"optional" json:"storageClassName" yaml:"storageClassName"`
+	// Defines what type of volume is required by the claim. Default: VolumeMode.FILE_SYSTEM
+	VolumeMode PersistentVolumeMode `field:"optional" json:"volumeMode" yaml:"volumeMode"`
+	// Unique ID of the persistent disk resource in AWS (Amazon EBS volume).
+	//
+	// More info: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore See: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore
+	VolumeId *string `field:"required" json:"volumeId" yaml:"volumeId"`
+	// Filesystem type of the volume that you want to mount.
+	//
+	// Tip: Ensure that the filesystem type is supported by the host operating system. See: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore
+	//
+	// Default: 'ext4'.
+	FsType *string `field:"optional" json:"fsType" yaml:"fsType"`
+	// The partition in the volume that you want to mount.
+	//
+	// If omitted, the default is to mount by volume name. Examples: For volume /dev/sda1, you specify the partition as "1". Similarly, the volume partition for /dev/sda is "0" (or you can leave the property empty). Default: - No partition.
+	Partition *float64 `field:"optional" json:"partition" yaml:"partition"`
+	// Specify "true" to force and set the ReadOnly property in VolumeMounts to "true". See: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore
+	//
+	// Default: false.
+	ReadOnly *bool `field:"optional" json:"readOnly" yaml:"readOnly"`
 }
 
+// Represents an AWS Disk resource that is attached to a kubelet's host machine and then exposed to the pod. See: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore
 type AwsElasticBlockStorePersistentVolume interface {
 	PersistentVolume
+	// File system type of this volume.
 	FsType() *string
+	// Partition of this volume.
 	Partition() *float64
+	// Whether or not it is mounted as a read-only volume.
 	ReadOnly() *bool
+	// Volume id of this volume.
 	VolumeId() *string
 }
 
@@ -455,10 +649,18 @@ func NewAwsElasticBlockStorePersistentVolume_Override(volume AwsElasticBlockStor
 	applyOverride(volume, NewAwsElasticBlockStorePersistentVolume(scope, id, props), "AwsElasticBlockStorePersistentVolume")
 }
 
+// Imports a pv from the cluster as a reference.
 func AwsElasticBlockStorePersistentVolume_FromPersistentVolumeName(scope constructs.Construct, id, name *string) IPersistentVolume {
 	return PersistentVolume_FromPersistentVolumeName(scope, id, name)
 }
 
+// Checks if `x` is a construct.
+//
+// Use this method instead of `instanceof` to properly detect `Construct` instances, even when the construct library is symlinked.
+//
+// Explanation: in JavaScript, multiple copies of the `constructs` library on disk are seen as independent, completely different libraries. As a consequence, the class `Construct` in each copy of the `constructs` library is seen as a different class, and an instance of one class will not test as `instanceof` the other class. `npm install` will not create installations like this, but users may manually symlink construct libraries together or use a monorepo tool: in those cases, multiple copies of the `constructs` library can be accidentally installed, and `instanceof` will behave unpredictably. It is safest to avoid using `instanceof`, and using this type-testing method instead.
+//
+// Returns: true if `x` is an object created from a class which extends `Construct`.
 func AwsElasticBlockStorePersistentVolume_IsConstruct(x interface{}) *bool {
 	return constructs.Construct_IsConstruct(x)
 }
@@ -483,30 +685,68 @@ func persistentVolumePropsFromAws(p *AwsElasticBlockStorePersistentVolumeProps) 
 	return &PersistentVolumeProps{Metadata: p.Metadata, AccessModes: p.AccessModes, Claim: p.Claim, MountOptions: p.MountOptions, ReclaimPolicy: p.ReclaimPolicy, Storage: p.Storage, StorageClassName: p.StorageClassName, VolumeMode: p.VolumeMode}
 }
 
+// Properties for `AzureDiskPersistentVolume`.
 type AzureDiskPersistentVolumeProps struct {
-	Metadata         *cdk8s.ApiObjectMetadata             `field:"optional" json:"metadata" yaml:"metadata"`
-	AccessModes      *[]PersistentVolumeAccessMode        `field:"optional" json:"accessModes" yaml:"accessModes"`
-	Claim            IPersistentVolumeClaim               `field:"optional" json:"claim" yaml:"claim"`
-	MountOptions     *[]*string                           `field:"optional" json:"mountOptions" yaml:"mountOptions"`
-	ReclaimPolicy    PersistentVolumeReclaimPolicy        `field:"optional" json:"reclaimPolicy" yaml:"reclaimPolicy"`
-	Storage          cdk8s.Size                           `field:"optional" json:"storage" yaml:"storage"`
-	StorageClassName *string                              `field:"optional" json:"storageClassName" yaml:"storageClassName"`
-	VolumeMode       PersistentVolumeMode                 `field:"optional" json:"volumeMode" yaml:"volumeMode"`
-	DiskName         *string                              `field:"required" json:"diskName" yaml:"diskName"`
-	DiskUri          *string                              `field:"required" json:"diskUri" yaml:"diskUri"`
-	CachingMode      AzureDiskPersistentVolumeCachingMode `field:"optional" json:"cachingMode" yaml:"cachingMode"`
-	FsType           *string                              `field:"optional" json:"fsType" yaml:"fsType"`
-	Kind             AzureDiskPersistentVolumeKind        `field:"optional" json:"kind" yaml:"kind"`
-	ReadOnly         *bool                                `field:"optional" json:"readOnly" yaml:"readOnly"`
+	// Metadata that all persisted resources must have, which includes all objects users must create.
+	Metadata *cdk8s.ApiObjectMetadata `field:"optional" json:"metadata" yaml:"metadata"`
+	// Contains all ways the volume can be mounted. See: https://kubernetes.io/docs/concepts/storage/persistent-volumes#access-modes
+	//
+	// Default: - No access modes.
+	AccessModes *[]PersistentVolumeAccessMode `field:"optional" json:"accessModes" yaml:"accessModes"`
+	// Part of a bi-directional binding between PersistentVolume and PersistentVolumeClaim.
+	//
+	// Expected to be non-nil when bound. See: https://kubernetes.io/docs/concepts/storage/persistent-volumes#binding
+	//
+	// Default: - Not bound to a specific claim.
+	Claim IPersistentVolumeClaim `field:"optional" json:"claim" yaml:"claim"`
+	// A list of mount options, e.g. ["ro", "soft"]. Not validated - mount will simply fail if one is invalid. See: https://kubernetes.io/docs/concepts/storage/persistent-volumes/#mount-options
+	//
+	// Default: - No options.
+	MountOptions *[]*string `field:"optional" json:"mountOptions" yaml:"mountOptions"`
+	// When a user is done with their volume, they can delete the PVC objects from the API that allows reclamation of the resource.
+	//
+	// The reclaim policy tells the cluster what to do with the volume after it has been released of its claim. See: https://kubernetes.io/docs/concepts/storage/persistent-volumes#reclaiming
+	//
+	// Default: PersistentVolumeReclaimPolicy.RETAIN
+	ReclaimPolicy PersistentVolumeReclaimPolicy `field:"optional" json:"reclaimPolicy" yaml:"reclaimPolicy"`
+	// What is the storage capacity of this volume. See: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
+	//
+	// Default: - No specified.
+	Storage cdk8s.Size `field:"optional" json:"storage" yaml:"storage"`
+	// Name of StorageClass to which this persistent volume belongs. Default: - Volume does not belong to any storage class.
+	StorageClassName *string `field:"optional" json:"storageClassName" yaml:"storageClassName"`
+	// Defines what type of volume is required by the claim. Default: VolumeMode.FILE_SYSTEM
+	VolumeMode PersistentVolumeMode `field:"optional" json:"volumeMode" yaml:"volumeMode"`
+	// The Name of the data disk in the blob storage.
+	DiskName *string `field:"required" json:"diskName" yaml:"diskName"`
+	// The URI the data disk in the blob storage.
+	DiskUri *string `field:"required" json:"diskUri" yaml:"diskUri"`
+	// Host Caching mode. Default: - AzureDiskPersistentVolumeCachingMode.NONE.
+	CachingMode AzureDiskPersistentVolumeCachingMode `field:"optional" json:"cachingMode" yaml:"cachingMode"`
+	// Filesystem type to mount.
+	//
+	// Must be a filesystem type supported by the host operating system. Default: 'ext4'.
+	FsType *string `field:"optional" json:"fsType" yaml:"fsType"`
+	// Kind of disk. Default: AzureDiskPersistentVolumeKind.SHARED
+	Kind AzureDiskPersistentVolumeKind `field:"optional" json:"kind" yaml:"kind"`
+	// Force the ReadOnly setting in VolumeMounts. Default: false.
+	ReadOnly *bool `field:"optional" json:"readOnly" yaml:"readOnly"`
 }
 
+// AzureDisk represents an Azure Data Disk mount on the host and bind mount to the pod.
 type AzureDiskPersistentVolume interface {
 	PersistentVolume
+	// Azure kind of this volume.
 	AzureKind() AzureDiskPersistentVolumeKind
+	// Caching mode of this volume.
 	CachingMode() AzureDiskPersistentVolumeCachingMode
+	// Disk name of this volume.
 	DiskName() *string
+	// Disk URI of this volume.
 	DiskUri() *string
+	// File system type of this volume.
 	FsType() *string
+	// Whether or not it is mounted as a read-only volume.
 	ReadOnly() *bool
 }
 
@@ -537,10 +777,18 @@ func NewAzureDiskPersistentVolume_Override(volume AzureDiskPersistentVolume, sco
 	applyOverride(volume, NewAzureDiskPersistentVolume(scope, id, props), "AzureDiskPersistentVolume")
 }
 
+// Imports a pv from the cluster as a reference.
 func AzureDiskPersistentVolume_FromPersistentVolumeName(scope constructs.Construct, id, name *string) IPersistentVolume {
 	return PersistentVolume_FromPersistentVolumeName(scope, id, name)
 }
 
+// Checks if `x` is a construct.
+//
+// Use this method instead of `instanceof` to properly detect `Construct` instances, even when the construct library is symlinked.
+//
+// Explanation: in JavaScript, multiple copies of the `constructs` library on disk are seen as independent, completely different libraries. As a consequence, the class `Construct` in each copy of the `constructs` library is seen as a different class, and an instance of one class will not test as `instanceof` the other class. `npm install` will not create installations like this, but users may manually symlink construct libraries together or use a monorepo tool: in those cases, multiple copies of the `constructs` library can be accidentally installed, and `instanceof` will behave unpredictably. It is safest to avoid using `instanceof`, and using this type-testing method instead.
+//
+// Returns: true if `x` is an object created from a class which extends `Construct`.
 func AzureDiskPersistentVolume_IsConstruct(x interface{}) *bool {
 	return constructs.Construct_IsConstruct(x)
 }
@@ -565,26 +813,70 @@ func persistentVolumePropsFromAzure(p *AzureDiskPersistentVolumeProps) *Persiste
 	return &PersistentVolumeProps{Metadata: p.Metadata, AccessModes: p.AccessModes, Claim: p.Claim, MountOptions: p.MountOptions, ReclaimPolicy: p.ReclaimPolicy, Storage: p.Storage, StorageClassName: p.StorageClassName, VolumeMode: p.VolumeMode}
 }
 
+// Properties for `GCEPersistentDiskPersistentVolume`.
 type GCEPersistentDiskPersistentVolumeProps struct {
-	Metadata         *cdk8s.ApiObjectMetadata      `field:"optional" json:"metadata" yaml:"metadata"`
-	AccessModes      *[]PersistentVolumeAccessMode `field:"optional" json:"accessModes" yaml:"accessModes"`
-	Claim            IPersistentVolumeClaim        `field:"optional" json:"claim" yaml:"claim"`
-	MountOptions     *[]*string                    `field:"optional" json:"mountOptions" yaml:"mountOptions"`
-	ReclaimPolicy    PersistentVolumeReclaimPolicy `field:"optional" json:"reclaimPolicy" yaml:"reclaimPolicy"`
-	Storage          cdk8s.Size                    `field:"optional" json:"storage" yaml:"storage"`
-	StorageClassName *string                       `field:"optional" json:"storageClassName" yaml:"storageClassName"`
-	VolumeMode       PersistentVolumeMode          `field:"optional" json:"volumeMode" yaml:"volumeMode"`
-	PdName           *string                       `field:"required" json:"pdName" yaml:"pdName"`
-	FsType           *string                       `field:"optional" json:"fsType" yaml:"fsType"`
-	Partition        *float64                      `field:"optional" json:"partition" yaml:"partition"`
-	ReadOnly         *bool                         `field:"optional" json:"readOnly" yaml:"readOnly"`
+	// Metadata that all persisted resources must have, which includes all objects users must create.
+	Metadata *cdk8s.ApiObjectMetadata `field:"optional" json:"metadata" yaml:"metadata"`
+	// Contains all ways the volume can be mounted. See: https://kubernetes.io/docs/concepts/storage/persistent-volumes#access-modes
+	//
+	// Default: - No access modes.
+	AccessModes *[]PersistentVolumeAccessMode `field:"optional" json:"accessModes" yaml:"accessModes"`
+	// Part of a bi-directional binding between PersistentVolume and PersistentVolumeClaim.
+	//
+	// Expected to be non-nil when bound. See: https://kubernetes.io/docs/concepts/storage/persistent-volumes#binding
+	//
+	// Default: - Not bound to a specific claim.
+	Claim IPersistentVolumeClaim `field:"optional" json:"claim" yaml:"claim"`
+	// A list of mount options, e.g. ["ro", "soft"]. Not validated - mount will simply fail if one is invalid. See: https://kubernetes.io/docs/concepts/storage/persistent-volumes/#mount-options
+	//
+	// Default: - No options.
+	MountOptions *[]*string `field:"optional" json:"mountOptions" yaml:"mountOptions"`
+	// When a user is done with their volume, they can delete the PVC objects from the API that allows reclamation of the resource.
+	//
+	// The reclaim policy tells the cluster what to do with the volume after it has been released of its claim. See: https://kubernetes.io/docs/concepts/storage/persistent-volumes#reclaiming
+	//
+	// Default: PersistentVolumeReclaimPolicy.RETAIN
+	ReclaimPolicy PersistentVolumeReclaimPolicy `field:"optional" json:"reclaimPolicy" yaml:"reclaimPolicy"`
+	// What is the storage capacity of this volume. See: https://kubernetes.io/docs/concepts/storage/persistent-volumes#resources
+	//
+	// Default: - No specified.
+	Storage cdk8s.Size `field:"optional" json:"storage" yaml:"storage"`
+	// Name of StorageClass to which this persistent volume belongs. Default: - Volume does not belong to any storage class.
+	StorageClassName *string `field:"optional" json:"storageClassName" yaml:"storageClassName"`
+	// Defines what type of volume is required by the claim. Default: VolumeMode.FILE_SYSTEM
+	VolumeMode PersistentVolumeMode `field:"optional" json:"volumeMode" yaml:"volumeMode"`
+	// Unique name of the PD resource in GCE.
+	//
+	// Used to identify the disk in GCE. See: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk
+	PdName *string `field:"required" json:"pdName" yaml:"pdName"`
+	// Filesystem type of the volume that you want to mount.
+	//
+	// Tip: Ensure that the filesystem type is supported by the host operating system. See: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore
+	//
+	// Default: 'ext4'.
+	FsType *string `field:"optional" json:"fsType" yaml:"fsType"`
+	// The partition in the volume that you want to mount.
+	//
+	// If omitted, the default is to mount by volume name. Examples: For volume /dev/sda1, you specify the partition as "1". Similarly, the volume partition for /dev/sda is "0" (or you can leave the property empty). Default: - No partition.
+	Partition *float64 `field:"optional" json:"partition" yaml:"partition"`
+	// Specify "true" to force and set the ReadOnly property in VolumeMounts to "true". See: https://kubernetes.io/docs/concepts/storage/volumes#awselasticblockstore
+	//
+	// Default: false.
+	ReadOnly *bool `field:"optional" json:"readOnly" yaml:"readOnly"`
 }
 
+// GCEPersistentDisk represents a GCE Disk resource that is attached to a kubelet's host machine and then exposed to the pod.
+//
+// Provisioned by an admin. See: https://kubernetes.io/docs/concepts/storage/volumes#gcepersistentdisk
 type GCEPersistentDiskPersistentVolume interface {
 	PersistentVolume
+	// File system type of this volume.
 	FsType() *string
+	// Partition of this volume.
 	Partition() *float64
+	// PD resource in GCE of this volume.
 	PdName() *string
+	// Whether or not it is mounted as a read-only volume.
 	ReadOnly() *bool
 }
 
@@ -608,10 +900,18 @@ func NewGCEPersistentDiskPersistentVolume_Override(volume GCEPersistentDiskPersi
 	applyOverride(volume, NewGCEPersistentDiskPersistentVolume(scope, id, props), "GCEPersistentDiskPersistentVolume")
 }
 
+// Imports a pv from the cluster as a reference.
 func GCEPersistentDiskPersistentVolume_FromPersistentVolumeName(scope constructs.Construct, id, name *string) IPersistentVolume {
 	return PersistentVolume_FromPersistentVolumeName(scope, id, name)
 }
 
+// Checks if `x` is a construct.
+//
+// Use this method instead of `instanceof` to properly detect `Construct` instances, even when the construct library is symlinked.
+//
+// Explanation: in JavaScript, multiple copies of the `constructs` library on disk are seen as independent, completely different libraries. As a consequence, the class `Construct` in each copy of the `constructs` library is seen as a different class, and an instance of one class will not test as `instanceof` the other class. `npm install` will not create installations like this, but users may manually symlink construct libraries together or use a monorepo tool: in those cases, multiple copies of the `constructs` library can be accidentally installed, and `instanceof` will behave unpredictably. It is safest to avoid using `instanceof`, and using this type-testing method instead.
+//
+// Returns: true if `x` is an object created from a class which extends `Construct`.
 func GCEPersistentDiskPersistentVolume_IsConstruct(x interface{}) *bool {
 	return constructs.Construct_IsConstruct(x)
 }

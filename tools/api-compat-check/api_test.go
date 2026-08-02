@@ -6,8 +6,11 @@ import (
 	"go/parser"
 	"go/printer"
 	"go/token"
+	"go/types"
 	"reflect"
 	"testing"
+
+	"golang.org/x/tools/go/packages"
 )
 
 func TestPackageDocumentationCollectsExportedAPI(t *testing.T) {
@@ -108,6 +111,64 @@ func (*Pair[A, B]) Swap() {}
 	}
 	if got := packageDocumentation(files); !reflect.DeepEqual(got, want) {
 		t.Fatalf("packageDocumentation() = %#v, want %#v", got, want)
+	}
+}
+
+func TestLoadedPackageDocumentationResolvesAliasesAndEmbeddedInterfaces(t *testing.T) {
+	t.Parallel()
+
+	fileSet := token.NewFileSet()
+	file, err := parser.ParseFile(fileSet, "example.go", `package example
+
+// Base documents the original type.
+type Base struct {
+	// Field documents the original field.
+	Field string
+}
+
+type Alias = Base
+
+type BaseAPI interface {
+	// Run documents the original method.
+	Run()
+}
+
+type Extended interface {
+	BaseAPI
+}
+`, parser.ParseComments)
+	if err != nil {
+		t.Fatal(err)
+	}
+	info := &types.Info{
+		Defs:       map[*ast.Ident]types.Object{},
+		Implicits:  map[ast.Node]types.Object{},
+		Scopes:     map[ast.Node]*types.Scope{},
+		Selections: map[*ast.SelectorExpr]*types.Selection{},
+		Types:      map[ast.Expr]types.TypeAndValue{},
+		Uses:       map[*ast.Ident]types.Object{},
+	}
+	typesPackage, err := (&types.Config{}).Check("example", fileSet, []*ast.File{file}, info)
+	if err != nil {
+		t.Fatal(err)
+	}
+	documentation := loadedPackageDocumentation(&packages.Package{
+		Name:      "example",
+		Types:     typesPackage,
+		TypesInfo: info,
+		Syntax:    []*ast.File{file},
+		Imports:   map[string]*packages.Package{},
+	})
+
+	want := map[string]string{
+		"type Alias":                    "Base documents the original type.\n",
+		"field Alias.Field":             inheritedDocumentation,
+		"interface method Extended.Run": inheritedDocumentation,
+	}
+	for declaration, expected := range want {
+		if got := documentation[declaration]; got != expected {
+			t.Errorf("%s documentation = %q, want %q", declaration, got, expected)
+		}
 	}
 }
 

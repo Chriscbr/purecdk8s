@@ -10,6 +10,7 @@ import (
 	"go/parser"
 	"go/printer"
 	"go/token"
+	"go/types"
 	"io"
 	"os"
 	"path/filepath"
@@ -91,6 +92,8 @@ type DocumentationChange struct {
 	Local       string
 }
 
+const inheritedDocumentation = "\x00inherited documentation"
+
 func (values *replacementFlags) String() string {
 	return strings.Join(*values, " ")
 }
@@ -136,7 +139,7 @@ func check(upstreamPackage, localPackage, sourceDir string, replacements replace
 	}
 	return Report{
 		API:           apidiff.Changes(upstream.Types, local.Types),
-		Documentation: compareDocumentation(packageDocumentation(upstream.Syntax), packageDocumentation(local.Syntax)),
+		Documentation: compareDocumentation(loadedPackageDocumentation(upstream), loadedPackageDocumentation(local)),
 	}, nil
 }
 
@@ -176,6 +179,9 @@ func compareDocumentation(upstream, local map[string]string) []DocumentationChan
 
 	var changes []DocumentationChange
 	for _, declaration := range declarations {
+		if local[declaration] == inheritedDocumentation {
+			continue
+		}
 		if upstream[declaration] == local[declaration] {
 			continue
 		}
@@ -208,6 +214,134 @@ func packageDocumentation(files []*ast.File) map[string]string {
 		}
 	}
 	return documentation
+}
+
+// loadedPackageDocumentation augments directly declared documentation with
+// documentation inherited through type aliases and embedded interfaces. Those
+// API members have types.Object identities from their original declarations,
+// even though there is no declaration in the forwarding package where a
+// duplicate comment could be attached.
+func loadedPackageDocumentation(pkg *packages.Package) map[string]string {
+	documentation := packageDocumentation(pkg.Syntax)
+	objectDocumentation := packageObjectDocumentation(pkg)
+	for _, name := range pkg.Types.Scope().Names() {
+		if !ast.IsExported(name) {
+			continue
+		}
+		typeName, ok := pkg.Types.Scope().Lookup(name).(*types.TypeName)
+		if !ok {
+			continue
+		}
+
+		unalias := types.Unalias(typeName.Type())
+		if documentation["type "+name] == "" {
+			if named, ok := unalias.(*types.Named); ok && named.Obj() != typeName {
+				documentation["type "+name] = objectDocumentation[named.Obj()]
+			}
+		}
+
+		switch underlying := unalias.Underlying().(type) {
+		case *types.Struct:
+			for index := 0; index < underlying.NumFields(); index++ {
+				field := underlying.Field(index)
+				if field.Exported() {
+					declaration := "field " + name + "." + field.Name()
+					if _, directlyDeclared := documentation[declaration]; directlyDeclared {
+						documentation[declaration] = objectDocumentation[field]
+					} else {
+						documentation[declaration] = inheritedDocumentation
+					}
+				}
+			}
+		case *types.Interface:
+			underlying.Complete()
+			for index := 0; index < underlying.NumMethods(); index++ {
+				method := underlying.Method(index)
+				if method.Exported() {
+					declaration := "interface method " + name + "." + method.Name()
+					if _, directlyDeclared := documentation[declaration]; directlyDeclared {
+						documentation[declaration] = objectDocumentation[method]
+					} else {
+						documentation[declaration] = inheritedDocumentation
+					}
+				}
+			}
+		}
+	}
+	return documentation
+}
+
+func packageObjectDocumentation(root *packages.Package) map[types.Object]string {
+	documentation := map[types.Object]string{}
+	visited := map[*packages.Package]bool{}
+	var visit func(*packages.Package)
+	visit = func(pkg *packages.Package) {
+		if pkg == nil || visited[pkg] {
+			return
+		}
+		visited[pkg] = true
+		for _, imported := range pkg.Imports {
+			visit(imported)
+		}
+		if pkg.TypesInfo == nil {
+			return
+		}
+		for _, file := range pkg.Syntax {
+			for _, declaration := range file.Decls {
+				switch declaration := declaration.(type) {
+				case *ast.FuncDecl:
+					if object := pkg.TypesInfo.Defs[declaration.Name]; object != nil {
+						documentation[object] = commentText(declaration.Doc, nil)
+					}
+				case *ast.GenDecl:
+					objectDocumentationForGeneralDeclaration(documentation, pkg.TypesInfo, declaration)
+				}
+			}
+		}
+	}
+	visit(root)
+	return documentation
+}
+
+func objectDocumentationForGeneralDeclaration(documentation map[types.Object]string, info *types.Info, declaration *ast.GenDecl) {
+	for _, item := range declaration.Specs {
+		switch spec := item.(type) {
+		case *ast.ValueSpec:
+			doc := spec.Doc
+			if doc == nil {
+				doc = declaration.Doc
+			}
+			for _, name := range spec.Names {
+				if object := info.Defs[name]; object != nil {
+					documentation[object] = commentText(doc, spec.Comment)
+				}
+			}
+		case *ast.TypeSpec:
+			doc := spec.Doc
+			if doc == nil {
+				doc = declaration.Doc
+			}
+			if object := info.Defs[spec.Name]; object != nil {
+				documentation[object] = commentText(doc, spec.Comment)
+			}
+			var fields *ast.FieldList
+			switch definition := spec.Type.(type) {
+			case *ast.StructType:
+				fields = definition.Fields
+			case *ast.InterfaceType:
+				fields = definition.Methods
+			}
+			if fields != nil {
+				for _, field := range fields.List {
+					for _, name := range field.Names {
+						if object := info.Defs[name]; object != nil {
+							documentation[object] = commentText(field.Doc, field.Comment)
+						}
+					}
+				}
+			}
+		}
+	}
 }
 
 func declarationDocumentation(documentation map[string]string, declaration *ast.GenDecl) {
@@ -301,7 +435,8 @@ func loadPackage(path string, overlay map[string][]byte) (*packages.Package, err
 			packages.NeedImports |
 			packages.NeedDeps |
 			packages.NeedSyntax |
-			packages.NeedTypes,
+			packages.NeedTypes |
+			packages.NeedTypesInfo,
 		Overlay: overlay,
 	}, path)
 	if err != nil {

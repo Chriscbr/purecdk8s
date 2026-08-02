@@ -8,86 +8,141 @@ import (
 	"github.com/Chriscbr/purecdk8s/jsii"
 )
 
-// SecretProps configures a Kubernetes Secret.
+// Options for `Secret`.
 type SecretProps struct {
-	Metadata   *cdk8s.ApiObjectMetadata `field:"optional" json:"metadata" yaml:"metadata"`
-	Immutable  *bool                    `field:"optional" json:"immutable" yaml:"immutable"`
-	StringData *map[string]*string      `field:"optional" json:"stringData" yaml:"stringData"`
-	Type       *string                  `field:"optional" json:"type" yaml:"type"`
+	// Metadata that all persisted resources must have, which includes all objects users must create.
+	Metadata *cdk8s.ApiObjectMetadata `field:"optional" json:"metadata" yaml:"metadata"`
+	// If set to true, ensures that data stored in the Secret cannot be updated (only object metadata can be modified).
+	//
+	// If not set to true, the field can be modified at any time. Default: false.
+	Immutable *bool `field:"optional" json:"immutable" yaml:"immutable"`
+	// stringData allows specifying non-binary secret data in string form.
+	//
+	// It is provided as a write-only convenience method. All keys and values are merged into the data field on write, overwriting any existing values. It is never output when reading from the API.
+	StringData *map[string]*string `field:"optional" json:"stringData" yaml:"stringData"`
+	// Optional type associated with the secret.
+	//
+	// Used to facilitate programmatic handling of secret data by various controllers. Default: undefined - Don't set a type.
+	Type *string `field:"optional" json:"type" yaml:"type"`
 }
 
-// CommonSecretProps contains fields shared by the specialized Secret types.
+// Common properties for `Secret`.
 type CommonSecretProps struct {
-	Metadata  *cdk8s.ApiObjectMetadata `field:"optional" json:"metadata" yaml:"metadata"`
-	Immutable *bool                    `field:"optional" json:"immutable" yaml:"immutable"`
+	// Metadata that all persisted resources must have, which includes all objects users must create.
+	Metadata *cdk8s.ApiObjectMetadata `field:"optional" json:"metadata" yaml:"metadata"`
+	// If set to true, ensures that data stored in the Secret cannot be updated (only object metadata can be modified).
+	//
+	// If not set to true, the field can be modified at any time. Default: false.
+	Immutable *bool `field:"optional" json:"immutable" yaml:"immutable"`
 }
 
+// Options for `BasicAuthSecret`.
 type BasicAuthSecretProps struct {
-	Metadata  *cdk8s.ApiObjectMetadata `field:"optional" json:"metadata" yaml:"metadata"`
-	Immutable *bool                    `field:"optional" json:"immutable" yaml:"immutable"`
-	Password  *string                  `field:"required" json:"password" yaml:"password"`
-	Username  *string                  `field:"required" json:"username" yaml:"username"`
+	// Metadata that all persisted resources must have, which includes all objects users must create.
+	Metadata *cdk8s.ApiObjectMetadata `field:"optional" json:"metadata" yaml:"metadata"`
+	// If set to true, ensures that data stored in the Secret cannot be updated (only object metadata can be modified).
+	//
+	// If not set to true, the field can be modified at any time. Default: false.
+	Immutable *bool `field:"optional" json:"immutable" yaml:"immutable"`
+	// The password or token for authentication.
+	Password *string `field:"required" json:"password" yaml:"password"`
+	// The user name for authentication.
+	Username *string `field:"required" json:"username" yaml:"username"`
 }
 
+// Options for `SshAuthSecret`.
 type SshAuthSecretProps struct {
-	Metadata      *cdk8s.ApiObjectMetadata `field:"optional" json:"metadata" yaml:"metadata"`
-	Immutable     *bool                    `field:"optional" json:"immutable" yaml:"immutable"`
-	SshPrivateKey *string                  `field:"required" json:"sshPrivateKey" yaml:"sshPrivateKey"`
+	// Metadata that all persisted resources must have, which includes all objects users must create.
+	Metadata *cdk8s.ApiObjectMetadata `field:"optional" json:"metadata" yaml:"metadata"`
+	// If set to true, ensures that data stored in the Secret cannot be updated (only object metadata can be modified).
+	//
+	// If not set to true, the field can be modified at any time. Default: false.
+	Immutable *bool `field:"optional" json:"immutable" yaml:"immutable"`
+	// The SSH private key to use.
+	SshPrivateKey *string `field:"required" json:"sshPrivateKey" yaml:"sshPrivateKey"`
 }
 
+// Options for `TlsSecret`.
 type TlsSecretProps struct {
-	Metadata  *cdk8s.ApiObjectMetadata `field:"optional" json:"metadata" yaml:"metadata"`
-	Immutable *bool                    `field:"optional" json:"immutable" yaml:"immutable"`
-	TlsCert   *string                  `field:"required" json:"tlsCert" yaml:"tlsCert"`
-	TlsKey    *string                  `field:"required" json:"tlsKey" yaml:"tlsKey"`
+	// Metadata that all persisted resources must have, which includes all objects users must create.
+	Metadata *cdk8s.ApiObjectMetadata `field:"optional" json:"metadata" yaml:"metadata"`
+	// If set to true, ensures that data stored in the Secret cannot be updated (only object metadata can be modified).
+	//
+	// If not set to true, the field can be modified at any time. Default: false.
+	Immutable *bool `field:"optional" json:"immutable" yaml:"immutable"`
+	// The TLS cert.
+	TlsCert *string `field:"required" json:"tlsCert" yaml:"tlsCert"`
+	// The TLS key.
+	TlsKey *string `field:"required" json:"tlsKey" yaml:"tlsKey"`
 }
 
+// Options for `DockerConfigSecret`.
 type DockerConfigSecretProps struct {
-	Metadata  *cdk8s.ApiObjectMetadata `field:"optional" json:"metadata" yaml:"metadata"`
-	Immutable *bool                    `field:"optional" json:"immutable" yaml:"immutable"`
-	Data      *map[string]interface{}  `field:"required" json:"data" yaml:"data"`
+	// Metadata that all persisted resources must have, which includes all objects users must create.
+	Metadata *cdk8s.ApiObjectMetadata `field:"optional" json:"metadata" yaml:"metadata"`
+	// If set to true, ensures that data stored in the Secret cannot be updated (only object metadata can be modified).
+	//
+	// If not set to true, the field can be modified at any time. Default: false.
+	Immutable *bool `field:"optional" json:"immutable" yaml:"immutable"`
+	// JSON content to provide for the `~/.docker/config.json` file. This will be stringified and inserted as stringData. See: https://docs.docker.com/engine/reference/commandline/cli/#sample-configuration-file
+	Data *map[string]interface{} `field:"required" json:"data" yaml:"data"`
 }
 
+// Options for `ServiceAccountTokenSecret`.
 type ServiceAccountTokenSecretProps struct {
-	Metadata       *cdk8s.ApiObjectMetadata `field:"optional" json:"metadata" yaml:"metadata"`
-	Immutable      *bool                    `field:"optional" json:"immutable" yaml:"immutable"`
-	ServiceAccount IServiceAccount          `field:"required" json:"serviceAccount" yaml:"serviceAccount"`
+	// Metadata that all persisted resources must have, which includes all objects users must create.
+	Metadata *cdk8s.ApiObjectMetadata `field:"optional" json:"metadata" yaml:"metadata"`
+	// If set to true, ensures that data stored in the Secret cannot be updated (only object metadata can be modified).
+	//
+	// If not set to true, the field can be modified at any time. Default: false.
+	Immutable *bool `field:"optional" json:"immutable" yaml:"immutable"`
+	// The service account to store a secret for.
+	ServiceAccount IServiceAccount `field:"required" json:"serviceAccount" yaml:"serviceAccount"`
 }
 
-// EnvValueFromSecretOptions controls a secret-backed environment value.
+// Options to specify an environment variable value from a Secret.
 type EnvValueFromSecretOptions struct {
+	// Specify whether the Secret or its key must be defined. Default: false.
 	Optional *bool `field:"optional" json:"optional" yaml:"optional"`
 }
 
-// SecretValue identifies one key in a Secret.
+// Represents a specific value in JSON secret.
 type SecretValue struct {
+	// The secret.
 	Secret ISecret `field:"required" json:"secret" yaml:"secret"`
-	Key    *string `field:"required" json:"key" yaml:"key"`
+	// The JSON key.
+	Key *string `field:"required" json:"key" yaml:"key"`
 }
 
-// Secret is a native Kubernetes Secret construct.
+// Kubernetes Secrets let you store and manage sensitive information, such as passwords, OAuth tokens, and ssh keys.
+//
+// Storing confidential information in a Secret is safer and more flexible than putting it verbatim in a Pod definition or in a container image. See: https://kubernetes.io/docs/concepts/configuration/secret
 type Secret interface {
 	Resource
 	ISecret
+	// Whether or not the secret is immutable.
 	Immutable() *bool
+	// Adds a string data field to the secret.
 	AddStringData(key, value *string)
+	// Gets a string data by key or undefined.
 	GetStringData(key *string) *string
+	// Returns EnvValue object from a secret's key.
 	EnvValue(key *string, options *EnvValueFromSecretOptions) EnvValue
 }
 
-// BasicAuthSecret stores username and password credentials.
+// Create a secret for basic authentication. See: https://kubernetes.io/docs/concepts/configuration/secret/#basic-authentication-secret
 type BasicAuthSecret interface{ Secret }
 
-// SshAuthSecret stores an SSH private key.
+// Create a secret for ssh authentication. See: https://kubernetes.io/docs/concepts/configuration/secret/#ssh-authentication-secrets
 type SshAuthSecret interface{ Secret }
 
-// TlsSecret stores a TLS certificate and private key.
+// Create a secret for storing a TLS certificate and its associated key. See: https://kubernetes.io/docs/concepts/configuration/secret/#tls-secrets
 type TlsSecret interface{ Secret }
 
-// DockerConfigSecret stores Docker registry configuration.
+// Create a secret for storing credentials for accessing a container image registry. See: https://kubernetes.io/docs/concepts/configuration/secret/#docker-config-secrets
 type DockerConfigSecret interface{ Secret }
 
-// ServiceAccountTokenSecret requests a token for a ServiceAccount.
+// Create a secret for a service account token. See: https://kubernetes.io/docs/concepts/configuration/secret/#service-account-token-secrets
 type ServiceAccountTokenSecret interface{ Secret }
 
 type secretImpl struct {
@@ -155,7 +210,7 @@ func (s *importedSecret) EnvValue(key *string, options *EnvValueFromSecretOption
 	return EnvValue_FromSecretValue(&SecretValue{Secret: s, Key: key}, options)
 }
 
-// Secret_FromSecretName imports an existing Secret by name.
+// Imports a secret from the cluster as a reference.
 func Secret_FromSecretName(scope constructs.Construct, id, name *string) ISecret {
 	if scope == nil || id == nil || name == nil {
 		panic("scope, id and name are required")
@@ -165,22 +220,27 @@ func Secret_FromSecretName(scope constructs.Construct, id, name *string) ISecret
 	return result
 }
 
+// Imports a secret from the cluster as a reference.
 func BasicAuthSecret_FromSecretName(scope constructs.Construct, id, name *string) ISecret {
 	return Secret_FromSecretName(scope, id, name)
 }
 
+// Imports a secret from the cluster as a reference.
 func SshAuthSecret_FromSecretName(scope constructs.Construct, id, name *string) ISecret {
 	return Secret_FromSecretName(scope, id, name)
 }
 
+// Imports a secret from the cluster as a reference.
 func TlsSecret_FromSecretName(scope constructs.Construct, id, name *string) ISecret {
 	return Secret_FromSecretName(scope, id, name)
 }
 
+// Imports a secret from the cluster as a reference.
 func DockerConfigSecret_FromSecretName(scope constructs.Construct, id, name *string) ISecret {
 	return Secret_FromSecretName(scope, id, name)
 }
 
+// Imports a secret from the cluster as a reference.
 func ServiceAccountTokenSecret_FromSecretName(scope constructs.Construct, id, name *string) ISecret {
 	return Secret_FromSecretName(scope, id, name)
 }
@@ -296,26 +356,68 @@ func NewServiceAccountTokenSecret_Override(secret ServiceAccountTokenSecret, sco
 	applyOverride(secret, NewServiceAccountTokenSecret(scope, id, props), "ServiceAccountTokenSecret")
 }
 
+// Checks if `x` is a construct.
+//
+// Use this method instead of `instanceof` to properly detect `Construct` instances, even when the construct library is symlinked.
+//
+// Explanation: in JavaScript, multiple copies of the `constructs` library on disk are seen as independent, completely different libraries. As a consequence, the class `Construct` in each copy of the `constructs` library is seen as a different class, and an instance of one class will not test as `instanceof` the other class. `npm install` will not create installations like this, but users may manually symlink construct libraries together or use a monorepo tool: in those cases, multiple copies of the `constructs` library can be accidentally installed, and `instanceof` will behave unpredictably. It is safest to avoid using `instanceof`, and using this type-testing method instead.
+//
+// Returns: true if `x` is an object created from a class which extends `Construct`.
 func Secret_IsConstruct(x interface{}) *bool {
 	return constructs.Construct_IsConstruct(x)
 }
 
+// Checks if `x` is a construct.
+//
+// Use this method instead of `instanceof` to properly detect `Construct` instances, even when the construct library is symlinked.
+//
+// Explanation: in JavaScript, multiple copies of the `constructs` library on disk are seen as independent, completely different libraries. As a consequence, the class `Construct` in each copy of the `constructs` library is seen as a different class, and an instance of one class will not test as `instanceof` the other class. `npm install` will not create installations like this, but users may manually symlink construct libraries together or use a monorepo tool: in those cases, multiple copies of the `constructs` library can be accidentally installed, and `instanceof` will behave unpredictably. It is safest to avoid using `instanceof`, and using this type-testing method instead.
+//
+// Returns: true if `x` is an object created from a class which extends `Construct`.
 func BasicAuthSecret_IsConstruct(x interface{}) *bool {
 	return constructs.Construct_IsConstruct(x)
 }
 
+// Checks if `x` is a construct.
+//
+// Use this method instead of `instanceof` to properly detect `Construct` instances, even when the construct library is symlinked.
+//
+// Explanation: in JavaScript, multiple copies of the `constructs` library on disk are seen as independent, completely different libraries. As a consequence, the class `Construct` in each copy of the `constructs` library is seen as a different class, and an instance of one class will not test as `instanceof` the other class. `npm install` will not create installations like this, but users may manually symlink construct libraries together or use a monorepo tool: in those cases, multiple copies of the `constructs` library can be accidentally installed, and `instanceof` will behave unpredictably. It is safest to avoid using `instanceof`, and using this type-testing method instead.
+//
+// Returns: true if `x` is an object created from a class which extends `Construct`.
 func SshAuthSecret_IsConstruct(x interface{}) *bool {
 	return constructs.Construct_IsConstruct(x)
 }
 
+// Checks if `x` is a construct.
+//
+// Use this method instead of `instanceof` to properly detect `Construct` instances, even when the construct library is symlinked.
+//
+// Explanation: in JavaScript, multiple copies of the `constructs` library on disk are seen as independent, completely different libraries. As a consequence, the class `Construct` in each copy of the `constructs` library is seen as a different class, and an instance of one class will not test as `instanceof` the other class. `npm install` will not create installations like this, but users may manually symlink construct libraries together or use a monorepo tool: in those cases, multiple copies of the `constructs` library can be accidentally installed, and `instanceof` will behave unpredictably. It is safest to avoid using `instanceof`, and using this type-testing method instead.
+//
+// Returns: true if `x` is an object created from a class which extends `Construct`.
 func TlsSecret_IsConstruct(x interface{}) *bool {
 	return constructs.Construct_IsConstruct(x)
 }
 
+// Checks if `x` is a construct.
+//
+// Use this method instead of `instanceof` to properly detect `Construct` instances, even when the construct library is symlinked.
+//
+// Explanation: in JavaScript, multiple copies of the `constructs` library on disk are seen as independent, completely different libraries. As a consequence, the class `Construct` in each copy of the `constructs` library is seen as a different class, and an instance of one class will not test as `instanceof` the other class. `npm install` will not create installations like this, but users may manually symlink construct libraries together or use a monorepo tool: in those cases, multiple copies of the `constructs` library can be accidentally installed, and `instanceof` will behave unpredictably. It is safest to avoid using `instanceof`, and using this type-testing method instead.
+//
+// Returns: true if `x` is an object created from a class which extends `Construct`.
 func DockerConfigSecret_IsConstruct(x interface{}) *bool {
 	return constructs.Construct_IsConstruct(x)
 }
 
+// Checks if `x` is a construct.
+//
+// Use this method instead of `instanceof` to properly detect `Construct` instances, even when the construct library is symlinked.
+//
+// Explanation: in JavaScript, multiple copies of the `constructs` library on disk are seen as independent, completely different libraries. As a consequence, the class `Construct` in each copy of the `constructs` library is seen as a different class, and an instance of one class will not test as `instanceof` the other class. `npm install` will not create installations like this, but users may manually symlink construct libraries together or use a monorepo tool: in those cases, multiple copies of the `constructs` library can be accidentally installed, and `instanceof` will behave unpredictably. It is safest to avoid using `instanceof`, and using this type-testing method instead.
+//
+// Returns: true if `x` is an object created from a class which extends `Construct`.
 func ServiceAccountTokenSecret_IsConstruct(x interface{}) *bool {
 	return constructs.Construct_IsConstruct(x)
 }
@@ -349,8 +451,7 @@ func (s *secretImpl) EnvValue(key *string, options *EnvValueFromSecretOptions) E
 	return &envValue{valueFrom: map[string]interface{}{"secretKeyRef": secretKeyRef}}
 }
 
-// EnvValue_FromSecretValue creates an environment value backed by a Secret
-// key, including references to imported Secrets.
+// Defines an environment value from a secret JSON value.
 func EnvValue_FromSecretValue(secretValue *SecretValue, options *EnvValueFromSecretOptions) EnvValue {
 	if secretValue == nil || secretValue.Secret == nil || secretValue.Key == nil || *secretValue.Key == "" {
 		panic("secret and key are required")

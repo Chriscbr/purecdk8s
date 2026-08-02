@@ -12,30 +12,63 @@ import (
 
 // IConfigMap represents a config map resource.
 type (
+	// Represents a config map.
 	IConfigMap interface{ IResource }
-	ConfigMap  interface {
+	// ConfigMap holds configuration data for pods to consume.
+	ConfigMap interface {
 		Resource
 		IConfigMap
+		// Whether or not this config map is immutable.
 		Immutable() *bool
+		// The data associated with this config map.
+		//
+		// Returns an copy. To add data records, use `addData()` or `addBinaryData()`.
 		Data() *map[string]*string
+		// The binary data associated with this config map.
+		//
+		// Returns a copy. To add data records, use `addBinaryData()` or `addData()`.
 		BinaryData() *map[string]*string
+		// Adds a data entry to the config map.
 		AddData(key, value *string)
+		// Adds a binary data entry to the config map.
+		//
+		// BinaryData can contain byte sequences that are not in the UTF-8 range.
 		AddBinaryData(key, value *string)
+		// Adds a file to the ConfigMap.
 		AddFile(localFile, key *string)
+		// Adds a directory to the ConfigMap.
 		AddDirectory(localDir *string, options *AddDirectoryOptions)
 	}
 )
 
+// Properties for initialization of `ConfigMap`.
 type ConfigMapProps struct {
-	Metadata   *cdk8s.ApiObjectMetadata `field:"optional" json:"metadata" yaml:"metadata"`
-	Data       *map[string]*string      `field:"optional" json:"data" yaml:"data"`
-	BinaryData *map[string]*string      `field:"optional" json:"binaryData" yaml:"binaryData"`
-	Immutable  *bool                    `field:"optional" json:"immutable" yaml:"immutable"`
+	// Metadata that all persisted resources must have, which includes all objects users must create.
+	Metadata *cdk8s.ApiObjectMetadata `field:"optional" json:"metadata" yaml:"metadata"`
+	// Data contains the configuration data.
+	//
+	// Each key must consist of alphanumeric characters, '-', '_' or '.'. Values with non-UTF-8 byte sequences must use the BinaryData field. The keys stored in Data must not overlap with the keys in the BinaryData field, this is enforced during validation process.
+	//
+	// You can also add data using `configMap.addData()`.
+	Data *map[string]*string `field:"optional" json:"data" yaml:"data"`
+	// BinaryData contains the binary data.
+	//
+	// Each key must consist of alphanumeric characters, '-', '_' or '.'. BinaryData can contain byte sequences that are not in the UTF-8 range. The keys stored in BinaryData must not overlap with the ones in the Data field, this is enforced during validation process.
+	//
+	// You can also add binary data using `configMap.addBinaryData()`.
+	BinaryData *map[string]*string `field:"optional" json:"binaryData" yaml:"binaryData"`
+	// If set to true, ensures that data stored in the ConfigMap cannot be updated (only object metadata can be modified).
+	//
+	// If not set to true, the field can be modified at any time. Default: false.
+	Immutable *bool `field:"optional" json:"immutable" yaml:"immutable"`
 }
 
+// Options for `configmap.addDirectory()`.
 type AddDirectoryOptions struct {
-	Exclude   *[]*string `field:"optional" json:"exclude" yaml:"exclude"`
-	KeyPrefix *string    `field:"optional" json:"keyPrefix" yaml:"keyPrefix"`
+	// Glob patterns to exclude when adding files. Default: - include all files.
+	Exclude *[]*string `field:"optional" json:"exclude" yaml:"exclude"`
+	// A prefix to add to all keys in the config map. Default: "".
+	KeyPrefix *string `field:"optional" json:"keyPrefix" yaml:"keyPrefix"`
 }
 
 type configMapImpl struct {
@@ -90,8 +123,7 @@ func (c *importedConfigMap) ResourceType() *string {
 	return jsii.String("configmaps")
 }
 
-// ConfigMap_FromConfigMapName creates a construct-backed reference to an
-// existing ConfigMap without synthesizing a manifest.
+// Represents a ConfigMap created elsewhere.
 func ConfigMap_FromConfigMapName(scope constructs.Construct, id, name *string) IConfigMap {
 	if scope == nil || id == nil || name == nil {
 		panic("scope, id and name are required")
@@ -130,6 +162,13 @@ func NewConfigMap_Override(c ConfigMap, scope constructs.Construct, id *string, 
 	applyOverride(c, NewConfigMap(scope, id, props), "ConfigMap")
 }
 
+// Checks if `x` is a construct.
+//
+// Use this method instead of `instanceof` to properly detect `Construct` instances, even when the construct library is symlinked.
+//
+// Explanation: in JavaScript, multiple copies of the `constructs` library on disk are seen as independent, completely different libraries. As a consequence, the class `Construct` in each copy of the `constructs` library is seen as a different class, and an instance of one class will not test as `instanceof` the other class. `npm install` will not create installations like this, but users may manually symlink construct libraries together or use a monorepo tool: in those cases, multiple copies of the `constructs` library can be accidentally installed, and `instanceof` will behave unpredictably. It is safest to avoid using `instanceof`, and using this type-testing method instead.
+//
+// Returns: true if `x` is an object created from a class which extends `Construct`.
 func ConfigMap_IsConstruct(x interface{}) *bool {
 	return constructs.Construct_IsConstruct(x)
 }

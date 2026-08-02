@@ -6,20 +6,29 @@ import (
 	"github.com/Chriscbr/purecdk8s/jsii"
 )
 
-// EnvFieldPaths identifies a Pod field available to an environment variable.
 type EnvFieldPaths string
 
 const (
-	EnvFieldPaths_POD_NAME             EnvFieldPaths = "POD_NAME"
-	EnvFieldPaths_POD_NAMESPACE        EnvFieldPaths = "POD_NAMESPACE"
-	EnvFieldPaths_POD_UID              EnvFieldPaths = "POD_UID"
-	EnvFieldPaths_POD_LABEL            EnvFieldPaths = "POD_LABEL"
-	EnvFieldPaths_POD_ANNOTATION       EnvFieldPaths = "POD_ANNOTATION"
-	EnvFieldPaths_POD_IP               EnvFieldPaths = "POD_IP"
+	// The name of the pod.
+	EnvFieldPaths_POD_NAME EnvFieldPaths = "POD_NAME"
+	// The namespace of the pod.
+	EnvFieldPaths_POD_NAMESPACE EnvFieldPaths = "POD_NAMESPACE"
+	// The uid of the pod.
+	EnvFieldPaths_POD_UID EnvFieldPaths = "POD_UID"
+	// The labels of the pod.
+	EnvFieldPaths_POD_LABEL EnvFieldPaths = "POD_LABEL"
+	// The annotations of the pod.
+	EnvFieldPaths_POD_ANNOTATION EnvFieldPaths = "POD_ANNOTATION"
+	// The ipAddress of the pod.
+	EnvFieldPaths_POD_IP EnvFieldPaths = "POD_IP"
+	// The service account name of the pod.
 	EnvFieldPaths_SERVICE_ACCOUNT_NAME EnvFieldPaths = "SERVICE_ACCOUNT_NAME"
-	EnvFieldPaths_NODE_NAME            EnvFieldPaths = "NODE_NAME"
-	EnvFieldPaths_NODE_IP              EnvFieldPaths = "NODE_IP"
-	EnvFieldPaths_POD_IPS              EnvFieldPaths = "POD_IPS"
+	// The name of the node.
+	EnvFieldPaths_NODE_NAME EnvFieldPaths = "NODE_NAME"
+	// The ipAddress of the node.
+	EnvFieldPaths_NODE_IP EnvFieldPaths = "NODE_IP"
+	// The ipAddresess of the pod.
+	EnvFieldPaths_POD_IPS EnvFieldPaths = "POD_IPS"
 )
 
 var envFieldPathValues = map[EnvFieldPaths]string{
@@ -35,15 +44,20 @@ var envFieldPathValues = map[EnvFieldPaths]string{
 	EnvFieldPaths_POD_IPS:              "status.podIPs",
 }
 
-// ResourceFieldPaths identifies a container resource available to an environment variable.
 type ResourceFieldPaths string
 
 const (
-	ResourceFieldPaths_CPU_LIMIT       ResourceFieldPaths = "CPU_LIMIT"
-	ResourceFieldPaths_MEMORY_LIMIT    ResourceFieldPaths = "MEMORY_LIMIT"
-	ResourceFieldPaths_CPU_REQUEST     ResourceFieldPaths = "CPU_REQUEST"
-	ResourceFieldPaths_MEMORY_REQUEST  ResourceFieldPaths = "MEMORY_REQUEST"
-	ResourceFieldPaths_STORAGE_LIMIT   ResourceFieldPaths = "STORAGE_LIMIT"
+	// CPU limit of the container.
+	ResourceFieldPaths_CPU_LIMIT ResourceFieldPaths = "CPU_LIMIT"
+	// Memory limit of the container.
+	ResourceFieldPaths_MEMORY_LIMIT ResourceFieldPaths = "MEMORY_LIMIT"
+	// CPU request of the container.
+	ResourceFieldPaths_CPU_REQUEST ResourceFieldPaths = "CPU_REQUEST"
+	// Memory request of the container.
+	ResourceFieldPaths_MEMORY_REQUEST ResourceFieldPaths = "MEMORY_REQUEST"
+	// Ephemeral storage limit of the container.
+	ResourceFieldPaths_STORAGE_LIMIT ResourceFieldPaths = "STORAGE_LIMIT"
+	// Ephemeral storage request of the container.
 	ResourceFieldPaths_STORAGE_REQUEST ResourceFieldPaths = "STORAGE_REQUEST"
 )
 
@@ -56,21 +70,31 @@ var resourceFieldPathValues = map[ResourceFieldPaths]string{
 	ResourceFieldPaths_STORAGE_REQUEST: "requests.ephemeral-storage",
 }
 
+// Options to specify an environment variable value from the process environment.
 type EnvValueFromProcessOptions struct {
+	// Specify whether the key must exist in the environment.
+	//
+	// If this is set to true, and the key does not exist, an error will thrown. Default: false.
 	Required *bool `field:"optional" json:"required" yaml:"required"`
 }
 
+// Options to specify an environment variable value from a field reference.
 type EnvValueFromFieldRefOptions struct {
+	// Version of the schema the FieldPath is written in terms of.
 	ApiVersion *string `field:"optional" json:"apiVersion" yaml:"apiVersion"`
-	Key        *string `field:"optional" json:"key" yaml:"key"`
+	// The key to select the pod label or annotation.
+	Key *string `field:"optional" json:"key" yaml:"key"`
 }
 
+// Options to specify an environment variable value from a resource.
 type EnvValueFromResourceOptions struct {
+	// The container to select the value from.
 	Container Container `field:"optional" json:"container" yaml:"container"`
-	Divisor   *string   `field:"optional" json:"divisor" yaml:"divisor"`
+	// The output format of the exposed resource.
+	Divisor *string `field:"optional" json:"divisor" yaml:"divisor"`
 }
 
-// EnvFrom is an environment-variable source copied from a ConfigMap or Secret.
+// A collection of env variables defined in other resources.
 type EnvFrom interface{ toManifest() map[string]interface{} }
 
 type envFromImpl struct {
@@ -104,6 +128,9 @@ func NewEnvFrom_Override(env EnvFrom, configMap IConfigMap, prefix *string, secr
 	applyOverride(env, NewEnvFrom(configMap, prefix, secret), "EnvFrom")
 }
 
+// Selects a ConfigMap to populate the environment variables with.
+//
+// The contents of the target ConfigMap's Data field will represent the key-value pairs as environment variables.
 func Env_FromConfigMap(configMap IConfigMap, prefix *string) EnvFrom {
 	if configMap == nil {
 		panic("configMap is required")
@@ -111,6 +138,9 @@ func Env_FromConfigMap(configMap IConfigMap, prefix *string) EnvFrom {
 	return NewEnvFrom(configMap, prefix, nil)
 }
 
+// Selects a Secret to populate the environment variables with.
+//
+// The contents of the target Secret's Data field will represent the key-value pairs as environment variables.
 func Env_FromSecret(secret ISecret) EnvFrom {
 	if secret == nil {
 		panic("secret is required")
@@ -118,6 +148,7 @@ func Env_FromSecret(secret ISecret) EnvFrom {
 	return NewEnvFrom(nil, nil, secret)
 }
 
+// Create a value from a field reference.
 func EnvValue_FromFieldRef(fieldPath EnvFieldPaths, options *EnvValueFromFieldRefOptions) EnvValue {
 	path, ok := envFieldPathValues[fieldPath]
 	if !ok {
@@ -137,6 +168,7 @@ func EnvValue_FromFieldRef(fieldPath EnvFieldPaths, options *EnvValueFromFieldRe
 	return &envValue{valueFrom: map[string]interface{}{"fieldRef": fieldRef}}
 }
 
+// Create a value from a resource.
 func EnvValue_FromResource(resource ResourceFieldPaths, options *EnvValueFromResourceOptions) EnvValue {
 	path, ok := resourceFieldPathValues[resource]
 	if !ok {
@@ -154,6 +186,7 @@ func EnvValue_FromResource(resource ResourceFieldPaths, options *EnvValueFromRes
 	return &envValue{valueFrom: map[string]interface{}{"resourceFieldRef": resourceRef}}
 }
 
+// Create a value from a key in the current process environment.
 func EnvValue_FromProcess(key *string, options *EnvValueFromProcessOptions) EnvValue {
 	if key == nil {
 		panic("key is required")

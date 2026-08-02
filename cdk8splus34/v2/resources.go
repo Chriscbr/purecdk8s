@@ -7,7 +7,9 @@ import (
 	"github.com/Chriscbr/purecdk8s/jsii"
 )
 
-// Cpu represents a CPU quantity expressed in Kubernetes CPU units.
+// Represents the amount of CPU.
+//
+// The amount can be passed as millis or units.
 type Cpu interface {
 	Amount() *string
 	SetAmount(value *string)
@@ -26,7 +28,6 @@ func (c *cpuImpl) SetAmount(value *string) {
 	c.amount = value
 }
 
-// Cpu_Millis returns a CPU quantity in millicores.
 func Cpu_Millis(amount *float64) Cpu {
 	if amount == nil {
 		panic("amount is required")
@@ -34,7 +35,6 @@ func Cpu_Millis(amount *float64) Cpu {
 	return &cpuImpl{amount: jsii.String(numberString(*amount) + "m")}
 }
 
-// Cpu_Units returns a CPU quantity in whole CPU units.
 func Cpu_Units(amount *float64) Cpu {
 	if amount == nil {
 		panic("amount is required")
@@ -46,25 +46,25 @@ func numberString(value float64) string {
 	return strconv.FormatFloat(value, 'f', -1, 64)
 }
 
-// CpuResources contains CPU resource requests and limits.
+// CPU request and limit.
 type CpuResources struct {
 	Limit   Cpu `field:"optional" json:"limit" yaml:"limit"`
 	Request Cpu `field:"optional" json:"request" yaml:"request"`
 }
 
-// MemoryResources contains memory resource requests and limits.
+// Memory request and limit.
 type MemoryResources struct {
 	Limit   cdk8s.Size `field:"optional" json:"limit" yaml:"limit"`
 	Request cdk8s.Size `field:"optional" json:"request" yaml:"request"`
 }
 
-// EphemeralStorageResources contains ephemeral-storage resource requests and limits.
+// Emphemeral storage request and limit.
 type EphemeralStorageResources struct {
 	Limit   cdk8s.Size `field:"optional" json:"limit" yaml:"limit"`
 	Request cdk8s.Size `field:"optional" json:"request" yaml:"request"`
 }
 
-// ContainerResources contains compute resource requests and limits.
+// CPU and memory compute resources.
 type ContainerResources struct {
 	Cpu              *CpuResources              `field:"optional" json:"cpu" yaml:"cpu"`
 	EphemeralStorage *EphemeralStorageResources `field:"optional" json:"ephemeralStorage" yaml:"ephemeralStorage"`
@@ -114,7 +114,7 @@ func normalizedContainerResources(resources *ContainerResources) *ContainerResou
 	}
 }
 
-// PercentOrAbsolute represents either an absolute number or a percentage.
+// Union like class repsenting either a ration in percents or an absolute number.
 type PercentOrAbsolute interface {
 	Value() interface{}
 	IsZero() *bool
@@ -142,7 +142,7 @@ func (p *percentOrAbsoluteImpl) IsZero() *bool {
 	return jsii.Bool(zero)
 }
 
-// PercentOrAbsolute_Absolute returns an absolute quantity.
+// Absolute number.
 func PercentOrAbsolute_Absolute(value *float64) PercentOrAbsolute {
 	if value == nil {
 		panic("value is required")
@@ -150,7 +150,7 @@ func PercentOrAbsolute_Absolute(value *float64) PercentOrAbsolute {
 	return &percentOrAbsoluteImpl{value: value}
 }
 
-// PercentOrAbsolute_Percent returns a percentage quantity.
+// Percent ratio.
 func PercentOrAbsolute_Percent(value *float64) PercentOrAbsolute {
 	if value == nil {
 		panic("percent is required")
@@ -158,13 +158,23 @@ func PercentOrAbsolute_Percent(value *float64) PercentOrAbsolute {
 	return &percentOrAbsoluteImpl{value: jsii.String(numberString(*value) + "%")}
 }
 
-// DeploymentStrategyRollingUpdateOptions configures a rolling update.
+// Options for `DeploymentStrategy.rollingUpdate`.
 type DeploymentStrategyRollingUpdateOptions struct {
-	MaxSurge       PercentOrAbsolute `field:"optional" json:"maxSurge" yaml:"maxSurge"`
+	// The maximum number of pods that can be scheduled above the desired number of pods.
+	//
+	// Value can be an absolute number (ex: 5) or a percentage of desired pods (ex: 10%). Absolute number is calculated from percentage by rounding up. This can not be 0 if `maxUnavailable` is 0.
+	//
+	// Example: when this is set to 30%, the new ReplicaSet can be scaled up immediately when the rolling update starts, such that the total number of old and new pods do not exceed 130% of desired pods. Once old pods have been killed, new ReplicaSet can be scaled up further, ensuring that total number of pods running at any time during the update is at most 130% of desired pods. Default: '25%'.
+	MaxSurge PercentOrAbsolute `field:"optional" json:"maxSurge" yaml:"maxSurge"`
+	// The maximum number of pods that can be unavailable during the update.
+	//
+	// Value can be an absolute number (ex: 5) or a percentage of desired pods (ex: 10%). Absolute number is calculated from percentage by rounding down. This can not be 0 if `maxSurge` is 0.
+	//
+	// Example: when this is set to 30%, the old ReplicaSet can be scaled down to 70% of desired pods immediately when the rolling update starts. Once new pods are ready, old ReplicaSet can be scaled down further, followed by scaling up the new ReplicaSet, ensuring that the total number of pods available at all times during the update is at least 70% of desired pods. Default: '25%'.
 	MaxUnavailable PercentOrAbsolute `field:"optional" json:"maxUnavailable" yaml:"maxUnavailable"`
 }
 
-// DeploymentStrategy controls how a Deployment replaces pods.
+// Deployment strategies.
 type DeploymentStrategy interface{ toManifest() map[string]interface{} }
 
 type deploymentStrategyImpl struct{ manifest map[string]interface{} }
@@ -173,12 +183,11 @@ func (s *deploymentStrategyImpl) toManifest() map[string]interface{} {
 	return s.manifest
 }
 
-// DeploymentStrategy_Recreate deletes all pods before creating replacements.
+// All existing Pods are killed before new ones are created. See: https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#recreate-deployment
 func DeploymentStrategy_Recreate() DeploymentStrategy {
 	return &deploymentStrategyImpl{manifest: map[string]interface{}{"type": "Recreate"}}
 }
 
-// DeploymentStrategy_RollingUpdate creates a rolling-update strategy.
 func DeploymentStrategy_RollingUpdate(options *DeploymentStrategyRollingUpdateOptions) DeploymentStrategy {
 	maxSurge := PercentOrAbsolute_Percent(jsii.Number(25))
 	maxUnavailable := PercentOrAbsolute_Percent(jsii.Number(25))
@@ -199,12 +208,17 @@ func DeploymentStrategy_RollingUpdate(options *DeploymentStrategyRollingUpdateOp
 	}}
 }
 
-// StatefulSetUpdateStrategyRollingUpdateOptions configures a StatefulSet rolling update.
+// Options for `StatefulSetUpdateStrategy.rollingUpdate`.
 type StatefulSetUpdateStrategyRollingUpdateOptions struct {
+	// If specified, all Pods with an ordinal that is greater than or equal to the partition will be updated when the StatefulSet's .spec.template is updated. All Pods with an ordinal that is less than the partition will not be updated, and, even if they are deleted, they will be recreated at the previous version.
+	//
+	// If the partition is greater than replicas, updates to the pod template will not be propagated to Pods. In most cases you will not need to use a partition, but they are useful if you want to stage an update, roll out a canary, or perform a phased roll out. See: https://kubernetes.io/docs/concepts/workloads/controllers/statefulset/#partitions
+	//
+	// Default: 0.
 	Partition *float64 `field:"optional" json:"partition" yaml:"partition"`
 }
 
-// StatefulSetUpdateStrategy controls how a StatefulSet replaces pods.
+// StatefulSet update strategies.
 type StatefulSetUpdateStrategy interface{ toManifest() map[string]interface{} }
 
 type statefulSetUpdateStrategyImpl struct{ manifest map[string]interface{} }
@@ -213,12 +227,16 @@ func (s *statefulSetUpdateStrategyImpl) toManifest() map[string]interface{} {
 	return s.manifest
 }
 
-// StatefulSetUpdateStrategy_OnDelete requires users to delete pods manually.
+// The controller will not automatically update the Pods in a StatefulSet.
+//
+// Users must manually delete Pods to cause the controller to create new Pods that reflect modifications.
 func StatefulSetUpdateStrategy_OnDelete() StatefulSetUpdateStrategy {
 	return &statefulSetUpdateStrategyImpl{manifest: map[string]interface{}{"type": "OnDelete"}}
 }
 
-// StatefulSetUpdateStrategy_RollingUpdate creates a rolling-update strategy.
+// The controller will delete and recreate each Pod in the StatefulSet.
+//
+// It will proceed in the same order as Pod termination (from the largest ordinal to the smallest), updating each Pod one at a time. The Kubernetes control plane waits until an updated Pod is Running and Ready prior to updating its predecessor.
 func StatefulSetUpdateStrategy_RollingUpdate(options *StatefulSetUpdateStrategyRollingUpdateOptions) StatefulSetUpdateStrategy {
 	partition := jsii.Number(0)
 	if options != nil && options.Partition != nil {
@@ -229,7 +247,7 @@ func StatefulSetUpdateStrategy_RollingUpdate(options *StatefulSetUpdateStrategyR
 	}}
 }
 
-// Replicas describes the amount a horizontal autoscaler scaling policy changes.
+// The amount of replicas that will change.
 type Replicas interface{ toManifest() map[string]interface{} }
 
 type replicasImpl struct{ manifest map[string]interface{} }
@@ -238,7 +256,7 @@ func (r *replicasImpl) toManifest() map[string]interface{} {
 	return r.manifest
 }
 
-// Replicas_Absolute creates a policy that changes an absolute number of pods.
+// Changes the pods by a percentage of the it's current value.
 func Replicas_Absolute(value *float64) Replicas {
 	if value == nil || *value <= 0 {
 		panic("replica value must be greater than zero")
@@ -246,7 +264,7 @@ func Replicas_Absolute(value *float64) Replicas {
 	return &replicasImpl{manifest: map[string]interface{}{"type": "Pods", "value": value}}
 }
 
-// Replicas_Percent creates a policy that changes a percentage of pods.
+// Changes the pods by a percentage of the it's current value.
 func Replicas_Percent(value *float64) Replicas {
 	if value == nil || *value <= 0 {
 		panic("replica value must be greater than zero")

@@ -24,22 +24,37 @@ type sizeImpl struct {
 	unit   storageUnit
 }
 
+// Create a Storage representing an amount gibibytes.
+//
+// 1 GiB = 1024 MiB.
 func Size_Gibibytes(amount *float64) Size {
 	return newSize(requiredSizeAmount(amount), storageGibibytes)
 }
 
+// Create a Storage representing an amount kibibytes.
+//
+// 1 KiB = 1024 bytes.
 func Size_Kibibytes(amount *float64) Size {
 	return newSize(requiredSizeAmount(amount), storageKibibytes)
 }
 
+// Create a Storage representing an amount mebibytes.
+//
+// 1 MiB = 1024 KiB.
 func Size_Mebibytes(amount *float64) Size {
 	return newSize(requiredSizeAmount(amount), storageMebibytes)
 }
 
+// Create a Storage representing an amount pebibytes.
+//
+// 1 PiB = 1024 TiB.
 func Size_Pebibyte(amount *float64) Size {
 	return newSize(requiredSizeAmount(amount), storagePebibytes)
 }
 
+// Create a Storage representing an amount tebibytes.
+//
+// 1 TiB = 1024 GiB.
 func Size_Tebibytes(amount *float64) Size {
 	return newSize(requiredSizeAmount(amount), storageTebibytes)
 }

@@ -2,17 +2,31 @@ package cdk8splus34
 
 import "github.com/Chriscbr/purecdk8s/jsii"
 
-// ApiResourceOptions identifies a Kubernetes API resource type.
+// Options for `ApiResource`.
 type ApiResourceOptions struct {
-	ApiGroup     *string `field:"required" json:"apiGroup" yaml:"apiGroup"`
+	// The group portion of the API version (e.g. `authorization.k8s.io`).
+	ApiGroup *string `field:"required" json:"apiGroup" yaml:"apiGroup"`
+	// The name of the resource type as it appears in the relevant API endpoint.
+	//
+	// Example:
+	//   - "pods" or "pods/log"
+	//
+	// See: https://kubernetes.io/docs/reference/access-authn-authz/rbac/#referring-to-resources
 	ResourceType *string `field:"required" json:"resourceType" yaml:"resourceType"`
 }
 
-// ApiResource is an API resource endpoint such as pods or deployments.
+// Represents information about an API resource type.
 type ApiResource interface {
 	IApiEndpoint
 	IApiResource
+	// The group portion of the API version (e.g. `authorization.k8s.io`).
 	ApiGroup() *string
+	// The name of the resource type as it appears in the relevant API endpoint.
+	//
+	// Example:
+	//   - "pods" or "pods/log"
+	//
+	// See: https://kubernetes.io/docs/reference/access-authn-authz/rbac/#referring-to-resources
 	ResourceType() *string
 }
 
@@ -45,7 +59,7 @@ func (a *apiResourceImpl) AsNonApiResource() *string {
 	return nil
 }
 
-// ApiResource_Custom returns a descriptor for a custom Kubernetes API resource.
+// API resource information for a custom resource type.
 func ApiResource_Custom(options *ApiResourceOptions) ApiResource {
 	if options == nil || options.ApiGroup == nil || options.ResourceType == nil {
 		panic("apiGroup and resourceType are required")
@@ -269,14 +283,13 @@ func ApiResource_VOLUME_ATTACHMENTS() ApiResource {
 	return newApiResource("storage.k8s.io", "volumeattachments")
 }
 
-// NonApiResource describes a non-resource Kubernetes API endpoint.
+// Factory for creating non api resources.
 type NonApiResource interface {
 	IApiEndpoint
 }
 
 type nonApiResourceImpl struct{ url *string }
 
-// NonApiResource_Of returns a descriptor for url, such as /healthz.
 func NonApiResource_Of(url *string) NonApiResource {
 	if url == nil {
 		panic("url is required")

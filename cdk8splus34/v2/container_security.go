@@ -2,83 +2,150 @@ package cdk8splus34
 
 import "github.com/Chriscbr/purecdk8s/jsii"
 
-// Capability is a POSIX capability for a container process.
+// Capability - complete list of POSIX capabilities.
 type Capability string
 
 const (
-	Capability_ALL                Capability = "ALL"
-	Capability_AUDIT_CONTROL      Capability = "AUDIT_CONTROL"
-	Capability_AUDIT_READ         Capability = "AUDIT_READ"
-	Capability_AUDIT_WRITE        Capability = "AUDIT_WRITE"
-	Capability_BLOCK_SUSPEND      Capability = "BLOCK_SUSPEND"
-	Capability_BPF                Capability = "BPF"
+	// ALL.
+	Capability_ALL Capability = "ALL"
+	// CAP_AUDIT_CONTROL.
+	Capability_AUDIT_CONTROL Capability = "AUDIT_CONTROL"
+	// CAP_AUDIT_READ.
+	Capability_AUDIT_READ Capability = "AUDIT_READ"
+	// CAP_AUDIT_WRITE.
+	Capability_AUDIT_WRITE Capability = "AUDIT_WRITE"
+	// CAP_BLOCK_SUSPEND.
+	Capability_BLOCK_SUSPEND Capability = "BLOCK_SUSPEND"
+	// CAP_BPF.
+	Capability_BPF Capability = "BPF"
+	// CAP_CHECKPOINT_RESTORE.
 	Capability_CHECKPOINT_RESTORE Capability = "CHECKPOINT_RESTORE"
-	Capability_CHOWN              Capability = "CHOWN"
-	Capability_DAC_OVERRIDE       Capability = "DAC_OVERRIDE"
-	Capability_DAC_READ_SEARCH    Capability = "DAC_READ_SEARCH"
-	Capability_FOWNER             Capability = "FOWNER"
-	Capability_FSETID             Capability = "FSETID"
-	Capability_IPC_LOCK           Capability = "IPC_LOCK"
-	Capability_IPC_OWNER          Capability = "IPC_OWNER"
-	Capability_KILL               Capability = "KILL"
-	Capability_LEASE              Capability = "LEASE"
-	Capability_LINUX_IMMUTABLE    Capability = "LINUX_IMMUTABLE"
-	Capability_MAC_ADMIN          Capability = "MAC_ADMIN"
-	Capability_MAC_OVERRIDE       Capability = "MAC_OVERRIDE"
-	Capability_MKNOD              Capability = "MKNOD"
-	Capability_NET_ADMIN          Capability = "NET_ADMIN"
-	Capability_NET_BIND_SERVICE   Capability = "NET_BIND_SERVICE"
-	Capability_NET_BROADCAST      Capability = "NET_BROADCAST"
-	Capability_NET_RAW            Capability = "NET_RAW"
-	Capability_PERFMON            Capability = "PERFMON"
-	Capability_SETGID             Capability = "SETGID"
-	Capability_SETFCAP            Capability = "SETFCAP"
-	Capability_SETPCAP            Capability = "SETPCAP"
-	Capability_SETUID             Capability = "SETUID"
-	Capability_SYS_ADMIN          Capability = "SYS_ADMIN"
-	Capability_SYS_BOOT           Capability = "SYS_BOOT"
-	Capability_SYS_CHROOT         Capability = "SYS_CHROOT"
-	Capability_SYS_MODULE         Capability = "SYS_MODULE"
-	Capability_SYS_NICE           Capability = "SYS_NICE"
-	Capability_SYS_PACCT          Capability = "SYS_PACCT"
-	Capability_SYS_PTRACE         Capability = "SYS_PTRACE"
-	Capability_SYS_RAWIO          Capability = "SYS_RAWIO"
-	Capability_SYS_RESOURCE       Capability = "SYS_RESOURCE"
-	Capability_SYS_TIME           Capability = "SYS_TIME"
-	Capability_SYS_TTY_CONFIG     Capability = "SYS_TTY_CONFIG"
-	Capability_SYSLOG             Capability = "SYSLOG"
-	Capability_WAKE_ALARM         Capability = "WAKE_ALARM"
+	// CAP_CHOWN.
+	Capability_CHOWN Capability = "CHOWN"
+	// CAP_DAC_OVERRIDE.
+	Capability_DAC_OVERRIDE Capability = "DAC_OVERRIDE"
+	// CAP_DAC_READ_SEARCH.
+	Capability_DAC_READ_SEARCH Capability = "DAC_READ_SEARCH"
+	// CAP_FOWNER.
+	Capability_FOWNER Capability = "FOWNER"
+	// CAP_FSETID.
+	Capability_FSETID Capability = "FSETID"
+	// CAP_IPC_LOCK.
+	Capability_IPC_LOCK Capability = "IPC_LOCK"
+	// CAP_IPC_OWNER.
+	Capability_IPC_OWNER Capability = "IPC_OWNER"
+	// CAP_KILL.
+	Capability_KILL Capability = "KILL"
+	// CAP_LEASE.
+	Capability_LEASE Capability = "LEASE"
+	// CAP_LINUX_IMMUTABLE.
+	Capability_LINUX_IMMUTABLE Capability = "LINUX_IMMUTABLE"
+	// CAP_MAC_ADMIN.
+	Capability_MAC_ADMIN Capability = "MAC_ADMIN"
+	// CAP_MAC_OVERRIDE.
+	Capability_MAC_OVERRIDE Capability = "MAC_OVERRIDE"
+	// CAP_MKNOD.
+	Capability_MKNOD Capability = "MKNOD"
+	// CAP_NET_ADMIN.
+	Capability_NET_ADMIN Capability = "NET_ADMIN"
+	// CAP_NET_BIND_SERVICE.
+	Capability_NET_BIND_SERVICE Capability = "NET_BIND_SERVICE"
+	// CAP_NET_BROADCAST.
+	Capability_NET_BROADCAST Capability = "NET_BROADCAST"
+	// CAP_NET_RAW.
+	Capability_NET_RAW Capability = "NET_RAW"
+	// CAP_PERFMON.
+	Capability_PERFMON Capability = "PERFMON"
+	// CAP_SETGID.
+	Capability_SETGID Capability = "SETGID"
+	// CAP_SETFCAP.
+	Capability_SETFCAP Capability = "SETFCAP"
+	// CAP_SETPCAP.
+	Capability_SETPCAP Capability = "SETPCAP"
+	// CAP_SETUID.
+	Capability_SETUID Capability = "SETUID"
+	// CAP_SYS_ADMIN.
+	Capability_SYS_ADMIN Capability = "SYS_ADMIN"
+	// CAP_SYS_BOOT.
+	Capability_SYS_BOOT Capability = "SYS_BOOT"
+	// CAP_SYS_CHROOT.
+	Capability_SYS_CHROOT Capability = "SYS_CHROOT"
+	// CAP_SYS_MODULE.
+	Capability_SYS_MODULE Capability = "SYS_MODULE"
+	// CAP_SYS_NICE.
+	Capability_SYS_NICE Capability = "SYS_NICE"
+	// CAP_SYS_PACCT.
+	Capability_SYS_PACCT Capability = "SYS_PACCT"
+	// CAP_SYS_PTRACE.
+	Capability_SYS_PTRACE Capability = "SYS_PTRACE"
+	// CAP_SYS_RAWIO.
+	Capability_SYS_RAWIO Capability = "SYS_RAWIO"
+	// CAP_SYS_RESOURCE.
+	Capability_SYS_RESOURCE Capability = "SYS_RESOURCE"
+	// CAP_SYS_TIME.
+	Capability_SYS_TIME Capability = "SYS_TIME"
+	// CAP_SYS_TTY_CONFIG.
+	Capability_SYS_TTY_CONFIG Capability = "SYS_TTY_CONFIG"
+	// CAP_SYSLOG.
+	Capability_SYSLOG Capability = "SYSLOG"
+	// CAP_WAKE_ALARM.
+	Capability_WAKE_ALARM Capability = "WAKE_ALARM"
 )
 
 type SeccompProfileType string
 
 const (
-	SeccompProfileType_LOCALHOST       SeccompProfileType = "LOCALHOST"
+	// A profile defined in a file on the node should be used.
+	SeccompProfileType_LOCALHOST SeccompProfileType = "LOCALHOST"
+	// The container runtime default profile should be used.
 	SeccompProfileType_RUNTIME_DEFAULT SeccompProfileType = "RUNTIME_DEFAULT"
-	SeccompProfileType_UNCONFINED      SeccompProfileType = "UNCONFINED"
+	// No profile should be applied.
+	SeccompProfileType_UNCONFINED SeccompProfileType = "UNCONFINED"
 )
 
 type SeccompProfile struct {
-	Type             SeccompProfileType `field:"required" json:"type" yaml:"type"`
-	LocalhostProfile *string            `field:"optional" json:"localhostProfile" yaml:"localhostProfile"`
+	// Indicates which kind of seccomp profile will be applied.
+	Type SeccompProfileType `field:"required" json:"type" yaml:"type"`
+	// localhostProfile indicates a profile defined in a file on the node should be used.
+	//
+	// The profile must be preconfigured on the node to work. Must be a descending path, relative to the kubelet's configured seccomp profile location. Must only be set if type is "Localhost". Default: - empty string.
+	LocalhostProfile *string `field:"optional" json:"localhostProfile" yaml:"localhostProfile"`
 }
 
 type ContainerSecutiryContextCapabilities struct {
-	Add  *[]Capability `field:"optional" json:"add" yaml:"add"`
+	// Added capabilities.
+	Add *[]Capability `field:"optional" json:"add" yaml:"add"`
+	// Removed capabilities.
 	Drop *[]Capability `field:"optional" json:"drop" yaml:"drop"`
 }
 
+// Properties for `ContainerSecurityContext`.
 type ContainerSecurityContextProps struct {
-	AllowPrivilegeEscalation *bool                                 `field:"optional" json:"allowPrivilegeEscalation" yaml:"allowPrivilegeEscalation"`
-	Capabilities             *ContainerSecutiryContextCapabilities `field:"optional" json:"capabilities" yaml:"capabilities"`
-	EnsureNonRoot            *bool                                 `field:"optional" json:"ensureNonRoot" yaml:"ensureNonRoot"`
-	Group                    *float64                              `field:"optional" json:"group" yaml:"group"`
-	Privileged               *bool                                 `field:"optional" json:"privileged" yaml:"privileged"`
-	ReadOnlyRootFilesystem   *bool                                 `field:"optional" json:"readOnlyRootFilesystem" yaml:"readOnlyRootFilesystem"`
-	SeccompProfile           *SeccompProfile                       `field:"optional" json:"seccompProfile" yaml:"seccompProfile"`
-	User                     *float64                              `field:"optional" json:"user" yaml:"user"`
+	// Whether a process can gain more privileges than its parent process. Default: false.
+	AllowPrivilegeEscalation *bool `field:"optional" json:"allowPrivilegeEscalation" yaml:"allowPrivilegeEscalation"`
+	// POSIX capabilities for running containers. Default: none.
+	Capabilities *ContainerSecutiryContextCapabilities `field:"optional" json:"capabilities" yaml:"capabilities"`
+	// Indicates that the container must run as a non-root user.
+	//
+	// If true, the Kubelet will validate the image at runtime to ensure that it does not run as UID 0 (root) and fail to start the container if it does. Default: true.
+	EnsureNonRoot *bool `field:"optional" json:"ensureNonRoot" yaml:"ensureNonRoot"`
+	// The GID to run the entrypoint of the container process. Default: - 26000. An arbitrary number bigger than 9999 is selected here. This is so that the container is blocked to access host files even if somehow it manages to get access to host file system.
+	Group *float64 `field:"optional" json:"group" yaml:"group"`
+	// Run container in privileged mode.
+	//
+	// Processes in privileged containers are essentially equivalent to root on the host. Default: false.
+	Privileged *bool `field:"optional" json:"privileged" yaml:"privileged"`
+	// Whether this container has a read-only root filesystem. Default: true.
+	ReadOnlyRootFilesystem *bool `field:"optional" json:"readOnlyRootFilesystem" yaml:"readOnlyRootFilesystem"`
+	// Container's seccomp profile settings.
+	//
+	// Only one profile source may be set. Default: none.
+	SeccompProfile *SeccompProfile `field:"optional" json:"seccompProfile" yaml:"seccompProfile"`
+	// The UID to run the entrypoint of the container process. Default: - 25000. An arbitrary number bigger than 9999 is selected here. This is so that the container is blocked to access host files even if somehow it manages to get access to host file system.
+	User *float64 `field:"optional" json:"user" yaml:"user"`
 }
 
+// Container security attributes and settings.
 type ContainerSecurityContext interface {
 	AllowPrivilegeEscalation() *bool
 	Capabilities() *ContainerSecutiryContextCapabilities
@@ -210,8 +277,14 @@ func seccompProfileTypeManifest(value SeccompProfileType) string {
 	}
 }
 
+// RestartPolicy defines the restart behavior of individual containers in a pod.
+//
+// This field may only be set for init containers, and the only allowed value is "Always". For non-init containers or when this field is not specified, the restart behavior is defined by the Pod's restart policy and the container type. Setting the RestartPolicy as "Always" for the init container will have the following effect: this init container will be continually restarted on exit until all regular containers have terminated. Once all regular containers have completed, all init containers with restartPolicy "Always" will be shut down. This lifecycle differs from normal init containers and is often referred to as a "sidecar" container. See: https://kubernetes.io/docs/concepts/workloads/pods/sidecar-containers/
 type ContainerRestartPolicy string
 
+// If an init container is created with its restartPolicy set to Always, it will start and remain running during the entire life of the Pod.
+//
+// For regular containers, this is ignored by Kubernetes.
 const ContainerRestartPolicy_ALWAYS ContainerRestartPolicy = "ALWAYS"
 
 func containerRestartPolicyManifest(value ContainerRestartPolicy) string {
@@ -224,9 +297,39 @@ func containerRestartPolicyManifest(value ContainerRestartPolicy) string {
 type MountPropagation string
 
 const (
-	MountPropagation_NONE              MountPropagation = "NONE"
+	// This volume mount will not receive any subsequent mounts that are mounted to this volume or any of its subdirectories by the host.
+	//
+	// In similar fashion, no mounts created by the Container will be visible on the host.
+	//
+	// This is the default mode.
+	//
+	// This mode is equal to `private` mount propagation as described in the Linux kernel documentation.
+	MountPropagation_NONE MountPropagation = "NONE"
+	// This volume mount will receive all subsequent mounts that are mounted to this volume or any of its subdirectories.
+	//
+	// In other words, if the host mounts anything inside the volume mount, the Container will see it mounted there.
+	//
+	// Similarly, if any Pod with Bidirectional mount propagation to the same volume mounts anything there, the Container with HostToContainer mount propagation will see it.
+	//
+	// This mode is equal to `rslave` mount propagation as described in the Linux kernel documentation.
 	MountPropagation_HOST_TO_CONTAINER MountPropagation = "HOST_TO_CONTAINER"
-	MountPropagation_BIDIRECTIONAL     MountPropagation = "BIDIRECTIONAL"
+	// This volume mount behaves the same the HostToContainer mount.
+	//
+	// In addition, all volume mounts created by the Container will be propagated back
+	// to the host and to all Containers of all Pods that use the same volume
+	//
+	// A typical use case for this mode is a Pod with a FlexVolume or CSI driver or a
+	// Pod that needs to mount something on the host using a hostPath volume.
+	//
+	// This mode is equal to `rshared` mount propagation as described in the Linux
+	// kernel documentation
+	//
+	// Caution: Bidirectional mount propagation can be dangerous. It can damage the
+	// host operating system and therefore it is allowed only in privileged Containers.
+	// Familiarity with Linux kernel behavior is strongly recommended. In addition,
+	// any volume mounts created by Containers in Pods must be destroyed (unmounted) by
+	// the Containers on termination.
+	MountPropagation_BIDIRECTIONAL MountPropagation = "BIDIRECTIONAL"
 )
 
 func mountPropagationManifest(value MountPropagation) string {
