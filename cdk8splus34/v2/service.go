@@ -16,11 +16,26 @@ type PodSelectorConfig struct {
 type ServiceType string
 
 const (
-	ServiceType_CLUSTER_IP    ServiceType = "ClusterIP"
-	ServiceType_NODE_PORT     ServiceType = "NodePort"
-	ServiceType_LOAD_BALANCER ServiceType = "LoadBalancer"
-	ServiceType_EXTERNAL_NAME ServiceType = "ExternalName"
+	ServiceType_CLUSTER_IP    ServiceType = "CLUSTER_IP"
+	ServiceType_NODE_PORT     ServiceType = "NODE_PORT"
+	ServiceType_LOAD_BALANCER ServiceType = "LOAD_BALANCER"
+	ServiceType_EXTERNAL_NAME ServiceType = "EXTERNAL_NAME"
 )
+
+func serviceTypeManifestValue(value ServiceType) string {
+	switch value {
+	case ServiceType_CLUSTER_IP:
+		return "ClusterIP"
+	case ServiceType_NODE_PORT:
+		return "NodePort"
+	case ServiceType_LOAD_BALANCER:
+		return "LoadBalancer"
+	case ServiceType_EXTERNAL_NAME:
+		return "ExternalName"
+	default:
+		return string(value)
+	}
+}
 
 type ServiceBindOptions struct {
 	Name       *string  `field:"optional" json:"name" yaml:"name"`
@@ -187,7 +202,7 @@ func (s *serviceImpl) toManifest() interface{} {
 		if s.externalName == nil {
 			panic("A service with type EXTERNAL_NAME requires an externalName prop")
 		}
-		return map[string]interface{}{"type": string(s.type_), "externalName": s.externalName}
+		return map[string]interface{}{"type": serviceTypeManifestValue(s.type_), "externalName": s.externalName}
 	}
 	if len(s.ports) == 0 {
 		panic("A service must be configured with a port")
@@ -215,7 +230,7 @@ func (s *serviceImpl) toManifest() interface{} {
 			externalIPs = append(externalIPs, value)
 		}
 	}
-	result := map[string]interface{}{"type": string(s.type_), "ports": ports, "selector": s.selector, "externalIPs": externalIPs}
+	result := map[string]interface{}{"type": serviceTypeManifestValue(s.type_), "ports": ports, "selector": s.selector, "externalIPs": externalIPs}
 	if s.loadBalancerSourceRanges != nil {
 		result["loadBalancerSourceRanges"] = s.loadBalancerSourceRanges
 	}
@@ -235,10 +250,23 @@ func (s *serviceImpl) toManifest() interface{} {
 type HttpIngressPathType string
 
 const (
-	HttpIngressPathType_EXACT                   HttpIngressPathType = "Exact"
-	HttpIngressPathType_PREFIX                  HttpIngressPathType = "Prefix"
-	HttpIngressPathType_IMPLEMENTATION_SPECIFIC HttpIngressPathType = "ImplementationSpecific"
+	HttpIngressPathType_EXACT                   HttpIngressPathType = "EXACT"
+	HttpIngressPathType_PREFIX                  HttpIngressPathType = "PREFIX"
+	HttpIngressPathType_IMPLEMENTATION_SPECIFIC HttpIngressPathType = "IMPLEMENTATION_SPECIFIC"
 )
+
+func httpIngressPathTypeManifestValue(value HttpIngressPathType) string {
+	switch value {
+	case HttpIngressPathType_EXACT:
+		return "Exact"
+	case HttpIngressPathType_PREFIX:
+		return "Prefix"
+	case HttpIngressPathType_IMPLEMENTATION_SPECIFIC:
+		return "ImplementationSpecific"
+	default:
+		return string(value)
+	}
+}
 
 type ExposeServiceViaIngressOptions struct {
 	PathType HttpIngressPathType `field:"optional" json:"pathType" yaml:"pathType"`

@@ -19,10 +19,23 @@ const (
 type ImagePullPolicy string
 
 const (
-	ImagePullPolicy_ALWAYS         ImagePullPolicy = "Always"
-	ImagePullPolicy_IF_NOT_PRESENT ImagePullPolicy = "IfNotPresent"
-	ImagePullPolicy_NEVER          ImagePullPolicy = "Never"
+	ImagePullPolicy_ALWAYS         ImagePullPolicy = "ALWAYS"
+	ImagePullPolicy_IF_NOT_PRESENT ImagePullPolicy = "IF_NOT_PRESENT"
+	ImagePullPolicy_NEVER          ImagePullPolicy = "NEVER"
 )
+
+func imagePullPolicyManifestValue(value ImagePullPolicy) string {
+	switch value {
+	case ImagePullPolicy_ALWAYS:
+		return "Always"
+	case ImagePullPolicy_IF_NOT_PRESENT:
+		return "IfNotPresent"
+	case ImagePullPolicy_NEVER:
+		return "Never"
+	default:
+		return string(value)
+	}
+}
 
 // ContainerPort defines an exposed container port.
 type ContainerPort struct {
@@ -335,7 +348,7 @@ func (c *containerImpl) toManifest() map[string]interface{} {
 	result := map[string]interface{}{
 		"image":           c.image,
 		"name":            c.name,
-		"imagePullPolicy": string(c.pullPolicy),
+		"imagePullPolicy": imagePullPolicyManifestValue(c.pullPolicy),
 		"resources":       containerResourcesManifest(c.resources),
 		"securityContext": c.securityContext.toManifest(),
 	}

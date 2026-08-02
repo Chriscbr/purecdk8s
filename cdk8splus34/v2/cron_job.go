@@ -9,10 +9,23 @@ import (
 type ConcurrencyPolicy string
 
 const (
-	ConcurrencyPolicy_ALLOW   ConcurrencyPolicy = "Allow"
-	ConcurrencyPolicy_FORBID  ConcurrencyPolicy = "Forbid"
-	ConcurrencyPolicy_REPLACE ConcurrencyPolicy = "Replace"
+	ConcurrencyPolicy_ALLOW   ConcurrencyPolicy = "ALLOW"
+	ConcurrencyPolicy_FORBID  ConcurrencyPolicy = "FORBID"
+	ConcurrencyPolicy_REPLACE ConcurrencyPolicy = "REPLACE"
 )
+
+func concurrencyPolicyManifestValue(value ConcurrencyPolicy) string {
+	switch value {
+	case ConcurrencyPolicy_ALLOW:
+		return "Allow"
+	case ConcurrencyPolicy_FORBID:
+		return "Forbid"
+	case ConcurrencyPolicy_REPLACE:
+		return "Replace"
+	default:
+		return string(value)
+	}
+}
 
 // CronJobProps configures a CronJob and the Job pod template it creates.
 type CronJobProps struct {
@@ -124,7 +137,7 @@ func (c *cronJobImpl) Schedule() cdk8s.Cron {
 }
 
 func (c *cronJobImpl) ConcurrencyPolicy() *string {
-	return jsii.String(string(c.concurrencyPolicy))
+	return jsii.String(concurrencyPolicyManifestValue(c.concurrencyPolicy))
 }
 
 func (c *cronJobImpl) FailedJobsRetained() *float64 {
@@ -162,7 +175,7 @@ func (c *cronJobImpl) toCronManifest() map[string]interface{} {
 	if c.ttlAfterFinished != nil {
 		job["ttlSecondsAfterFinished"] = c.ttlAfterFinished.ToSeconds(nil)
 	}
-	result := map[string]interface{}{"concurrencyPolicy": string(c.concurrencyPolicy), "failedJobsHistoryLimit": c.failedJobsRetained, "jobTemplate": map[string]interface{}{"spec": job}, "schedule": c.schedule.ExpressionString(), "startingDeadlineSeconds": c.startingDeadline.ToSeconds(nil), "successfulJobsHistoryLimit": c.successfulJobsRetained, "suspend": c.suspend}
+	result := map[string]interface{}{"concurrencyPolicy": concurrencyPolicyManifestValue(c.concurrencyPolicy), "failedJobsHistoryLimit": c.failedJobsRetained, "jobTemplate": map[string]interface{}{"spec": job}, "schedule": c.schedule.ExpressionString(), "startingDeadlineSeconds": c.startingDeadline.ToSeconds(nil), "successfulJobsHistoryLimit": c.successfulJobsRetained, "suspend": c.suspend}
 	if c.timeZone != nil {
 		result["timeZone"] = c.timeZone
 	}

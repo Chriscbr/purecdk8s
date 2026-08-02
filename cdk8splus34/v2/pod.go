@@ -13,10 +13,23 @@ import (
 type RestartPolicy string
 
 const (
-	RestartPolicy_ALWAYS     RestartPolicy = "Always"
-	RestartPolicy_NEVER      RestartPolicy = "Never"
-	RestartPolicy_ON_FAILURE RestartPolicy = "OnFailure"
+	RestartPolicy_ALWAYS     RestartPolicy = "ALWAYS"
+	RestartPolicy_NEVER      RestartPolicy = "NEVER"
+	RestartPolicy_ON_FAILURE RestartPolicy = "ON_FAILURE"
 )
+
+func restartPolicyManifestValue(value RestartPolicy) string {
+	switch value {
+	case RestartPolicy_ALWAYS:
+		return "Always"
+	case RestartPolicy_NEVER:
+		return "Never"
+	case RestartPolicy_ON_FAILURE:
+		return "OnFailure"
+	default:
+		return string(value)
+	}
+}
 
 // PodProps contains the common pod fields used by native workload constructs.
 type PodProps struct {
@@ -188,7 +201,7 @@ func (p *podState) manifest(restartPolicy RestartPolicy) map[string]interface{} 
 		"containers":                    containerValues(p.containers),
 		"dnsPolicy":                     dns["dnsPolicy"],
 		"hostNetwork":                   false,
-		"restartPolicy":                 restartPolicy,
+		"restartPolicy":                 restartPolicyManifestValue(restartPolicy),
 		"securityContext":               p.security.toManifest(),
 		"setHostnameAsFQDN":             dns["setHostnameAsFQDN"],
 		"shareProcessNamespace":         false,

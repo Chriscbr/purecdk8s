@@ -6,11 +6,26 @@ import "github.com/Chriscbr/purecdk8s/jsii"
 type DnsPolicy string
 
 const (
-	DnsPolicy_CLUSTER_FIRST               DnsPolicy = "ClusterFirst"
-	DnsPolicy_CLUSTER_FIRST_WITH_HOST_NET DnsPolicy = "ClusterFirstWithHostNet"
-	DnsPolicy_DEFAULT                     DnsPolicy = "Default"
-	DnsPolicy_NONE                        DnsPolicy = "None"
+	DnsPolicy_CLUSTER_FIRST               DnsPolicy = "CLUSTER_FIRST"
+	DnsPolicy_CLUSTER_FIRST_WITH_HOST_NET DnsPolicy = "CLUSTER_FIRST_WITH_HOST_NET"
+	DnsPolicy_DEFAULT                     DnsPolicy = "DEFAULT"
+	DnsPolicy_NONE                        DnsPolicy = "NONE"
 )
+
+func dnsPolicyManifestValue(value DnsPolicy) string {
+	switch value {
+	case DnsPolicy_CLUSTER_FIRST:
+		return "ClusterFirst"
+	case DnsPolicy_CLUSTER_FIRST_WITH_HOST_NET:
+		return "ClusterFirstWithHostNet"
+	case DnsPolicy_DEFAULT:
+		return "Default"
+	case DnsPolicy_NONE:
+		return "None"
+	default:
+		return string(value)
+	}
+}
 
 // DnsOption is a custom DNS resolver option.
 type DnsOption struct {
@@ -140,7 +155,7 @@ func (p *podDnsImpl) toManifest() map[string]interface{} {
 	if len(p.searches) > 6 {
 		panic("There can be at most 6 search domains specified")
 	}
-	result := map[string]interface{}{"dnsPolicy": string(p.policy), "setHostnameAsFQDN": p.hostnameAsFQDN}
+	result := map[string]interface{}{"dnsPolicy": dnsPolicyManifestValue(p.policy), "setHostnameAsFQDN": p.hostnameAsFQDN}
 	if p.hostname != nil {
 		result["hostname"] = p.hostname
 	}
@@ -167,9 +182,20 @@ func (p *podDnsImpl) toManifest() map[string]interface{} {
 type FsGroupChangePolicy string
 
 const (
-	FsGroupChangePolicy_ON_ROOT_MISMATCH FsGroupChangePolicy = "OnRootMismatch"
-	FsGroupChangePolicy_ALWAYS           FsGroupChangePolicy = "Always"
+	FsGroupChangePolicy_ON_ROOT_MISMATCH FsGroupChangePolicy = "ON_ROOT_MISMATCH"
+	FsGroupChangePolicy_ALWAYS           FsGroupChangePolicy = "ALWAYS"
 )
+
+func fsGroupChangePolicyManifestValue(value FsGroupChangePolicy) string {
+	switch value {
+	case FsGroupChangePolicy_ON_ROOT_MISMATCH:
+		return "OnRootMismatch"
+	case FsGroupChangePolicy_ALWAYS:
+		return "Always"
+	default:
+		return string(value)
+	}
+}
 
 // Sysctl defines a kernel parameter to be set for a pod.
 type Sysctl struct {
@@ -254,7 +280,7 @@ func (p *podSecurityContextImpl) Sysctls() *[]*Sysctl {
 }
 
 func (p *podSecurityContextImpl) toManifest() map[string]interface{} {
-	result := map[string]interface{}{"runAsNonRoot": p.ensureNonRoot, "fsGroupChangePolicy": string(p.fsGroupChangePolicy)}
+	result := map[string]interface{}{"runAsNonRoot": p.ensureNonRoot, "fsGroupChangePolicy": fsGroupChangePolicyManifestValue(p.fsGroupChangePolicy)}
 	if p.group != nil {
 		result["runAsGroup"] = p.group
 	}

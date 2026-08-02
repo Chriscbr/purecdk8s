@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+
+# Verify that purecdk8s+ exposes an API compatible with cdk8s-plus-go. The
+# comparison normalizes purecdk8s' cdk8s and constructs import paths before
+# passing the package metadata to apidiff.
 set -euo pipefail
 
 if [[ "$#" -ne 1 ]]; then
@@ -13,26 +17,18 @@ if [[ ! "$minor_version" =~ ^[0-9]+$ ]]; then
   exit 2
 fi
 
-root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-package="cdk8splus${minor_version}"
-version=v2.0.46
-pure_dir="$root/$package/v2"
+repository_root="$(git rev-parse --show-toplevel)"
+cd "$repository_root"
 
-if [[ -n "${UPSTREAM_DIR:-}" ]]; then
-	upstream_dir=$UPSTREAM_DIR
-	reference="${package} override source"
-elif [[ "$minor_version" == "34" ]]; then
-	module="github.com/cdk8s-team/cdk8s-plus-go/${package}/v2"
-	upstream_dir=$(go mod download -json "${module}@${version}" | sed -nE 's/^[[:space:]]*"Dir": "([^"]+)",/\1/p')
-	reference="${module}@${version}"
-else
-	upstream_dir="$root/cdk8splus34/v2"
-	reference="implemented cdk8splus34/v2 API"
-fi
+readonly pure_dir="$repository_root/cdk8splus${minor_version}/v2"
+readonly tool_module="$repository_root/tools/cdk8splus-api-check"
 
-if [[ ! -d "$upstream_dir" || ! -d "$pure_dir" ]]; then
-  echo "unable to locate cdk8s+ source directories" >&2
+if [[ ! -d "$pure_dir" ]]; then
+  printf 'unable to locate %s\n' "$pure_dir" >&2
   exit 2
 fi
 
-UPSTREAM_DIR="$upstream_dir" REFERENCE_LABEL="$reference" go run "$root/scripts/check-cdk8splus-api-shape.go" "$minor_version"
+(
+  cd "$tool_module"
+  go run . "$minor_version" "$pure_dir"
+)

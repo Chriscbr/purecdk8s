@@ -179,7 +179,7 @@ func (i *ingressImpl) toManifest() interface{} {
 				byHost[hostKey] = entry
 				orderedHosts = append(orderedHosts, hostKey)
 			}
-			entry.paths = append(entry.paths, map[string]interface{}{"path": path, "pathType": string(pathType), "backend": rule.Backend.manifest()})
+			entry.paths = append(entry.paths, map[string]interface{}{"path": path, "pathType": httpIngressPathTypeManifestValue(pathType), "backend": rule.Backend.manifest()})
 		}
 		rules := make([]interface{}, 0, len(orderedHosts))
 		for _, host := range orderedHosts {

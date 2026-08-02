@@ -264,7 +264,7 @@ func (s *statefulSetImpl) toManifest() interface{} {
 	}
 	result := map[string]interface{}{
 		"minReadySeconds":     s.MinReady().ToSeconds(nil),
-		"podManagementPolicy": string(s.PodManagementPolicy()),
+		"podManagementPolicy": podManagementPolicyManifestValue(s.PodManagementPolicy()),
 		"selector":            s.workloadSelector(),
 		"serviceName":         s.service.Name(),
 		"template":            map[string]interface{}{"metadata": s.PodMetadata().ToJson(), "spec": podSpec},
@@ -333,9 +333,20 @@ func (s *statefulSetImpl) claimTemplateManifests() []interface{} {
 type PodManagementPolicy string
 
 const (
-	PodManagementPolicy_ORDERED_READY PodManagementPolicy = "OrderedReady"
-	PodManagementPolicy_PARALLEL      PodManagementPolicy = "Parallel"
+	PodManagementPolicy_ORDERED_READY PodManagementPolicy = "ORDERED_READY"
+	PodManagementPolicy_PARALLEL      PodManagementPolicy = "PARALLEL"
 )
+
+func podManagementPolicyManifestValue(value PodManagementPolicy) string {
+	switch value {
+	case PodManagementPolicy_ORDERED_READY:
+		return "OrderedReady"
+	case PodManagementPolicy_PARALLEL:
+		return "Parallel"
+	default:
+		return string(value)
+	}
+}
 
 func statefulSetPodProps(p *StatefulSetProps) *PodProps {
 	return &PodProps{Metadata: p.Metadata, AutomountServiceAccountToken: p.AutomountServiceAccountToken, Containers: p.Containers, Dns: p.Dns, DockerRegistryAuth: p.DockerRegistryAuth, EnableServiceLinks: p.EnableServiceLinks, HostAliases: p.HostAliases, HostNetwork: p.HostNetwork, InitContainers: p.InitContainers, Isolate: p.Isolate, RestartPolicy: p.RestartPolicy, SecurityContext: p.SecurityContext, ServiceAccount: p.ServiceAccount, ShareProcessNamespace: p.ShareProcessNamespace, TerminationGracePeriod: p.TerminationGracePeriod, Volumes: p.Volumes}

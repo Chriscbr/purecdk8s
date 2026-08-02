@@ -166,9 +166,20 @@ type ConfigMapVolumeOptions struct {
 type EmptyDirMedium string
 
 const (
-	EmptyDirMedium_DEFAULT EmptyDirMedium = ""
-	EmptyDirMedium_MEMORY  EmptyDirMedium = "Memory"
+	EmptyDirMedium_DEFAULT EmptyDirMedium = "DEFAULT"
+	EmptyDirMedium_MEMORY  EmptyDirMedium = "MEMORY"
 )
+
+func emptyDirMediumManifestValue(value EmptyDirMedium) string {
+	switch value {
+	case EmptyDirMedium_DEFAULT:
+		return ""
+	case EmptyDirMedium_MEMORY:
+		return "Memory"
+	default:
+		return string(value)
+	}
+}
 
 type EmptyDirVolumeOptions struct {
 	Medium    EmptyDirMedium `field:"optional" json:"medium" yaml:"medium"`
@@ -212,7 +223,9 @@ func Volume_FromConfigMap(scope constructs.Construct, id *string, configMap ICon
 func Volume_FromEmptyDir(scope constructs.Construct, id, name *string, options *EmptyDirVolumeOptions) Volume {
 	spec := map[string]interface{}{"emptyDir": map[string]interface{}{}}
 	if options != nil && options.Medium != "" {
-		spec["emptyDir"].(map[string]interface{})["medium"] = string(options.Medium)
+		if medium := emptyDirMediumManifestValue(options.Medium); medium != "" {
+			spec["emptyDir"].(map[string]interface{})["medium"] = medium
+		}
 	}
 	if options != nil && options.SizeLimit != nil {
 		amount := options.SizeLimit.ToMebibytes(nil)
