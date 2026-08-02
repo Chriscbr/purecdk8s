@@ -69,8 +69,12 @@ func main() {
 	var differences []string
 	for name, expected := range upstream {
 		actual, exists := pure[name]
-		if !exists || expected.kind != actual.kind {
-			continue // The API-name gate reports missing types.
+		if !exists {
+			differences = append(differences, "missing type "+name)
+			continue
+		}
+		if expected.kind != actual.kind {
+			continue // Forwarding packages use exact type aliases.
 		}
 		if expected.kind == "interface" {
 			completeMethods(name, upstream, map[string]bool{})
@@ -109,7 +113,7 @@ func main() {
 		}
 		os.Exit(1)
 	}
-	fmt.Printf("cdk8splus%s public interface methods and struct fields cover %s.\n", minor, reference)
+	fmt.Printf("cdk8splus%s public types, interface methods, struct fields, and functions cover %s (%d types, %d functions).\n", minor, reference, len(upstream), len(upstreamFunctions))
 }
 
 func fail(err error) {
