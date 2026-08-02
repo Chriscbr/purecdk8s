@@ -422,6 +422,7 @@ func synthesizeClusterRoleRules(rules []*ClusterRolePolicyRule) []interface{} {
 			if endpoint.AsApiResource() != nil {
 				resource := endpoint.AsApiResource()
 				entry["apiGroups"] = []interface{}{apiGroupForRBAC(resource.ApiGroup())}
+				entry["resourceNames"] = []interface{}{}
 				if resource.ResourceType() != nil {
 					entry["resources"] = []interface{}{resource.ResourceType()}
 				}

@@ -52,8 +52,9 @@ func (h *httpGetHandler) toManifest(container *containerImpl) map[string]interfa
 		port = h.options.Port
 	}
 	return map[string]interface{}{"httpGet": map[string]interface{}{
-		"path": h.path,
-		"port": probePort(container, port),
+		"path":   h.path,
+		"port":   probePort(container, port),
+		"scheme": string(ConnectionScheme_HTTP),
 	}}
 }
 

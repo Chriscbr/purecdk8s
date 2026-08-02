@@ -41,7 +41,7 @@ func NewNamespace(scope constructs.Construct, id *string, props *NamespaceProps)
 		props = &NamespaceProps{}
 	}
 	result := &namespaceImpl{}
-	result.resourceBase.initialize(result, scope, id, "v1", "Namespace", "namespaces", props.Metadata, map[string]interface{}{})
+	result.resourceBase.initialize(result, scope, id, "v1", "Namespace", "namespaces", props.Metadata, map[string]interface{}{"spec": map[string]interface{}{}})
 	result.pods = Pods_All(result, jsii.String("Pods"), &PodsAllOptions{Namespaces: Namespaces_Select(result, jsii.String("Namespaces"), &NamespacesSelectOptions{Names: &[]*string{result.Name()}})})
 	return result
 }

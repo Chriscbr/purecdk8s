@@ -194,11 +194,24 @@ func NewDeployment(scope constructs.Construct, id *string, props *DeploymentProp
 	if props == nil {
 		props = &DeploymentProps{}
 	}
+	minReady := props.MinReady
+	if minReady == nil {
+		minReady = cdk8s.Duration_Seconds(jsii.Number(0))
+	}
+	progressDeadline := props.ProgressDeadline
+	if progressDeadline == nil {
+		progressDeadline = cdk8s.Duration_Seconds(jsii.Number(600))
+	}
+	minReadySeconds := *minReady.ToSeconds(nil)
+	progressDeadlineSeconds := *progressDeadline.ToSeconds(nil)
+	if progressDeadlineSeconds <= minReadySeconds {
+		panic(fmt.Sprintf("'progressDeadline' (%ss) must be greater than 'minReady' (%ss)", numberString(progressDeadlineSeconds), numberString(minReadySeconds)))
+	}
 	result := &deploymentImpl{
 		podState: newPodState(deploymentPodProps(props)), replicas: props.Replicas, selector: map[string]*string{}, podMetadata: props.PodMetadata,
 		spread:   props.Spread != nil && *props.Spread,
 		strategy: props.Strategy,
-		minReady: props.MinReady, progressDeadline: props.ProgressDeadline, revisionHistoryLimit: props.RevisionHistoryLimit,
+		minReady: minReady, progressDeadline: progressDeadline, revisionHistoryLimit: props.RevisionHistoryLimit,
 	}
 	manifest := map[string]interface{}{}
 	result.resourceBase.initialize(result, scope, id, "apps/v1", "Deployment", "deployments", props.Metadata, manifest)
@@ -351,7 +364,10 @@ func (d *deploymentImpl) PodMetadata() cdk8s.ApiObjectMetadataDefinition {
 }
 
 func (d *deploymentImpl) workloadSelector() map[string]interface{} {
-	result := map[string]interface{}{"matchLabels": d.selector}
+	result := map[string]interface{}{}
+	if len(d.selector) > 0 {
+		result["matchLabels"] = d.selector
+	}
 	if len(d.matchExpressions) > 0 {
 		result["matchExpressions"] = d.matchExpressions
 	}
@@ -517,6 +533,33 @@ func (d *deploymentImpl) ExposeViaService(options *DeploymentExposeViaServiceOpt
 	}
 	if len(*ports) == 0 {
 		panic(fmt.Sprintf("Unable to expose deployment %s via a service: Deployment port cannot be determined. Either pass 'ports', or configure ports on the containers of the deployment", stringValue(d.Name())))
+	}
+	if len(*ports) > 1 {
+		for _, port := range *ports {
+			if port == nil || port.Name == nil {
+				panic(fmt.Sprintf("Unable to expose deployment %s via a service: When using multiple ports for a service, all ports must have port names so they are unambiguous.", stringValue(d.Name())))
+			}
+		}
+	}
+	ownedPorts := map[float64]bool{}
+	for _, container := range d.containers {
+		for _, port := range *container.Ports() {
+			if port != nil && port.Number != nil {
+				ownedPorts[*port.Number] = true
+			}
+		}
+	}
+	for _, port := range *ports {
+		if port == nil || port.Port == nil {
+			panic(fmt.Sprintf("Unable to expose deployment %s via a service: Service port is required", stringValue(d.Name())))
+		}
+		targetPort := port.TargetPort
+		if targetPort == nil {
+			targetPort = port.Port
+		}
+		if !ownedPorts[*targetPort] {
+			panic(fmt.Sprintf("Unable to expose deployment %s via a service: Port %s is not exposed by any container", stringValue(d.Name()), numberString(*targetPort)))
+		}
 	}
 	metadata := &cdk8s.ApiObjectMetadata{Namespace: d.Metadata().Namespace()}
 	if options.Name != nil {

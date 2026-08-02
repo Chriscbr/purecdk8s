@@ -367,7 +367,7 @@ func Volume_FromConfigMap(scope constructs.Construct, id *string, configMap ICon
 	if options != nil && options.Optional != nil {
 		config["optional"] = options.Optional
 	}
-	if options != nil {
+	if options != nil && options.Items != nil {
 		config["items"] = volumePathMappings(options.Items)
 	}
 	return newVolume(scope, id, name, map[string]interface{}{"configMap": config})
@@ -379,9 +379,7 @@ func Volume_FromConfigMap(scope constructs.Construct, id *string, configMap ICon
 func Volume_FromEmptyDir(scope constructs.Construct, id, name *string, options *EmptyDirVolumeOptions) Volume {
 	spec := map[string]interface{}{"emptyDir": map[string]interface{}{}}
 	if options != nil && options.Medium != "" {
-		if medium := emptyDirMediumManifestValue(options.Medium); medium != "" {
-			spec["emptyDir"].(map[string]interface{})["medium"] = medium
-		}
+		spec["emptyDir"].(map[string]interface{})["medium"] = emptyDirMediumManifestValue(options.Medium)
 	}
 	if options != nil && options.SizeLimit != nil {
 		amount := options.SizeLimit.ToMebibytes(nil)
@@ -503,7 +501,9 @@ func Volume_FromSecret(scope constructs.Construct, id *string, secret ISecret, o
 		if options.Optional != nil {
 			spec["optional"] = options.Optional
 		}
-		spec["items"] = volumePathMappings(options.Items)
+		if options.Items != nil {
+			spec["items"] = volumePathMappings(options.Items)
+		}
 	}
 	return newVolume(scope, id, name, map[string]interface{}{"secret": spec})
 }

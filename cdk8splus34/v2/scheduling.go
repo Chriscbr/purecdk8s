@@ -268,7 +268,7 @@ func podAffinityTerm(selector IPodSelector, topology Topology) map[string]interf
 	}
 	term := map[string]interface{}{"topologyKey": topologyKey(topology), "labelSelector": labelSelectorManifest(config.LabelSelector)}
 	if config.Namespaces != nil {
-		if config.Namespaces.LabelSelector != nil && !*config.Namespaces.LabelSelector.IsEmpty() {
+		if config.Namespaces.LabelSelector != nil {
 			term["namespaceSelector"] = labelSelectorManifest(config.Namespaces.LabelSelector)
 		}
 		if config.Namespaces.Names != nil && len(*config.Namespaces.Names) > 0 {

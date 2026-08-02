@@ -198,10 +198,10 @@ func (c *configMapImpl) verifyAvailable(key *string) {
 		panic("key is required")
 	}
 	if _, ok := c.data[*key]; ok {
-		panic(fmt.Sprintf("key %q already exists", *key))
+		panic(fmt.Sprintf("unable to add a ConfigMap entry with key %q. It is already used", *key))
 	}
 	if _, ok := c.binaryData[*key]; ok {
-		panic(fmt.Sprintf("key %q already exists", *key))
+		panic(fmt.Sprintf("unable to add a ConfigMap entry with key %q. It is already used", *key))
 	}
 }
 
@@ -250,16 +250,30 @@ func (c *configMapImpl) AddDirectory(localDir *string, options *AddDirectoryOpti
 	if options != nil && options.KeyPrefix != nil {
 		prefix = *options.KeyPrefix
 	}
-	excluded := map[string]bool{}
+	excludePatterns := make([]string, 0)
 	if options != nil && options.Exclude != nil {
 		for _, pattern := range *options.Exclude {
 			if pattern != nil {
-				excluded[*pattern] = true
+				excludePatterns = append(excludePatterns, *pattern)
 			}
 		}
 	}
 	for _, entry := range entries {
-		if entry.IsDir() || excluded[entry.Name()] {
+		if entry.IsDir() {
+			continue
+		}
+		excluded := false
+		for _, pattern := range excludePatterns {
+			matched, matchErr := filepath.Match(pattern, entry.Name())
+			if matchErr != nil {
+				panic(matchErr)
+			}
+			if matched {
+				excluded = true
+				break
+			}
+		}
+		if excluded {
 			continue
 		}
 		filename := filepath.Join(*localDir, entry.Name())

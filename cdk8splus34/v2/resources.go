@@ -87,21 +87,28 @@ func containerResourcesManifest(resources *ContainerResources) map[string]interf
 	}
 	if resources.Memory != nil {
 		if resources.Memory.Limit != nil {
-			limits["memory"] = resources.Memory.Limit.AsString()
+			limits["memory"] = jsii.String(numberString(*resources.Memory.Limit.ToMebibytes(nil)) + "Mi")
 		}
 		if resources.Memory.Request != nil {
-			requests["memory"] = resources.Memory.Request.AsString()
+			requests["memory"] = jsii.String(numberString(*resources.Memory.Request.ToMebibytes(nil)) + "Mi")
 		}
 	}
 	if resources.EphemeralStorage != nil {
 		if resources.EphemeralStorage.Limit != nil {
-			limits["ephemeral-storage"] = resources.EphemeralStorage.Limit.AsString()
+			limits["ephemeral-storage"] = jsii.String(numberString(*resources.EphemeralStorage.Limit.ToGibibytes(nil)) + "Gi")
 		}
 		if resources.EphemeralStorage.Request != nil {
-			requests["ephemeral-storage"] = resources.EphemeralStorage.Request.AsString()
+			requests["ephemeral-storage"] = jsii.String(numberString(*resources.EphemeralStorage.Request.ToGibibytes(nil)) + "Gi")
 		}
 	}
-	return map[string]interface{}{"limits": limits, "requests": requests}
+	result := map[string]interface{}{}
+	if len(limits) > 0 {
+		result["limits"] = limits
+	}
+	if len(requests) > 0 {
+		result["requests"] = requests
+	}
+	return result
 }
 
 func normalizedContainerResources(resources *ContainerResources) *ContainerResources {
@@ -200,7 +207,7 @@ func DeploymentStrategy_RollingUpdate(options *DeploymentStrategyRollingUpdateOp
 		}
 	}
 	if *maxSurge.IsZero() && *maxUnavailable.IsZero() {
-		panic("maxSurge and maxUnavailable cannot both be zero")
+		panic("'maxSurge' and 'maxUnavailable' cannot be both zero")
 	}
 	return &deploymentStrategyImpl{manifest: map[string]interface{}{
 		"type":          "RollingUpdate",

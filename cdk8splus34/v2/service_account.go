@@ -64,7 +64,7 @@ func NewServiceAccount(scope constructs.Construct, id *string, props *ServiceAcc
 	result.resourceBase.initialize(result, scope, id, "v1", "ServiceAccount", "serviceaccounts", props.Metadata, manifest)
 	manifest["secrets"] = cdk8s.Lazy_Any(lazyProducer{produce: func() interface{} {
 		if len(result.secrets) == 0 {
-			return []interface{}{}
+			return nil
 		}
 		values := make([]interface{}, 0, len(result.secrets))
 		for _, secret := range result.secrets {
