@@ -1,6 +1,7 @@
 package cdk8splus34
 
 import (
+	"fmt"
 	"sort"
 
 	"github.com/Chriscbr/purecdk8s/jsii"
@@ -328,6 +329,9 @@ func NewContainer_Override(container Container, props *ContainerProps) {
 }
 
 func newContainer(props *ContainerProps) *containerImpl {
+	if props.Port != nil && props.PortNumber != nil {
+		panic("Either 'port' or 'portNumber' is allowed. Use 'portNumber' since 'port' is deprecated")
+	}
 	name := props.Name
 	if name == nil {
 		name = jsii.String("main")
@@ -439,6 +443,22 @@ func (c *containerImpl) AddPort(port *ContainerPort) {
 	if port == nil || port.Number == nil {
 		panic("container port number is required")
 	}
+	protocol := port.Protocol
+	if protocol == "" {
+		protocol = Protocol_TCP
+	}
+	for _, existing := range c.ports {
+		if port.Name != nil && *port.Name != "" && existing.Name != nil && *existing.Name == *port.Name {
+			panic("Port with name " + *port.Name + " already exists")
+		}
+		existingProtocol := existing.Protocol
+		if existingProtocol == "" {
+			existingProtocol = Protocol_TCP
+		}
+		if *existing.Number == *port.Number && existingProtocol == protocol {
+			panic(fmt.Sprintf("Port with number %s and protocol %s already exists", formatNumber(*port.Number), protocol))
+		}
+	}
 	c.ports = append(c.ports, port)
 }
 
@@ -534,8 +554,10 @@ func (c *containerImpl) toManifest() map[string]interface{} {
 		"image":           c.image,
 		"name":            c.name,
 		"imagePullPolicy": imagePullPolicyManifestValue(c.pullPolicy),
-		"resources":       containerResourcesManifest(c.resources),
 		"securityContext": c.securityContext.toManifest(),
+	}
+	if resources := containerResourcesManifest(c.resources); len(resources) > 0 {
+		result["resources"] = resources
 	}
 	if c.command != nil {
 		result["command"] = c.command

@@ -168,7 +168,7 @@ func (p *podConnectionsImpl) allow(direction string, peer INetworkPolicyPeer, is
 	}
 	selector := peer.ToPodSelector()
 	if selector == nil {
-		panic("Unable to create opposite network policy because peer is not a pod selector")
+		panic("Unable to create policies for peer '" + peerAddress(peer) + "' since its not a pod selector")
 	}
 	selectorConfig := selector.ToPodSelectorConfig()
 	if selectorConfig == nil {
@@ -176,11 +176,15 @@ func (p *podConnectionsImpl) allow(direction string, peer INetworkPolicyPeer, is
 	}
 	namespaces := []*string{p.instance.Metadata().Namespace()}
 	if selectorConfig.Namespaces != nil {
+		oppositeDirection := "Egress"
+		if direction == "Egress" {
+			oppositeDirection = "Ingress"
+		}
 		if selectorConfig.Namespaces.LabelSelector != nil && !*selectorConfig.Namespaces.LabelSelector.IsEmpty() {
-			panic("Unable to create opposite network policy for peer with namespace label selector")
+			panic("Unable to create an " + oppositeDirection + " policy for peer '" + stringValue(peer.Node().Path()) + "' (pod=" + stringValue(p.instance.Name()) + "). Peer must specify namespaces only by name")
 		}
 		if selectorConfig.Namespaces.Names == nil {
-			panic("Unable to create opposite network policy for peer without namespace names")
+			panic("Unable to create an " + oppositeDirection + " policy for peer '" + stringValue(peer.Node().Path()) + "' (pod=" + stringValue(p.instance.Name()) + "). Peer must specify namespace names")
 		}
 		namespaces = *selectorConfig.Namespaces.Names
 	}

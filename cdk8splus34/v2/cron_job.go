@@ -213,7 +213,11 @@ func NewCronJob(scope constructs.Construct, id *string, props *CronJobProps) Cro
 	}
 	manifest := map[string]interface{}{}
 	result.resourceBase.initialize(result, scope, id, "batch/v1", "CronJob", "cronjobs", props.Metadata, manifest)
-	// CronJobs do not automatically select their generated Pods.
+	// CronJobs do not automatically select their generated Pods, but callers can
+	// opt in just as they can for any other workload.
+	if props.Select != nil && *props.Select {
+		result.selector[podAddressLabel] = cdk8s.Names_ToLabelValue(result, nil)
+	}
 	result.scheduling = NewWorkloadScheduling(result)
 	if props.Spread != nil && *props.Spread {
 		result.scheduling.Spread(&WorkloadSchedulingSpreadOptions{Topology: Topology_HOSTNAME()})
@@ -271,7 +275,7 @@ func (c *cronJobImpl) TimeZone() *string {
 }
 
 func (c *cronJobImpl) toCronManifest() map[string]interface{} {
-	podSpec := c.podState.manifest(RestartPolicy_NEVER)
+	podSpec := c.podState.manifest(c.RestartPolicy())
 	for key, value := range c.scheduling.toManifest() {
 		podSpec[key] = value
 	}
@@ -293,5 +297,9 @@ func (c *cronJobImpl) toCronManifest() map[string]interface{} {
 }
 
 func cronJobPodProps(p *CronJobProps) *PodProps {
-	return &PodProps{Metadata: p.Metadata, AutomountServiceAccountToken: p.AutomountServiceAccountToken, Containers: p.Containers, Dns: p.Dns, DockerRegistryAuth: p.DockerRegistryAuth, EnableServiceLinks: p.EnableServiceLinks, HostAliases: p.HostAliases, HostNetwork: p.HostNetwork, InitContainers: p.InitContainers, Isolate: p.Isolate, RestartPolicy: RestartPolicy_NEVER, SecurityContext: p.SecurityContext, ServiceAccount: p.ServiceAccount, ShareProcessNamespace: p.ShareProcessNamespace, TerminationGracePeriod: p.TerminationGracePeriod, Volumes: p.Volumes}
+	restartPolicy := p.RestartPolicy
+	if restartPolicy == "" {
+		restartPolicy = RestartPolicy_NEVER
+	}
+	return &PodProps{Metadata: p.Metadata, AutomountServiceAccountToken: p.AutomountServiceAccountToken, Containers: p.Containers, Dns: p.Dns, DockerRegistryAuth: p.DockerRegistryAuth, EnableServiceLinks: p.EnableServiceLinks, HostAliases: p.HostAliases, HostNetwork: p.HostNetwork, InitContainers: p.InitContainers, Isolate: p.Isolate, RestartPolicy: restartPolicy, SecurityContext: p.SecurityContext, ServiceAccount: p.ServiceAccount, ShareProcessNamespace: p.ShareProcessNamespace, TerminationGracePeriod: p.TerminationGracePeriod, Volumes: p.Volumes}
 }

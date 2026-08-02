@@ -125,7 +125,7 @@ func NewJob(scope constructs.Construct, id *string, props *JobProps) Job {
 	result := &jobImpl{podState: newPodState(jobPodProps(props)), podMetadata: props.PodMetadata, selector: map[string]*string{}, activeDeadline: props.ActiveDeadline, backoffLimit: props.BackoffLimit, ttlAfterFinished: props.TtlAfterFinished}
 	manifest := map[string]interface{}{}
 	result.resourceBase.initialize(result, scope, id, "batch/v1", "Job", "jobs", props.Metadata, manifest)
-	selectPods := true
+	selectPods := false
 	if props.Select != nil {
 		selectPods = *props.Select
 	}
@@ -219,18 +219,17 @@ func (j *jobImpl) PodMetadata() cdk8s.ApiObjectMetadataDefinition {
 		metadata = &cdk8s.ApiObjectMetadata{}
 	}
 	result := cdk8s.NewApiObjectMetadataDefinition(&cdk8s.ApiObjectMetadataDefinitionOptions{ApiObject: j.ApiObject(), Name: metadata.Name, Namespace: metadata.Namespace, Labels: metadata.Labels, Annotations: metadata.Annotations})
-	for key, value := range j.selector {
-		result.AddLabel(jsii.String(key), value)
-	}
+	result.AddLabel(jsii.String(podAddressLabel), cdk8s.Names_ToLabelValue(j, nil))
 	return result
 }
 
 func (j *jobImpl) ToPodSelectorConfig() *PodSelectorConfig {
-	labels := map[string]*string{}
-	for key, value := range j.selector {
-		labels[key] = value
+	labels := map[string]*string{podAddressLabel: cdk8s.Names_ToLabelValue(j, nil)}
+	config := &PodSelectorConfig{LabelSelector: labelSelectorFromLabels(&labels)}
+	if namespace := j.Metadata().Namespace(); namespace != nil {
+		config.Namespaces = &NamespaceSelectorConfig{Names: &[]*string{namespace}}
 	}
-	return &PodSelectorConfig{LabelSelector: newLabelSelectorFromRequirements(j.matchExpressions, &labels)}
+	return config
 }
 
 func (j *jobImpl) ToNetworkPolicyPeerConfig() *NetworkPolicyPeerConfig {
@@ -313,6 +312,9 @@ func (j *jobImpl) Isolate() *bool {
 }
 
 func (j *jobImpl) RestartPolicy() RestartPolicy {
+	if j.props.RestartPolicy != "" {
+		return j.props.RestartPolicy
+	}
 	return RestartPolicy_NEVER
 }
 
@@ -350,7 +352,7 @@ func (j *jobImpl) ToSubjectConfiguration() *SubjectConfiguration {
 }
 
 func (j *jobImpl) toManifest() map[string]interface{} {
-	spec := j.podState.manifest(RestartPolicy_NEVER)
+	spec := j.podState.manifest(j.RestartPolicy())
 	for key, value := range j.scheduling.toManifest() {
 		spec[key] = value
 	}
@@ -368,5 +370,9 @@ func (j *jobImpl) toManifest() map[string]interface{} {
 }
 
 func jobPodProps(p *JobProps) *PodProps {
-	return &PodProps{Metadata: p.Metadata, AutomountServiceAccountToken: p.AutomountServiceAccountToken, Containers: p.Containers, Dns: p.Dns, DockerRegistryAuth: p.DockerRegistryAuth, EnableServiceLinks: p.EnableServiceLinks, HostAliases: p.HostAliases, HostNetwork: p.HostNetwork, InitContainers: p.InitContainers, Isolate: p.Isolate, RestartPolicy: RestartPolicy_NEVER, SecurityContext: p.SecurityContext, ServiceAccount: p.ServiceAccount, ShareProcessNamespace: p.ShareProcessNamespace, TerminationGracePeriod: p.TerminationGracePeriod, Volumes: p.Volumes}
+	restartPolicy := p.RestartPolicy
+	if restartPolicy == "" {
+		restartPolicy = RestartPolicy_NEVER
+	}
+	return &PodProps{Metadata: p.Metadata, AutomountServiceAccountToken: p.AutomountServiceAccountToken, Containers: p.Containers, Dns: p.Dns, DockerRegistryAuth: p.DockerRegistryAuth, EnableServiceLinks: p.EnableServiceLinks, HostAliases: p.HostAliases, HostNetwork: p.HostNetwork, InitContainers: p.InitContainers, Isolate: p.Isolate, RestartPolicy: restartPolicy, SecurityContext: p.SecurityContext, ServiceAccount: p.ServiceAccount, ShareProcessNamespace: p.ShareProcessNamespace, TerminationGracePeriod: p.TerminationGracePeriod, Volumes: p.Volumes}
 }

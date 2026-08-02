@@ -265,6 +265,9 @@ func PersistentVolume_IsConstruct(x interface{}) *bool {
 }
 
 func (p *persistentVolumeImpl) AccessModes() *[]PersistentVolumeAccessMode {
+	if len(p.accessModes) == 0 {
+		return nil
+	}
 	values := append([]PersistentVolumeAccessMode(nil), p.accessModes...)
 	return &values
 }
@@ -278,6 +281,9 @@ func (p *persistentVolumeImpl) Mode() PersistentVolumeMode {
 }
 
 func (p *persistentVolumeImpl) MountOptions() *[]*string {
+	if len(p.mountOptions) == 0 {
+		return nil
+	}
 	values := append([]*string(nil), p.mountOptions...)
 	return &values
 }
@@ -407,6 +413,9 @@ func PersistentVolumeClaim_IsConstruct(x interface{}) *bool {
 }
 
 func (p *persistentVolumeClaimImpl) AccessModes() *[]PersistentVolumeAccessMode {
+	if len(p.accessModes) == 0 {
+		return nil
+	}
 	values := append([]PersistentVolumeAccessMode(nil), p.accessModes...)
 	return &values
 }
@@ -640,7 +649,7 @@ func NewAwsElasticBlockStorePersistentVolume(scope constructs.Construct, id *str
 	if props.ReadOnly != nil {
 		ro = props.ReadOnly
 	}
-	result := newPersistentVolume(scope, id, persistentVolumePropsFromAws(props), map[string]interface{}{"awsElasticBlockStore": map[string]interface{}{"volumeId": props.VolumeId, "fsType": fs, "partition": props.Partition, "readOnly": ro}})
+	result := newPersistentVolume(scope, id, persistentVolumePropsFromAws(props), map[string]interface{}{"awsElasticBlockStore": map[string]interface{}{"volumeID": props.VolumeId, "fsType": fs, "partition": props.Partition, "readOnly": ro}})
 	result.volumeID, result.fsType, result.partition, result.readOnly = props.VolumeId, fs, props.Partition, ro
 	return result
 }
@@ -768,7 +777,7 @@ func NewAzureDiskPersistentVolume(scope constructs.Construct, id *string, props 
 	if props.Kind != "" {
 		kind = props.Kind
 	}
-	result := newPersistentVolume(scope, id, persistentVolumePropsFromAzure(props), map[string]interface{}{"azureDisk": map[string]interface{}{"diskName": props.DiskName, "diskUri": props.DiskUri, "cachingMode": azureCachingModeManifest(cache), "fsType": fs, "kind": azureKindManifest(kind), "readOnly": ro}})
+	result := newPersistentVolume(scope, id, persistentVolumePropsFromAzure(props), map[string]interface{}{"azureDisk": map[string]interface{}{"diskName": props.DiskName, "diskURI": props.DiskUri, "cachingMode": azureCachingModeManifest(cache), "fsType": fs, "kind": azureKindManifest(kind), "readOnly": ro}})
 	result.diskName, result.diskURI, result.fsType, result.readOnly, result.cachingMode, result.azureKind = props.DiskName, props.DiskUri, fs, ro, cache, kind
 	return result
 }

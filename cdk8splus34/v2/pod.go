@@ -187,8 +187,16 @@ func (p *podState) addInitContainer(props *ContainerProps) Container {
 	if props == nil {
 		panic("container props are required")
 	}
-	if props.RestartPolicy != ContainerRestartPolicy_ALWAYS && (props.Readiness != nil || props.Liveness != nil || props.Startup != nil) {
-		panic("Init containers must not have readiness, liveness, or startup probes")
+	if props.RestartPolicy != ContainerRestartPolicy_ALWAYS {
+		if props.Readiness != nil {
+			panic("Init containers must not have a readiness probe")
+		}
+		if props.Liveness != nil {
+			panic("Init containers must not have a liveness probe")
+		}
+		if props.Startup != nil {
+			panic("Init containers must not have a startup probe")
+		}
 	}
 	if props.Name == nil {
 		propsCopy := *props
@@ -227,6 +235,11 @@ func containerValues(values []Container) []interface{} {
 func (p *podState) manifest(restartPolicy RestartPolicy) map[string]interface{} {
 	if len(p.containers) == 0 {
 		panic("PodSpec must have at least 1 container")
+	}
+	for _, container := range p.containers {
+		if container.RestartPolicy() != "" {
+			panic("Invalid container spec: " + stringValue(container.Name()) + " has non-empty restartPolicy field. The field can only be specified for initContainers")
+		}
 	}
 	volumes := map[string]Volume{}
 	addVolume := func(volume Volume) {
@@ -343,7 +356,9 @@ func NewPod(scope constructs.Construct, id *string, props *PodProps) Pod {
 	result := &podImpl{podState: newPodState(props)}
 	manifest := map[string]interface{}{}
 	result.resourceBase.initialize(result, scope, id, "v1", "Pod", "pods", props.Metadata, manifest)
-	result.selector[podAddressLabel] = cdk8s.Names_ToLabelValue(result, nil)
+	podAddress := cdk8s.Names_ToLabelValue(result, nil)
+	result.selector[podAddressLabel] = podAddress
+	result.Metadata().AddLabel(jsii.String(podAddressLabel), podAddress)
 	result.scheduling = NewPodScheduling(result)
 	result.connections = NewPodConnections(result)
 	if *result.Isolate() {
@@ -428,7 +443,11 @@ func (p *podImpl) ToPodSelectorConfig() *PodSelectorConfig {
 	for key, value := range p.selector {
 		labels[key] = value
 	}
-	return &PodSelectorConfig{LabelSelector: labelSelectorFromLabels(&labels)}
+	config := &PodSelectorConfig{LabelSelector: labelSelectorFromLabels(&labels)}
+	if namespace := p.Metadata().Namespace(); namespace != nil {
+		config.Namespaces = &NamespaceSelectorConfig{Names: &[]*string{namespace}}
+	}
+	return config
 }
 
 func (p *podImpl) ToNetworkPolicyPeerConfig() *NetworkPolicyPeerConfig {

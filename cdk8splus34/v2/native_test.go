@@ -1,4 +1,4 @@
-package cdk8splus34
+package cdk8splus34_test
 
 import (
 	"os"
@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/Chriscbr/purecdk8s/cdk8s/v2"
+	. "github.com/Chriscbr/purecdk8s/cdk8splus34/v2"
 	"github.com/Chriscbr/purecdk8s/jsii"
 )
 
@@ -84,26 +85,28 @@ func TestApiResourceDescriptors(t *testing.T) {
 }
 
 func TestProbeAndLifecycleManifest(t *testing.T) {
-	container := newContainer(&ContainerProps{Image: jsii.String("app"), PortNumber: jsii.Number(8080)})
-	container.liveness = Probe_FromHttpGet(jsii.String("/health"), &HttpGetProbeOptions{
-		Scheme:      ConnectionScheme_HTTPS,
-		HttpHeaders: &[]*HttpHeader{{Name: jsii.String("X-Test"), Value: jsii.String("ok")}},
+	manifest := synthesizedContainer(t, &ContainerProps{
+		Image:      jsii.String("app"),
+		PortNumber: jsii.Number(8080),
+		Liveness: Probe_FromHttpGet(jsii.String("/health"), &HttpGetProbeOptions{
+			Scheme:      ConnectionScheme_HTTPS,
+			HttpHeaders: &[]*HttpHeader{{Name: jsii.String("X-Test"), Value: jsii.String("ok")}},
+		}),
+		Readiness: Probe_FromGrpc(&GrpcProbeOptions{Service: jsii.String("readiness")}),
+		Lifecycle: &ContainerLifecycle{
+			PostStart: Handler_FromCommand(&[]*string{jsii.String("setup")}),
+			PreStop:   Handler_FromTcpSocket(nil),
+		},
 	})
-	container.readiness = Probe_FromGrpc(&GrpcProbeOptions{Service: jsii.String("readiness")})
-	container.lifecycle = &ContainerLifecycle{
-		PostStart: Handler_FromCommand(&[]*string{jsii.String("setup")}),
-		PreStop:   Handler_FromTcpSocket(nil),
-	}
-	manifest := container.toManifest()
 	liveness := manifest["livenessProbe"].(map[string]interface{})["httpGet"].(map[string]interface{})
-	if got, want := stringValue(liveness["path"].(*string)), "/health"; got != want {
+	if got, want := liveness["path"], "/health"; got != want {
 		t.Fatalf("HTTP probe path = %q, want %q", got, want)
 	}
 	if got, want := liveness["scheme"], "HTTPS"; got != want {
 		t.Fatalf("HTTP probe scheme = %#v, want %q", got, want)
 	}
 	grpc := manifest["readinessProbe"].(map[string]interface{})["grpc"].(map[string]interface{})
-	if got, want := stringValue(grpc["service"].(*string)), "readiness"; got != want {
+	if got, want := grpc["service"], "readiness"; got != want {
 		t.Fatalf("gRPC probe service = %q, want %q", got, want)
 	}
 	lifecycle := manifest["lifecycle"].(map[string]interface{})

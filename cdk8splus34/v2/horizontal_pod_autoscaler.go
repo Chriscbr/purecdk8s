@@ -1,6 +1,8 @@
 package cdk8splus34
 
 import (
+	"fmt"
+
 	"github.com/Chriscbr/purecdk8s/cdk8s/v2"
 	"github.com/Chriscbr/purecdk8s/constructs/v10"
 	"github.com/Chriscbr/purecdk8s/jsii"
@@ -114,6 +116,7 @@ type horizontalPodAutoscalerImpl struct {
 	maxReplicas *float64
 	minReplicas *float64
 	metrics     []Metric
+	metricsSet  bool
 	target      IScalable
 	scaleDown   *ScalingRules
 	scaleUp     *ScalingRules
@@ -128,12 +131,15 @@ func NewHorizontalPodAutoscaler(scope constructs.Construct, id *string, props *H
 		minReplicas = jsii.Number(1)
 	}
 	if *minReplicas > *props.MaxReplicas {
-		panic("minReplicas must be less than or equal to maxReplicas")
+		panic(fmt.Sprintf("'minReplicas' (%s) must be less than or equal to 'maxReplicas' (%s) in order for HorizontalPodAutoscaler to scale.", numberString(*minReplicas), numberString(*props.MaxReplicas)))
 	}
+	validateScalingRules("scaleUp", props.ScaleUp)
+	validateScalingRules("scaleDown", props.ScaleDown)
 	result := &horizontalPodAutoscalerImpl{
 		maxReplicas: props.MaxReplicas,
 		minReplicas: minReplicas,
 		target:      props.Target,
+		metricsSet:  props.Metrics != nil,
 		scaleDown:   normalizedScalingRules(props.ScaleDown, false, minReplicas),
 		scaleUp:     normalizedScalingRules(props.ScaleUp, true, minReplicas),
 	}
@@ -192,6 +198,12 @@ func (h *horizontalPodAutoscalerImpl) toManifest() interface{} {
 	if target == nil || target.ApiVersion == nil || target.Kind == nil || target.Name == nil {
 		panic("autoscaler target is invalid")
 	}
+	if target.Replicas != nil && *target.Replicas != 0 {
+		panic(fmt.Sprintf("HorizontalPodAutoscaler target cannot have a fixed number of replicas (%s).", numberString(*target.Replicas)))
+	}
+	if !h.metricsSet && !targetHasResourceConstraints(target) {
+		panic("If HorizontalPodAutoscaler does not have metrics defined, then every container in the target must have a CPU or memory resource constraint defined.")
+	}
 	metrics := make([]interface{}, 0, len(h.metrics))
 	for _, metric := range h.metrics {
 		if metric == nil {
@@ -216,6 +228,25 @@ func (h *horizontalPodAutoscalerImpl) toManifest() interface{} {
 		result["metrics"] = metrics
 	}
 	return result
+}
+
+func targetHasResourceConstraints(target *ScalingTarget) bool {
+	if target == nil || target.Containers == nil {
+		return false
+	}
+	for _, container := range *target.Containers {
+		if container == nil || container.Resources() == nil {
+			continue
+		}
+		resources := container.Resources()
+		if resources.Cpu != nil && (resources.Cpu.Request != nil || resources.Cpu.Limit != nil) {
+			return true
+		}
+		if resources.Memory != nil && (resources.Memory.Request != nil || resources.Memory.Limit != nil) {
+			return true
+		}
+	}
+	return false
 }
 
 // A metric condition that HorizontalPodAutoscaler's scale on.
@@ -466,6 +497,30 @@ type ScalingRules struct {
 	StabilizationWindow cdk8s.Duration `field:"optional" json:"stabilizationWindow" yaml:"stabilizationWindow"`
 	// The strategy to use when scaling. Default: MAX_CHANGE.
 	Strategy ScalingStrategy `field:"optional" json:"strategy" yaml:"strategy"`
+}
+
+func validateScalingRules(direction string, rules *ScalingRules) {
+	if rules == nil {
+		return
+	}
+	if rules.StabilizationWindow != nil {
+		seconds := *rules.StabilizationWindow.ToSeconds(nil)
+		if seconds < 0 || seconds > 3600 {
+			panic(fmt.Sprintf("'%s.stabilizationWindow' (%s) must be 0 seconds or more with a max of 1 hour.", direction, stringValue(rules.StabilizationWindow.ToHumanString())))
+		}
+	}
+	if rules.Policies == nil {
+		return
+	}
+	for _, policy := range *rules.Policies {
+		if policy == nil || policy.Duration == nil {
+			continue
+		}
+		seconds := *policy.Duration.ToSeconds(nil)
+		if seconds <= 0 || seconds > 1800 {
+			panic(fmt.Sprintf("'%s.policies' duration (%s) is outside of the allowed range. Must be at least 1 second long and no longer than 30 minutes.", direction, stringValue(policy.Duration.ToHumanString())))
+		}
+	}
 }
 
 func normalizedScalingRules(rules *ScalingRules, up bool, minReplicas *float64) *ScalingRules {

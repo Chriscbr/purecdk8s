@@ -178,6 +178,13 @@ func newNetworkPolicyIpBlock(scope constructs.Construct, id, cidr *string, excep
 		panic("scope, id and cidrIp are required")
 	}
 	if !strings.Contains(*cidr, "/") {
+		ip := net.ParseIP(*cidr)
+		if ip == nil || (family == 4 && ip.To4() == nil) || (family == 6 && ip.To4() != nil) {
+			if family == 4 {
+				panic("Invalid IPv4 CIDR: \"" + *cidr + "\"")
+			}
+			panic("Invalid IPv6 CIDR: \"" + *cidr + "\"")
+		}
 		if family == 4 {
 			panic("CIDR mask is missing in IPv4: \"" + *cidr + "\". Did you mean \"" + *cidr + "/32\"?")
 		}

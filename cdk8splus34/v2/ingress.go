@@ -1,7 +1,9 @@
 package cdk8splus34
 
 import (
+	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/Chriscbr/purecdk8s/cdk8s/v2"
 	"github.com/Chriscbr/purecdk8s/constructs/v10"
@@ -34,12 +36,33 @@ func IngressBackend_FromService(service Service, options *ServiceIngressBackendO
 	if service == nil {
 		panic("service is required")
 	}
-	port := service.Port()
-	if options != nil && options.Port != nil {
-		port = options.Port
+	ports := *service.Ports()
+	if len(ports) == 0 {
+		panic("service does not expose any ports")
 	}
-	if port == nil {
-		panic("service port is required")
+	var port *float64
+	if options == nil || options.Port == nil {
+		if len(ports) > 1 {
+			panic("unable to determine service port since service exposes multiple ports")
+		}
+		port = ports[0].Port
+	} else {
+		port = options.Port
+		for _, exposed := range ports {
+			if exposed != nil && exposed.Port != nil && *exposed.Port == *port {
+				return &ingressBackend{value: map[string]interface{}{"service": map[string]interface{}{"name": service.Name(), "port": map[string]interface{}{"number": port}}}}
+			}
+		}
+		if len(ports) == 1 {
+			panic(fmt.Sprintf("backend defines port %s but service exposes port %s", numberString(*port), numberString(*ports[0].Port)))
+		}
+		values := make([]string, 0, len(ports))
+		for _, exposed := range ports {
+			if exposed != nil && exposed.Port != nil {
+				values = append(values, numberString(*exposed.Port))
+			}
+		}
+		panic(fmt.Sprintf("service exposes ports %s but backend is defined to use port %s", strings.Join(values, ","), numberString(*port)))
 	}
 	return &ingressBackend{value: map[string]interface{}{"service": map[string]interface{}{"name": service.Name(), "port": map[string]interface{}{"number": port}}}}
 }
@@ -171,6 +194,12 @@ func Ingress_IsConstruct(x interface{}) *bool {
 }
 
 func (i *ingressImpl) AddDefaultBackend(backend IngressBackend) {
+	if backend == nil {
+		panic("ingress backend is required")
+	}
+	if i.defaultBackend != nil {
+		panic("a default backend is already defined for this ingress")
+	}
 	i.defaultBackend = backend
 }
 
@@ -192,11 +221,32 @@ func (i *ingressImpl) AddRules(rules ...*IngressRule) {
 			panic("ingress rule backend is required")
 		}
 		if rule.Host == nil && rule.Path == nil {
-			if i.defaultBackend != nil {
-				panic("a default backend is already defined for this ingress")
-			}
-			i.defaultBackend = rule.Backend
+			i.AddDefaultBackend(rule.Backend)
 			continue
+		}
+		path := "/"
+		if rule.Path != nil {
+			path = *rule.Path
+		}
+		if !strings.HasPrefix(path, "/") {
+			panic(fmt.Sprintf("ingress paths must begin with a \"/\": %s", path))
+		}
+		host := ""
+		if rule.Host != nil {
+			host = *rule.Host
+		}
+		for _, existing := range i.rules {
+			existingHost := ""
+			if existing.Host != nil {
+				existingHost = *existing.Host
+			}
+			existingPath := "/"
+			if existing.Path != nil {
+				existingPath = *existing.Path
+			}
+			if existingHost == host && existingPath == path {
+				panic(fmt.Sprintf("there is already an ingress rule for %s%s", host, path))
+			}
 		}
 		i.rules = append(i.rules, rule)
 	}
@@ -209,6 +259,9 @@ func (i *ingressImpl) AddTls(tls *[]*IngressTls) {
 }
 
 func (i *ingressImpl) toManifest() interface{} {
+	if i.defaultBackend == nil && len(i.rules) == 0 {
+		panic("ingress with no rules or default backend")
+	}
 	result := map[string]interface{}{}
 	if i.className != nil {
 		result["ingressClassName"] = i.className
@@ -264,6 +317,23 @@ func (i *ingressImpl) toManifest() interface{} {
 			rules = append(rules, item)
 		}
 		result["rules"] = rules
+	}
+	if len(i.tls) > 0 {
+		tlsEntries := make([]interface{}, 0, len(i.tls))
+		for _, tls := range i.tls {
+			if tls == nil {
+				panic("ingress TLS entry is required")
+			}
+			entry := map[string]interface{}{}
+			if tls.Hosts != nil {
+				entry["hosts"] = tls.Hosts
+			}
+			if tls.Secret != nil {
+				entry["secretName"] = tls.Secret.Name()
+			}
+			tlsEntries = append(tlsEntries, entry)
+		}
+		result["tls"] = tlsEntries
 	}
 	return result
 }
