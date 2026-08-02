@@ -208,7 +208,7 @@ func TestNativeScalarUnionSynthesizesAsScalar(t *testing.T) {
 	}
 }
 
-func TestAppExplicitEmptyOutdirMatchesUpstream(t *testing.T) {
+func TestAppExplicitEmptyOutdir(t *testing.T) {
 	outdir := ""
 	app := NewApp(&AppProps{Outdir: &outdir})
 	if got := *app.Outdir(); got != "" {
@@ -234,7 +234,7 @@ func TestAppSynthValidatesBeforeInferringDependencies(t *testing.T) {
 	}
 }
 
-func TestMetadataRequiredArgumentsMatchUpstream(t *testing.T) {
+func TestMetadataRequiredArguments(t *testing.T) {
 	chart := Testing_Chart()
 	id, apiVersion, kind := "object", "v1", "ConfigMap"
 	object := NewApiObject(chart, &id, &ApiObjectProps{ApiVersion: &apiVersion, Kind: &kind})

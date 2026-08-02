@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -91,6 +92,10 @@ func Yaml_Stringify(docs ...interface{}) *string {
 			output.WriteString("---\n")
 		}
 		plain := plainValue(document)
+		// Manifest serialization intentionally omits nil map values, but the
+		// standalone YAML API follows upstream's keepUndefined behavior and
+		// writes those values as null. Restore them only at this API boundary.
+		plain = preserveYAMLMapNulls(reflect.ValueOf(document), plain)
 		if plain == nil {
 			output.WriteByte('\n')
 			continue
@@ -115,6 +120,68 @@ func Yaml_Stringify(docs ...interface{}) *string {
 	}
 	result := output.String()
 	return &result
+}
+
+func preserveYAMLMapNulls(original reflect.Value, converted interface{}) interface{} {
+	for original.IsValid() && (original.Kind() == reflect.Interface || original.Kind() == reflect.Pointer) {
+		if original.IsNil() {
+			return nil
+		}
+		original = original.Elem()
+	}
+	if !original.IsValid() {
+		return nil
+	}
+	if (original.Kind() == reflect.Map || original.Kind() == reflect.Slice) && original.IsNil() {
+		return nil
+	}
+
+	switch original.Kind() {
+	case reflect.Map:
+		result, ok := converted.(map[string]interface{})
+		if !ok {
+			result = make(map[string]interface{}, original.Len())
+		}
+		iterator := original.MapRange()
+		for iterator.Next() {
+			key := fmt.Sprint(plainReflect(iterator.Key()))
+			value := iterator.Value()
+			if nilYAMLMapValue(value) {
+				result[key] = nil
+				continue
+			}
+			item, found := result[key]
+			if !found {
+				item = plainReflect(value)
+			}
+			result[key] = preserveYAMLMapNulls(value, item)
+		}
+		return result
+	case reflect.Slice, reflect.Array:
+		result, ok := converted.([]interface{})
+		if !ok {
+			return converted
+		}
+		for index := 0; index < original.Len() && index < len(result); index++ {
+			result[index] = preserveYAMLMapNulls(original.Index(index), result[index])
+		}
+		return result
+	default:
+		return converted
+	}
+}
+
+func nilYAMLMapValue(value reflect.Value) bool {
+	for value.IsValid() && (value.Kind() == reflect.Interface || value.Kind() == reflect.Pointer) {
+		if value.IsNil() {
+			return true
+		}
+		value = value.Elem()
+	}
+	if value.IsValid() && (value.Kind() == reflect.Map || value.Kind() == reflect.Slice) {
+		return value.IsNil()
+	}
+	return !value.IsValid()
 }
 
 func orderYAMLTopLevel(node *yaml.Node) {

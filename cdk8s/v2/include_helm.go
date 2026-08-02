@@ -1,12 +1,15 @@
 package cdk8s
 
 import (
+	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/Chriscbr/purecdk8s/constructs/v10"
 	"github.com/Chriscbr/purecdk8s/jsii"
@@ -113,6 +116,30 @@ type helmImpl struct {
 	releaseName string
 }
 
+const maxHelmBuffer = 10 * 1024 * 1024
+
+var errHelmBufferExceeded = errors.New("helm maxBuffer length exceeded")
+
+type helmOutputBuffer struct {
+	buffer   bytes.Buffer
+	limit    int
+	overflow bool
+	cancel   context.CancelFunc
+}
+
+func (b *helmOutputBuffer) Write(data []byte) (int, error) {
+	if b.buffer.Len()+len(data) <= b.limit {
+		return b.buffer.Write(data)
+	}
+	remaining := b.limit - b.buffer.Len()
+	if remaining > 0 {
+		_, _ = b.buffer.Write(data[:remaining])
+	}
+	b.overflow = true
+	b.cancel()
+	return remaining, errHelmBufferExceeded
+}
+
 func NewHelm(scope constructs.Construct, id *string, props *HelmProps) Helm {
 	if scope == nil || id == nil || props == nil || props.Chart == nil {
 		panic("scope, id, and props.chart are required")
@@ -183,21 +210,31 @@ func initializeHelm(helm *helmImpl, host Helm, scope constructs.Construct, id *s
 	if props.HelmExecutable != nil {
 		program = *props.HelmExecutable
 	}
-	command := exec.Command(program, args...)
-	output, err := command.Output()
-	if errors.Is(err, exec.ErrNotFound) {
+	commandContext, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	command := exec.CommandContext(commandContext, program, args...)
+	command.WaitDelay = time.Second
+	stdout := &helmOutputBuffer{limit: maxHelmBuffer, cancel: cancel}
+	stderr := &helmOutputBuffer{limit: maxHelmBuffer, cancel: cancel}
+	command.Stdout = stdout
+	command.Stderr = stderr
+	err = command.Run()
+	if stdout.overflow {
+		panic("stdout maxBuffer length exceeded")
+	}
+	if stderr.overflow {
+		panic("stderr maxBuffer length exceeded")
+	}
+	if errors.Is(err, exec.ErrNotFound) || os.IsNotExist(err) {
 		panic(fmt.Sprintf("unable to execute '%s' to render Helm chart. Is it installed on your system?", program))
 	}
 	if err != nil {
-		if exit, ok := err.(*exec.ExitError); ok {
-			panic(string(exit.Stderr))
+		if _, ok := err.(*exec.ExitError); ok {
+			panic(stderr.buffer.String())
 		}
 		panic(fmt.Sprintf("error while rendering a helm chart: %v", err))
 	}
-	const maxHelmBuffer = 10 * 1024 * 1024
-	if len(output) > maxHelmBuffer {
-		panic("stdout maxBuffer length exceeded")
-	}
+	output := stdout.buffer.Bytes()
 
 	if host == helm {
 		constructs.NewConstruct_Override(helm, scope, id)
