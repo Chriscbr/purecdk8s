@@ -1,4 +1,4 @@
-module github.com/Chriscbr/purecdk8s/tools/api-check-common
+module github.com/Chriscbr/purecdk8s/tools/api-compat-check
 
 go 1.25.0
 

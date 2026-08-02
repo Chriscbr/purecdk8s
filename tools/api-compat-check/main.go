@@ -1,9 +1,9 @@
-// Package apicheck loads a normalized API-only view of a native purecdk8s
-// package for comparison with its upstream JSII-backed counterpart.
+// Package apicheck compares a purecdk8s package with its upstream API.
 package apicheck
 
 import (
 	"bytes"
+	"flag"
 	"fmt"
 	"go/ast"
 	"go/parser"
@@ -12,55 +12,105 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"golang.org/x/exp/apidiff"
 	"golang.org/x/tools/go/packages"
 )
 
-// Replacement identifies an equivalent upstream import and its package name.
-type Replacement struct {
-	Path string
-	Name string
+type replacement struct {
+	path string
+	name string
 }
 
-// Options identifies the two packages to compare and imports that should be
-// normalized before type-checking the pure Go implementation.
-type Options struct {
-	UpstreamPackage string
-	LocalPackage    string
-	SourceDir       string
-	Replacements    map[string]Replacement
+type replacements map[string]replacement
+
+// Main runs the API compatibility checker command.
+func Main() {
+	var (
+		name            = flag.String("name", "package", "name used in result messages")
+		upstreamPackage = flag.String("upstream", "", "upstream package import path")
+		localPackage    = flag.String("local", "", "local package import path")
+		sourceDir       = flag.String("source", "", "local package source directory")
+		replacementArgs replacementFlags
+	)
+	flag.Var(&replacementArgs, "replace", "local=upstream,package-name import replacement (repeatable)")
+	flag.Parse()
+
+	if *upstreamPackage == "" || *localPackage == "" || *sourceDir == "" || flag.NArg() != 0 {
+		flag.Usage()
+		os.Exit(2)
+	}
+
+	replacements, err := replacementArgs.parse()
+	if err != nil {
+		fatal(err)
+	}
+	report, err := check(*upstreamPackage, *localPackage, *sourceDir, replacements)
+	if err != nil {
+		fatal(err)
+	}
+	if !hasIncompatibleChanges(report) {
+		fmt.Printf("%s API is compatible with %s.\n", *name, *upstreamPackage)
+		return
+	}
+
+	fmt.Fprintf(os.Stderr, "%s API differs from %s:\n", *name, *upstreamPackage)
+	if err := report.TextIncompatible(os.Stderr, false); err != nil {
+		fatal(err)
+	}
+	os.Exit(1)
 }
 
-// Check compares the upstream package with the public API of the local source.
-func Check(options Options) (apidiff.Report, error) {
-	if options.UpstreamPackage == "" || options.LocalPackage == "" || options.SourceDir == "" {
-		return apidiff.Report{}, fmt.Errorf("upstream package, local package, and source directory are required")
+type replacementFlags []string
+
+func (values *replacementFlags) String() string {
+	return strings.Join(*values, " ")
+}
+
+func (values *replacementFlags) Set(value string) error {
+	*values = append(*values, value)
+	return nil
+}
+
+func (values replacementFlags) parse() (replacements, error) {
+	result := make(replacements, len(values))
+	for _, value := range values {
+		local, upstreamAndName, found := strings.Cut(value, "=")
+		upstream, name, foundName := strings.Cut(upstreamAndName, ",")
+		if !found || !foundName || local == "" || upstream == "" || name == "" {
+			return nil, fmt.Errorf("invalid replacement %q; expected local=upstream,package-name", value)
+		}
+		if _, exists := result[local]; exists {
+			return nil, fmt.Errorf("duplicate replacement for %s", local)
+		}
+		result[local] = replacement{path: upstream, name: name}
+	}
+	return result, nil
+}
+
+func check(upstreamPackage, localPackage, sourceDir string, replacements replacements) (apidiff.Report, error) {
+	sourceDir, err := filepath.Abs(sourceDir)
+	if err != nil {
+		return apidiff.Report{}, err
+	}
+	overlay, err := apiOverlay(sourceDir, replacements)
+	if err != nil {
+		return apidiff.Report{}, err
 	}
 
-	sourceDir, err := filepath.Abs(options.SourceDir)
+	upstream, err := loadPackage(upstreamPackage, nil)
 	if err != nil {
 		return apidiff.Report{}, err
 	}
-	overlay, err := apiOverlay(sourceDir, options.Replacements)
-	if err != nil {
-		return apidiff.Report{}, err
-	}
-
-	upstream, err := loadPackage(options.UpstreamPackage, nil)
-	if err != nil {
-		return apidiff.Report{}, err
-	}
-	local, err := loadPackage(options.LocalPackage, overlay)
+	local, err := loadPackage(localPackage, overlay)
 	if err != nil {
 		return apidiff.Report{}, err
 	}
 	return apidiff.Changes(upstream.Types, local.Types), nil
 }
 
-// HasIncompatibleChanges reports whether a compatibility-breaking change was
-// found. Additive local APIs are permitted.
-func HasIncompatibleChanges(report apidiff.Report) bool {
+func hasIncompatibleChanges(report apidiff.Report) bool {
 	for _, change := range report.Changes {
 		if !change.Compatible {
 			return true
@@ -100,7 +150,7 @@ func packageErrors(path string, errors []packages.Error) error {
 	return fmt.Errorf("%s", message)
 }
 
-func apiOverlay(sourceDir string, replacements map[string]Replacement) (map[string][]byte, error) {
+func apiOverlay(sourceDir string, replacements replacements) (map[string][]byte, error) {
 	entries, err := os.ReadDir(sourceDir)
 	if err != nil {
 		return nil, err
@@ -135,7 +185,7 @@ func hasTestSuffix(name string) bool {
 	return len(name) > len("_test.go") && name[len(name)-len("_test.go"):] == "_test.go"
 }
 
-func prepare(file *ast.File, replacements map[string]Replacement) error {
+func prepare(file *ast.File, replacements replacements) error {
 	declarations := make([]ast.Decl, 0, len(file.Decls))
 	for _, declaration := range file.Decls {
 		if function, ok := declaration.(*ast.FuncDecl); ok {
@@ -168,9 +218,9 @@ func prepare(file *ast.File, replacements map[string]Replacement) error {
 				return err
 			}
 			if replacement, ok := replacements[path]; ok {
-				importSpec.Path.Value = strconv.Quote(replacement.Path)
+				importSpec.Path.Value = strconv.Quote(replacement.path)
 				if importSpec.Name == nil {
-					importSpec.Name = ast.NewIdent(replacement.Name)
+					importSpec.Name = ast.NewIdent(replacement.name)
 				}
 			}
 
@@ -281,4 +331,9 @@ func importName(spec *ast.ImportSpec) (string, error) {
 		return "", err
 	}
 	return filepath.Base(path), nil
+}
+
+func fatal(err error) {
+	fmt.Fprintln(os.Stderr, err)
+	os.Exit(1)
 }

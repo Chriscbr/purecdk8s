@@ -4,9 +4,8 @@ go 1.25.0
 
 require (
 	github.com/Chriscbr/purecdk8s v0.0.0
-	github.com/Chriscbr/purecdk8s/tools/api-check-common v0.0.0
+	github.com/Chriscbr/purecdk8s/tools/api-compat-check v0.0.0
 	github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2 v2.70.87
-	golang.org/x/exp v0.0.0-20260727155853-b88d891fe743
 )
 
 require (
@@ -17,6 +16,7 @@ require (
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.23 // indirect
 	github.com/yuin/goldmark v1.7.16 // indirect
+	golang.org/x/exp v0.0.0-20260727155853-b88d891fe743 // indirect
 	golang.org/x/lint v0.0.0-20241112194109-818c5a804067 // indirect
 	golang.org/x/mod v0.38.0 // indirect
 	golang.org/x/sync v0.22.0 // indirect
@@ -30,4 +30,4 @@ require (
 
 replace github.com/Chriscbr/purecdk8s => ../..
 
-replace github.com/Chriscbr/purecdk8s/tools/api-check-common => ../api-check-common
+replace github.com/Chriscbr/purecdk8s/tools/api-compat-check => ../api-compat-check
