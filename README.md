@@ -33,18 +33,14 @@ From a source checkout:
 cd /path/to/purecdk8s
 go test ./...
 go install ./cmd/purecdk8s
-go install ./cmd/cdk8s
 ```
 
-`purecdk8s` is the unambiguous native command name. The second command installs
-the same implementation as `cdk8s`, so existing scripts can use it as a
-drop-in CLI replacement.
+`purecdk8s` is the native command name for the compatible CLI workflow.
 
 To build standalone binaries instead:
 
 ```console
 go build -o ./bin/purecdk8s ./cmd/purecdk8s
-go build -o ./bin/cdk8s ./cmd/cdk8s
 ```
 
 Once a tagged module version is available, the equivalent remote installation
@@ -52,7 +48,6 @@ is:
 
 ```console
 go install github.com/purecdk8s/purecdk8s/cmd/purecdk8s@latest
-go install github.com/purecdk8s/purecdk8s/cmd/cdk8s@latest
 ```
 
 The library requires Go 1.23 or newer.
