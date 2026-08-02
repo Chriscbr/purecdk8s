@@ -83,6 +83,7 @@ type Node interface {
 	GetAllContext(defaults *map[string]interface{}) interface{}
 	GetContext(key *string) interface{}
 	Lock()
+	RemoveDependency(deps ...IDependable)
 	SetContext(key *string, value interface{})
 	TryFindChild(id *string) IConstruct
 	TryGetContext(key *string) interface{}
@@ -384,6 +385,17 @@ func (n *nodeImpl) AddDependency(deps ...IDependable) {
 		}
 		if !found {
 			n.dependencies = append(n.dependencies, dependency)
+		}
+	}
+}
+
+func (n *nodeImpl) RemoveDependency(deps ...IDependable) {
+	for _, dependency := range deps {
+		for index, existing := range n.dependencies {
+			if interfaceEqual(existing, dependency) {
+				n.dependencies = append(n.dependencies[:index], n.dependencies[index+1:]...)
+				break
+			}
 		}
 	}
 }
@@ -781,14 +793,4 @@ func setEmbeddedImplementation(target interface{}, implementation interface{}) b
 		}
 	}
 	return false
-}
-
-// SortedChildren is an optional native helper; the upstream API preserves
-// insertion order, while callers that need deterministic ID order can use it.
-func SortedChildren(node Node) []IConstruct {
-	children := append([]IConstruct(nil), (*node.Children())...)
-	sort.SliceStable(children, func(i, j int) bool {
-		return value(children[i].Node().Id()) < value(children[j].Node().Id())
-	})
-	return children
 }

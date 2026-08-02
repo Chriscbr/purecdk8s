@@ -90,6 +90,25 @@ func TestDependenciesAcceptForwardingConstructWrappers(t *testing.T) {
 	}
 }
 
+func TestRemoveDependencyRequiresTheSameDependable(t *testing.T) {
+	rootID, sourceID, targetID := "root", "source", "target"
+	root := NewRootConstruct(&rootID)
+	source := NewConstruct(root, &sourceID)
+	target := NewConstruct(root, &targetID)
+
+	dependency := NewDependencyGroup(target)
+	source.Node().AddDependency(dependency)
+	source.Node().RemoveDependency(NewDependencyGroup(target))
+	if got := *source.Node().Dependencies(); len(got) != 1 || got[0] != target {
+		t.Fatalf("dependencies after removing another dependable = %#v, want %#v", got, target)
+	}
+
+	source.Node().RemoveDependency(dependency)
+	if got := *source.Node().Dependencies(); len(got) != 0 {
+		t.Fatalf("dependencies after removal = %#v, want none", got)
+	}
+}
+
 func TestChildrenMatchJavaScriptObjectKeyOrder(t *testing.T) {
 	rootID := ""
 	root := NewRootConstruct(&rootID)
