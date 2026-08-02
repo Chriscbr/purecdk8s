@@ -314,10 +314,19 @@ func TestContext(t *testing.T) {
 			key  string
 			want interface{}
 		}{
-			{high.Node(), "c1", "root"}, {high.Node(), "c2", "root"}, {high.Node(), "c3", nil},
-			{child1.Node(), "c1", "root"}, {child1.Node(), "c2", "child1"}, {child1.Node(), "c3", "child1"},
-			{child2.Node(), "c1", "root"}, {child2.Node(), "c2", "root"}, {child2.Node(), "c3", nil},
-			{child3.Node(), "c1", "child3"}, {child3.Node(), "c2", "child1"}, {child3.Node(), "c3", "child1"}, {child3.Node(), "c4", "child3"},
+			{high.Node(), "c1", "root"},
+			{high.Node(), "c2", "root"},
+			{high.Node(), "c3", nil},
+			{child1.Node(), "c1", "root"},
+			{child1.Node(), "c2", "child1"},
+			{child1.Node(), "c3", "child1"},
+			{child2.Node(), "c1", "root"},
+			{child2.Node(), "c2", "root"},
+			{child2.Node(), "c3", nil},
+			{child3.Node(), "c1", "child3"},
+			{child3.Node(), "c2", "child1"},
+			{child3.Node(), "c3", "child1"},
+			{child3.Node(), "c4", "child3"},
 		}
 		for _, test := range cases {
 			if got := test.node.TryGetContext(&test.key); got != test.want {

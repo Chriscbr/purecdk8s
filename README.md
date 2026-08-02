@@ -308,36 +308,33 @@ It does not require Node.js.
 
 ## Test the implementation
 
-Run the complete suite:
+Run unit tests with:
 
 ```console
-go test ./...
+make test
 ```
 
-The tests cover the native construct tree and address calculation, cdk8s core
-helpers, synthesis ordering and YAML output, the CLI, Kubernetes schema
-generation, CRD generation, and compilation of generated Go packages.
-Release verification also compiles the complete Kubernetes 1.25 schema,
-exercises local and remote Helm generation, and compares an import-swapped
-example manifest byte-for-byte with upstream cdk8s.
+The unit tests cover the constructs API, cdk8s core API, cdk8s+ API, and purecdk8s CLI.
 
-Run one Docker integration test with:
+Run an integration test with:
 
 ```console
-./integration/run.sh helm
+make integration-example EXAMPLE=helm
 ```
 
-Run every test with:
+Run every integration test with:
 
 ```console
-./integration/run-all.sh
+make integration
 ```
 
-`run.sh` synthesizes upstream cdk8s and migrated purecdk8s, then compares the
-output byte-for-byte. Add another project directory to `integration/examples`
-to add another case.
+Use `VERBOSE=1` for more detailed output.
 
-To inspect output manually, retain one or both implementations:
+Add example cdk8s Go code to `integration/examples` to add another test case.
+The integration test uses Docker to run the test case with both the original cdk8s Go
+implementation and the pure cdk8s Go implementation, and compares the output byte-for-byte.
+
+To inspect output manually, you can generate the outputs for either implementation (or both):
 
 ```console
 ./integration/run.sh helm upstream
@@ -348,38 +345,39 @@ To inspect output manually, retain one or both implementations:
 The last command also compares the two trees and prints the temporary output
 directory instead of removing it.
 
-To confirm the runtime dependency boundary:
+The remaining local checks are available through `make`:
 
 ```console
-go mod graph
-go list -deps ./...
+make format
+make format-check
+make build
+make api
+make test
 ```
 
-The dependency list contains the local
-`github.com/purecdk8s/purecdk8s/jsii` helper package, but it must not contain
-`github.com/aws/jsii-runtime-go` or any JSII kernel package.
+`make test` runs unit tests, API checks, and integration tests.
+`make api` checks constructs and cdk8s+ API compatibility.
 
 ## Compatibility notes
 
-- The public core compatibility target is cdk8s Go v2.70.85. New APIs added
-  in later upstream releases are outside that target until they are ported.
 - JavaScript validation plugins declared under `validations` in
   `cdk8s.yaml` cannot run in a no-JavaScript runtime. The native CLI reports
   this explicitly; use `purecdk8s synth --no-validate` or replace the plugin
   with native validation.
 - Direct calls to JSII kernel APIs such as `Create`, `Invoke`, `UnsafeCast`,
   proxy registration, or cross-language dispatch are intentionally absent.
-  Ordinary cdk8s Go applications use the compatible pointer helpers and native
-  construct APIs instead.
-- `cdk8s.NewHelm` is supported through the system Helm executable; that
-  executable is also used for HTTP and OCI Helm imports. It is an optional
-  feature dependency, not a package runtime dependency.
+  Ordinary cdk8s Go applications using the normal constructs APIs should not
+  be affected.
+- `cdk8s.NewHelm` runs by shelling out to the system's `helm` executable. That
+  executable is also used for HTTP and OCI Helm imports. It's an optional
+  feature dependency, so `purecdk8s` doesn't automatically download it.
 - Kubernetes schema import downloads the selected schema, and HTTP(S) CRD
   and remote Helm imports download the requested inputs. These operations
   require network access; non-Helm synthesis itself does not.
 - Go maps do not retain insertion order. Default deterministic synthesis
   matches cdk8s ordering, but the `CDK8S_DISABLE_SORT` escape hatch cannot
   reproduce JavaScript object insertion order.
-- The helper package intentionally retains the name `jsii` for source
-  compatibility. Its presence in an import list does not imply a JSII or
-  Node.js runtime.
+- There is still a helper package named `jsii` for source code compatibility
+  so you can continue to use `jsii.String` and `jsii.Number` in your code.
+  To be clear, there isn't an actual JSII or Node.js runtime used.
+- The implementation only takes a single dependency on `gopkg.in/yaml.v3`.

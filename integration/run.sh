@@ -5,6 +5,23 @@ root=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 
 usage() {
   echo "usage: $0 EXAMPLE [upstream|pure|both]" >&2
+  echo "set VERBOSE=1 to stream Docker and application output" >&2
+}
+
+run_quietly() {
+  local label=$1
+  local log=$2
+  shift 2
+
+  if [[ "${VERBOSE:-}" == "1" ]]; then
+    "$@"
+    return
+  fi
+  if ! "$@" >"$log" 2>&1; then
+    echo "❌ $label failed; output follows:" >&2
+    cat "$log" >&2
+    exit 1
+  fi
 }
 
 case_name=${1:-}
@@ -42,9 +59,11 @@ fi
 
 for implementation in "${implementations[@]}"; do
   image="purecdk8s-integration-$implementation"
-  docker build --target "$implementation" --tag "$image" --file "$root/integration/Dockerfile" "$root"
+  run_quietly "building $implementation integration image" "$scratch/$implementation-build.log" \
+    docker build --quiet --target "$implementation" --tag "$image" --file "$root/integration/Dockerfile" "$root"
   mkdir -p "$scratch/$implementation"
-  docker run --rm \
+  echo "[$implementation] $case_name"
+  run_quietly "running $implementation $case_name" "$scratch/$implementation-run.log" docker run --rm \
     --user "$(id -u):$(id -g)" \
     --volume "$root/integration/examples/$case_name:/examples/$case_name:ro" \
     --volume "$scratch/$implementation:/output" \
@@ -52,6 +71,9 @@ for implementation in "${implementations[@]}"; do
 done
 
 if [[ "$mode" == check || "$mode" == both ]]; then
-  diff -ru "$scratch/upstream" "$scratch/pure"
-  echo "$case_name: upstream and purecdk8s output are identical."
+  if ! diff -ru "$scratch/upstream" "$scratch/pure"; then
+    echo "❌ $case_name: upstream and purecdk8s output differ." >&2
+    exit 1
+  fi
+  echo "✅ $case_name: upstream and purecdk8s output are identical."
 fi
