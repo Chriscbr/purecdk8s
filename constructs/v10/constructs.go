@@ -223,8 +223,7 @@ func NewNode_Override(n Node, host Construct, scope IConstruct, id *string) {
 }
 
 func newNode(host Construct, scope IConstruct, id *string) *nodeImpl {
-	identifier := value(id)
-	identifier = strings.ReplaceAll(identifier, "/", "--")
+	identifier := sanitizeID(value(id))
 	if scope != nil && identifier == "" {
 		panic("Only root constructs may have an empty ID")
 	}
@@ -259,7 +258,8 @@ func Node_PATH_SEP() *string {
 
 func Construct_IsConstruct(x interface{}) *bool {
 	if x == nil {
-		panic("parameter x is required, but nil was provided")
+		result := false
+		return &result
 	}
 	_, ok := x.(IConstruct)
 	return &ok
@@ -405,7 +405,7 @@ func (n *nodeImpl) AddMetadata(type_ *string, data interface{}, options *Metadat
 		panic("parameter type_ is required, but nil was provided")
 	}
 	if data == nil {
-		panic("parameter data is required, but nil was provided")
+		return
 	}
 	entry := &MetadataEntry{Type: type_, Data: data}
 	if options != nil && options.StackTraceOverride != nil && len(*options.StackTraceOverride) > 0 {
@@ -469,18 +469,16 @@ func (n *nodeImpl) FindChild(id *string) IConstruct {
 
 func (n *nodeImpl) GetAllContext(defaults *map[string]interface{}) interface{} {
 	result := make(map[string]interface{})
+	if defaults != nil {
+		for key, item := range *defaults {
+			result[key] = item
+		}
+	}
 	for _, scope := range *n.Scopes() {
 		if impl, ok := scope.Node().(*nodeImpl); ok {
 			for key, item := range impl.context {
 				result[key] = item
 			}
-		}
-	}
-	// Despite the parameter name, defaults are explicit overrides in the
-	// constructs v10 API and therefore have the highest precedence.
-	if defaults != nil {
-		for key, item := range *defaults {
-			result[key] = item
 		}
 	}
 	return result
@@ -517,7 +515,7 @@ func (n *nodeImpl) TryFindChild(id *string) IConstruct {
 	if id == nil {
 		panic("parameter id is required, but nil was provided")
 	}
-	return n.children[strings.ReplaceAll(value(id), "/", "--")]
+	return n.children[sanitizeID(value(id))]
 }
 
 func (n *nodeImpl) TryGetContext(key *string) interface{} {
@@ -750,6 +748,10 @@ func valueBool(pointer *bool) bool {
 }
 
 func stringPointer(value string) *string { return &value }
+
+func sanitizeID(id string) string {
+	return strings.NewReplacer("/", "--", "\n", "--").Replace(id)
+}
 
 func interfaceEqual(left, right interface{}) bool {
 	if !isComparable(left) || !isComparable(right) {
