@@ -6,11 +6,15 @@ import (
 	"flag"
 	"fmt"
 	"go/ast"
+	"go/doc/comment"
 	"go/parser"
 	"go/printer"
 	"go/token"
+	"go/types"
+	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -50,19 +54,45 @@ func Main() {
 	if err != nil {
 		fatal(err)
 	}
-	if !hasIncompatibleChanges(report) {
-		fmt.Printf("%s API is compatible with %s.\n", *name, *upstreamPackage)
+	hasAPIChanges := hasIncompatibleChanges(report.API)
+	if !hasAPIChanges && len(report.Documentation) == 0 {
+		fmt.Printf("%s API and documentation match %s.\n", *name, *upstreamPackage)
 		return
 	}
 
-	fmt.Fprintf(os.Stderr, "%s API differs from %s:\n", *name, *upstreamPackage)
-	if err := report.TextIncompatible(os.Stderr, false); err != nil {
+	fmt.Fprintf(os.Stderr, "%s API or documentation differs from %s:\n", *name, *upstreamPackage)
+	if hasAPIChanges {
+		if err := report.API.TextIncompatible(os.Stderr, false); err != nil {
+			fatal(err)
+		}
+	}
+	if err := WriteDocumentationChanges(os.Stderr, report.Documentation); err != nil {
 		fatal(err)
 	}
 	os.Exit(1)
 }
 
 type replacementFlags []string
+
+// Report contains both the type-level API report and documentation changes.
+// Documentation is compared for every exported declaration in the upstream
+// package; additional declarations in the local package are ignored just as
+// compatible additions are ignored by apidiff.
+type Report struct {
+	API           apidiff.Report
+	Documentation []DocumentationChange
+}
+
+// DocumentationChange describes one exported declaration whose Go doc comment
+// differs between the upstream and local packages. An empty string means that
+// the declaration has no doc comment.
+type DocumentationChange struct {
+	Declaration string
+	Upstream    string
+	Local       string
+}
+
+const inheritedDocumentation = "\x00inherited documentation"
 
 func (values *replacementFlags) String() string {
 	return strings.Join(*values, " ")
@@ -89,25 +119,28 @@ func (values replacementFlags) parse() (replacements, error) {
 	return result, nil
 }
 
-func check(upstreamPackage, localPackage, sourceDir string, replacements replacements) (apidiff.Report, error) {
+func check(upstreamPackage, localPackage, sourceDir string, replacements replacements) (Report, error) {
 	sourceDir, err := filepath.Abs(sourceDir)
 	if err != nil {
-		return apidiff.Report{}, err
+		return Report{}, err
 	}
 	overlay, err := apiOverlay(sourceDir, replacements)
 	if err != nil {
-		return apidiff.Report{}, err
+		return Report{}, err
 	}
 
 	upstream, err := loadPackage(upstreamPackage, nil)
 	if err != nil {
-		return apidiff.Report{}, err
+		return Report{}, err
 	}
 	local, err := loadPackage(localPackage, overlay)
 	if err != nil {
-		return apidiff.Report{}, err
+		return Report{}, err
 	}
-	return apidiff.Changes(upstream.Types, local.Types), nil
+	return Report{
+		API:           apidiff.Changes(upstream.Types, local.Types),
+		Documentation: compareDocumentation(loadedPackageDocumentation(upstream), loadedPackageDocumentation(local)),
+	}, nil
 }
 
 func hasIncompatibleChanges(report apidiff.Report) bool {
@@ -119,6 +152,281 @@ func hasIncompatibleChanges(report apidiff.Report) bool {
 	return false
 }
 
+// WriteDocumentationChanges writes documentation changes in a stable,
+// human-readable format.
+func WriteDocumentationChanges(writer io.Writer, changes []DocumentationChange) error {
+	for _, change := range changes {
+		if _, err := fmt.Fprintf(writer, "doc for %s differs:\n  upstream: %s\n  local:    %s\n", change.Declaration, formatDocumentation(change.Upstream), formatDocumentation(change.Local)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func formatDocumentation(documentation string) string {
+	if documentation == "" {
+		return "<none>"
+	}
+	return strconv.Quote(documentation)
+}
+
+func compareDocumentation(upstream, local map[string]string) []DocumentationChange {
+	declarations := make([]string, 0, len(upstream))
+	for declaration := range upstream {
+		declarations = append(declarations, declaration)
+	}
+	sort.Strings(declarations)
+
+	var changes []DocumentationChange
+	for _, declaration := range declarations {
+		if local[declaration] == inheritedDocumentation {
+			continue
+		}
+		if upstream[declaration] == local[declaration] {
+			continue
+		}
+		changes = append(changes, DocumentationChange{
+			Declaration: declaration,
+			Upstream:    upstream[declaration],
+			Local:       local[declaration],
+		})
+	}
+	return changes
+}
+
+func packageDocumentation(files []*ast.File) map[string]string {
+	documentation := map[string]string{}
+	for _, file := range files {
+		for _, declaration := range file.Decls {
+			switch declaration := declaration.(type) {
+			case *ast.FuncDecl:
+				if !declaration.Name.IsExported() || !hasExportedReceiver(declaration) {
+					continue
+				}
+				name := "func " + declaration.Name.Name
+				if declaration.Recv != nil {
+					name = "method " + receiverName(declaration.Recv.List[0].Type).Name + "." + declaration.Name.Name
+				}
+				documentation[name] = commentText(declaration.Doc, nil)
+			case *ast.GenDecl:
+				declarationDocumentation(documentation, declaration)
+			}
+		}
+	}
+	return documentation
+}
+
+// loadedPackageDocumentation augments directly declared documentation with
+// documentation inherited through type aliases and embedded interfaces. Those
+// API members have types.Object identities from their original declarations,
+// even though there is no declaration in the forwarding package where a
+// duplicate comment could be attached.
+func loadedPackageDocumentation(pkg *packages.Package) map[string]string {
+	documentation := packageDocumentation(pkg.Syntax)
+	objectDocumentation := packageObjectDocumentation(pkg)
+	for _, name := range pkg.Types.Scope().Names() {
+		if !ast.IsExported(name) {
+			continue
+		}
+		typeName, ok := pkg.Types.Scope().Lookup(name).(*types.TypeName)
+		if !ok {
+			continue
+		}
+
+		unalias := types.Unalias(typeName.Type())
+		if documentation["type "+name] == "" {
+			if named, ok := unalias.(*types.Named); ok && named.Obj() != typeName {
+				documentation["type "+name] = objectDocumentation[named.Obj()]
+			}
+		}
+
+		switch underlying := unalias.Underlying().(type) {
+		case *types.Struct:
+			for index := 0; index < underlying.NumFields(); index++ {
+				field := underlying.Field(index)
+				if field.Exported() {
+					declaration := "field " + name + "." + field.Name()
+					if _, directlyDeclared := documentation[declaration]; directlyDeclared {
+						documentation[declaration] = objectDocumentation[field]
+					} else {
+						documentation[declaration] = inheritedDocumentation
+					}
+				}
+			}
+		case *types.Interface:
+			underlying.Complete()
+			for index := 0; index < underlying.NumMethods(); index++ {
+				method := underlying.Method(index)
+				if method.Exported() {
+					declaration := "interface method " + name + "." + method.Name()
+					if _, directlyDeclared := documentation[declaration]; directlyDeclared {
+						documentation[declaration] = objectDocumentation[method]
+					} else {
+						documentation[declaration] = inheritedDocumentation
+					}
+				}
+			}
+		}
+	}
+	return documentation
+}
+
+func packageObjectDocumentation(root *packages.Package) map[types.Object]string {
+	documentation := map[types.Object]string{}
+	visited := map[*packages.Package]bool{}
+	var visit func(*packages.Package)
+	visit = func(pkg *packages.Package) {
+		if pkg == nil || visited[pkg] {
+			return
+		}
+		visited[pkg] = true
+		for _, imported := range pkg.Imports {
+			visit(imported)
+		}
+		if pkg.TypesInfo == nil {
+			return
+		}
+		for _, file := range pkg.Syntax {
+			for _, declaration := range file.Decls {
+				switch declaration := declaration.(type) {
+				case *ast.FuncDecl:
+					if object := pkg.TypesInfo.Defs[declaration.Name]; object != nil {
+						documentation[object] = commentText(declaration.Doc, nil)
+					}
+				case *ast.GenDecl:
+					objectDocumentationForGeneralDeclaration(documentation, pkg.TypesInfo, declaration)
+				}
+			}
+		}
+	}
+	visit(root)
+	return documentation
+}
+
+func objectDocumentationForGeneralDeclaration(documentation map[types.Object]string, info *types.Info, declaration *ast.GenDecl) {
+	for _, item := range declaration.Specs {
+		switch spec := item.(type) {
+		case *ast.ValueSpec:
+			doc := spec.Doc
+			if doc == nil {
+				doc = declaration.Doc
+			}
+			for _, name := range spec.Names {
+				if object := info.Defs[name]; object != nil {
+					documentation[object] = commentText(doc, spec.Comment)
+				}
+			}
+		case *ast.TypeSpec:
+			doc := spec.Doc
+			if doc == nil {
+				doc = declaration.Doc
+			}
+			if object := info.Defs[spec.Name]; object != nil {
+				documentation[object] = commentText(doc, spec.Comment)
+			}
+			var fields *ast.FieldList
+			switch definition := spec.Type.(type) {
+			case *ast.StructType:
+				fields = definition.Fields
+			case *ast.InterfaceType:
+				fields = definition.Methods
+			}
+			if fields != nil {
+				for _, field := range fields.List {
+					for _, name := range field.Names {
+						if object := info.Defs[name]; object != nil {
+							documentation[object] = commentText(field.Doc, field.Comment)
+						}
+					}
+				}
+			}
+		}
+	}
+}
+
+func declarationDocumentation(documentation map[string]string, declaration *ast.GenDecl) {
+	switch declaration.Tok {
+	case token.CONST, token.VAR:
+		kind := declaration.Tok.String()
+		for _, item := range declaration.Specs {
+			spec := item.(*ast.ValueSpec)
+			doc := spec.Doc
+			if doc == nil {
+				doc = declaration.Doc
+			}
+			for _, name := range spec.Names {
+				if name.IsExported() {
+					documentation[kind+" "+name.Name] = commentText(doc, spec.Comment)
+				}
+			}
+		}
+	case token.TYPE:
+		for _, item := range declaration.Specs {
+			spec := item.(*ast.TypeSpec)
+			if !spec.Name.IsExported() {
+				continue
+			}
+			doc := spec.Doc
+			if doc == nil {
+				doc = declaration.Doc
+			}
+			documentation["type "+spec.Name.Name] = commentText(doc, spec.Comment)
+			typeMemberDocumentation(documentation, spec)
+		}
+	}
+}
+
+func typeMemberDocumentation(documentation map[string]string, spec *ast.TypeSpec) {
+	var (
+		fields       *ast.FieldList
+		kind         string
+		embeddedKind string
+	)
+	switch definition := spec.Type.(type) {
+	case *ast.StructType:
+		fields = definition.Fields
+		kind = "field "
+		embeddedKind = "embedded field "
+	case *ast.InterfaceType:
+		fields = definition.Methods
+		kind = "interface method "
+		embeddedKind = "embedded interface "
+	default:
+		return
+	}
+
+	for _, field := range fields.List {
+		if len(field.Names) == 0 {
+			name := receiverName(field.Type)
+			if name.IsExported() {
+				documentation[embeddedKind+spec.Name.Name+"."+name.Name] = commentText(field.Doc, field.Comment)
+			}
+			continue
+		}
+		for _, name := range field.Names {
+			if name.IsExported() {
+				documentation[kind+spec.Name.Name+"."+name.Name] = commentText(field.Doc, field.Comment)
+			}
+		}
+	}
+}
+
+func commentText(leading, trailing *ast.CommentGroup) string {
+	var result string
+	if leading != nil {
+		result = leading.Text()
+	}
+	if trailing != nil {
+		result += trailing.Text()
+	}
+	if result == "" {
+		return ""
+	}
+	parser := comment.Parser{}
+	printer := comment.Printer{TextWidth: -1}
+	return string(printer.Text(parser.Parse(result)))
+}
+
 func loadPackage(path string, overlay map[string][]byte) (*packages.Package, error) {
 	loaded, err := packages.Load(&packages.Config{
 		Mode: packages.NeedName |
@@ -127,7 +435,8 @@ func loadPackage(path string, overlay map[string][]byte) (*packages.Package, err
 			packages.NeedImports |
 			packages.NeedDeps |
 			packages.NeedSyntax |
-			packages.NeedTypes,
+			packages.NeedTypes |
+			packages.NeedTypesInfo,
 		Overlay: overlay,
 	}, path)
 	if err != nil {
@@ -192,7 +501,7 @@ func prepare(file *ast.File, replacements replacements) error {
 			if !function.Name.IsExported() || !hasExportedReceiver(function) {
 				continue
 			}
-			function.Body = panicBody()
+			function.Body = panicBody(function.Body)
 		}
 		if typeDeclaration, ok := declaration.(*ast.GenDecl); ok && typeDeclaration.Tok == token.TYPE {
 			for _, spec := range typeDeclaration.Specs {
@@ -234,7 +543,73 @@ func prepare(file *ast.File, replacements replacements) error {
 		}
 		importDeclaration.Specs = imports
 	}
+	retainDocumentationComments(file)
 	return nil
+}
+
+// prepare removes function bodies and private declarations before the local
+// package is loaded through an overlay. Keep only comments attached to the
+// remaining public API so comments from a removed body or declaration cannot
+// be reattached to a neighboring declaration when the overlay is printed and
+// parsed again.
+func retainDocumentationComments(file *ast.File) {
+	kept := map[*ast.CommentGroup]bool{}
+	keep := func(group *ast.CommentGroup) {
+		if group != nil {
+			kept[group] = true
+		}
+	}
+
+	for _, declaration := range file.Decls {
+		switch declaration := declaration.(type) {
+		case *ast.FuncDecl:
+			if declaration.Name.IsExported() && hasExportedReceiver(declaration) {
+				keep(declaration.Doc)
+			}
+		case *ast.GenDecl:
+			for _, item := range declaration.Specs {
+				switch spec := item.(type) {
+				case *ast.ValueSpec:
+					for _, name := range spec.Names {
+						if name.IsExported() {
+							keep(declaration.Doc)
+							keep(spec.Doc)
+							keep(spec.Comment)
+							break
+						}
+					}
+				case *ast.TypeSpec:
+					if !spec.Name.IsExported() {
+						continue
+					}
+					keep(declaration.Doc)
+					keep(spec.Doc)
+					keep(spec.Comment)
+					var fields *ast.FieldList
+					switch definition := spec.Type.(type) {
+					case *ast.StructType:
+						fields = definition.Fields
+					case *ast.InterfaceType:
+						fields = definition.Methods
+					}
+					if fields != nil {
+						for _, field := range fields.List {
+							keep(field.Doc)
+							keep(field.Comment)
+						}
+					}
+				}
+			}
+		}
+	}
+
+	comments := file.Comments[:0]
+	for _, group := range file.Comments {
+		if kept[group] {
+			comments = append(comments, group)
+		}
+	}
+	file.Comments = comments
 }
 
 func prepareType(spec *ast.TypeSpec) {
@@ -280,18 +655,35 @@ func receiverName(expression ast.Expr) *ast.Ident {
 		return receiverName(expression.X)
 	case *ast.IndexListExpr:
 		return receiverName(expression.X)
+	case *ast.SelectorExpr:
+		return expression.Sel
 	default:
 		return ast.NewIdent("")
 	}
 }
 
-func panicBody() *ast.BlockStmt {
-	return &ast.BlockStmt{List: []ast.Stmt{
+func panicBody(original *ast.BlockStmt) *ast.BlockStmt {
+	position := token.NoPos
+	if original != nil {
+		position = original.Lbrace
+	}
+	body := &ast.BlockStmt{List: []ast.Stmt{
 		&ast.ExprStmt{X: &ast.CallExpr{
-			Fun:  ast.NewIdent("panic"),
-			Args: []ast.Expr{&ast.BasicLit{Kind: token.STRING, Value: strconv.Quote("API-only package")}},
+			Fun: &ast.Ident{Name: "panic", NamePos: position},
+			Args: []ast.Expr{&ast.BasicLit{
+				Kind:     token.STRING,
+				Value:    strconv.Quote("API-only package"),
+				ValuePos: position,
+			}},
+			Lparen: position,
+			Rparen: position,
 		}},
 	}}
+	if original != nil {
+		body.Lbrace = original.Lbrace
+		body.Rbrace = original.Rbrace
+	}
+	return body
 }
 
 func importsUsedByDeclarations(file *ast.File) map[string]bool {

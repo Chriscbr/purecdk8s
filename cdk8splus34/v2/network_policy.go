@@ -9,20 +9,31 @@ import (
 	"github.com/Chriscbr/purecdk8s/jsii"
 )
 
+// Network protocols.
 type NetworkProtocol string
 
 const (
-	NetworkProtocol_TCP  NetworkProtocol = "TCP"
-	NetworkProtocol_UDP  NetworkProtocol = "UDP"
+	// TCP.
+	NetworkProtocol_TCP NetworkProtocol = "TCP"
+	// UDP.
+	NetworkProtocol_UDP NetworkProtocol = "UDP"
+	// SCTP.
 	NetworkProtocol_SCTP NetworkProtocol = "SCTP"
 )
 
+// Properties for `NetworkPolicyPort`.
 type NetworkPolicyPortProps struct {
-	EndPort  *float64        `field:"optional" json:"endPort" yaml:"endPort"`
-	Port     *float64        `field:"optional" json:"port" yaml:"port"`
+	// End port (relative to `port`).
+	//
+	// Only applies if `port` is defined. Use this to specify a port range, rather that a specific one. Default: - not a port range.
+	EndPort *float64 `field:"optional" json:"endPort" yaml:"endPort"`
+	// Specific port number. Default: - all ports are allowed.
+	Port *float64 `field:"optional" json:"port" yaml:"port"`
+	// Protocol. Default: NetworkProtocol.TCP
 	Protocol NetworkProtocol `field:"optional" json:"protocol" yaml:"protocol"`
 }
 
+// Describes a port to allow traffic on.
 type NetworkPolicyPort interface{ toManifest() map[string]interface{} }
 
 type networkPolicyPortImpl struct {
@@ -52,6 +63,7 @@ func NewNetworkPolicyPort_Override(port NetworkPolicyPort, props *NetworkPolicyP
 	applyOverride(port, NetworkPolicyPort_Of(props), "NetworkPolicyPort")
 }
 
+// Custom port configuration.
 func NetworkPolicyPort_Of(props *NetworkPolicyPortProps) NetworkPolicyPort {
 	if props == nil {
 		panic("props is required")
@@ -59,6 +71,7 @@ func NetworkPolicyPort_Of(props *NetworkPolicyPortProps) NetworkPolicyPort {
 	return &networkPolicyPortImpl{port: props.Port, endPort: props.EndPort, protocol: props.Protocol}
 }
 
+// Distinct TCP ports.
 func NetworkPolicyPort_Tcp(port *float64) NetworkPolicyPort {
 	if port == nil {
 		panic("port is required")
@@ -66,6 +79,7 @@ func NetworkPolicyPort_Tcp(port *float64) NetworkPolicyPort {
 	return &networkPolicyPortImpl{port: port, protocol: NetworkProtocol_TCP}
 }
 
+// A TCP port range.
 func NetworkPolicyPort_TcpRange(startPort, endPort *float64) NetworkPolicyPort {
 	if startPort == nil || endPort == nil {
 		panic("startPort and endPort are required")
@@ -73,10 +87,12 @@ func NetworkPolicyPort_TcpRange(startPort, endPort *float64) NetworkPolicyPort {
 	return &networkPolicyPortImpl{port: startPort, endPort: endPort, protocol: NetworkProtocol_TCP}
 }
 
+// Any TCP traffic.
 func NetworkPolicyPort_AllTcp() NetworkPolicyPort {
 	return &networkPolicyPortImpl{port: jsii.Number(0), endPort: jsii.Number(65535), protocol: NetworkProtocol_TCP}
 }
 
+// Distinct UDP ports.
 func NetworkPolicyPort_Udp(port *float64) NetworkPolicyPort {
 	if port == nil {
 		panic("port is required")
@@ -84,6 +100,7 @@ func NetworkPolicyPort_Udp(port *float64) NetworkPolicyPort {
 	return &networkPolicyPortImpl{port: port, protocol: NetworkProtocol_UDP}
 }
 
+// A UDP port range.
 func NetworkPolicyPort_UdpRange(startPort, endPort *float64) NetworkPolicyPort {
 	if startPort == nil || endPort == nil {
 		panic("startPort and endPort are required")
@@ -91,14 +108,20 @@ func NetworkPolicyPort_UdpRange(startPort, endPort *float64) NetworkPolicyPort {
 	return &networkPolicyPortImpl{port: startPort, endPort: endPort, protocol: NetworkProtocol_UDP}
 }
 
+// Any UDP traffic.
 func NetworkPolicyPort_AllUdp() NetworkPolicyPort {
 	return &networkPolicyPortImpl{port: jsii.Number(0), endPort: jsii.Number(65535), protocol: NetworkProtocol_UDP}
 }
 
+// Describes a particular CIDR (Ex.
+//
+// "192.168.1.1/24","2001:db9::/64") that is allowed to the pods matched by a network policy selector. The except entry describes CIDRs that should not be included within this rule.
 type NetworkPolicyIpBlock interface {
 	constructs.Construct
 	INetworkPolicyPeer
+	// A string representing the IP Block Valid examples are "192.168.1.1/24" or "2001:db9::/64".
 	Cidr() *string
+	// A slice of CIDRs that should not be included within an IP Block Valid examples are "192.168.1.1/24" or "2001:db9::/64". Except values will be rejected if they are outside the CIDR range.
 	Except() *[]*string
 	toManifest() map[string]interface{}
 }
@@ -175,57 +198,109 @@ func newNetworkPolicyIpBlock(scope constructs.Construct, id, cidr *string, excep
 	return result
 }
 
+// Create an IPv4 peer from a CIDR.
 func NetworkPolicyIpBlock_Ipv4(scope constructs.Construct, id, cidr *string, except *[]*string) NetworkPolicyIpBlock {
 	return newNetworkPolicyIpBlock(scope, id, cidr, except, 4)
 }
 
+// Create an IPv6 peer from a CIDR.
 func NetworkPolicyIpBlock_Ipv6(scope constructs.Construct, id, cidr *string, except *[]*string) NetworkPolicyIpBlock {
 	return newNetworkPolicyIpBlock(scope, id, cidr, except, 6)
 }
 
+// Any IPv4 address.
 func NetworkPolicyIpBlock_AnyIpv4(scope constructs.Construct, id *string) NetworkPolicyIpBlock {
 	return NetworkPolicyIpBlock_Ipv4(scope, id, jsii.String("0.0.0.0/0"), nil)
 }
 
+// Any IPv6 address.
 func NetworkPolicyIpBlock_AnyIpv6(scope constructs.Construct, id *string) NetworkPolicyIpBlock {
 	return NetworkPolicyIpBlock_Ipv6(scope, id, jsii.String("::/0"), nil)
 }
 
+// Checks if `x` is a construct.
+//
+// Use this method instead of `instanceof` to properly detect `Construct` instances, even when the construct library is symlinked.
+//
+// Explanation: in JavaScript, multiple copies of the `constructs` library on disk are seen as independent, completely different libraries. As a consequence, the class `Construct` in each copy of the `constructs` library is seen as a different class, and an instance of one class will not test as `instanceof` the other class. `npm install` will not create installations like this, but users may manually symlink construct libraries together or use a monorepo tool: in those cases, multiple copies of the `constructs` library can be accidentally installed, and `instanceof` will behave unpredictably. It is safest to avoid using `instanceof`, and using this type-testing method instead.
+//
+// Returns: true if `x` is an object created from a class which extends `Construct`.
 func NetworkPolicyIpBlock_IsConstruct(x interface{}) *bool {
 	return constructs.Construct_IsConstruct(x)
 }
 
+// Default behaviors of network traffic in policies.
 type NetworkPolicyTrafficDefault string
 
 const (
-	NetworkPolicyTrafficDefault_DENY  NetworkPolicyTrafficDefault = "DENY"
+	// The policy denies all traffic.
+	//
+	// Since rules are additive, additional rules or policies can allow specific traffic.
+	NetworkPolicyTrafficDefault_DENY NetworkPolicyTrafficDefault = "DENY"
+	// The policy allows all traffic (either ingress or egress).
+	//
+	// Since rules are additive, no additional rule or policies can subsequently deny the traffic.
 	NetworkPolicyTrafficDefault_ALLOW NetworkPolicyTrafficDefault = "ALLOW"
 )
 
+// Describes a rule allowing traffic from / to pods matched by a network policy selector.
 type NetworkPolicyRule struct {
-	Peer  INetworkPolicyPeer   `field:"required" json:"peer" yaml:"peer"`
+	// Peer this rule interacts with.
+	Peer INetworkPolicyPeer `field:"required" json:"peer" yaml:"peer"`
+	// The ports of the rule. Default: - traffic is allowed on all ports.
 	Ports *[]NetworkPolicyPort `field:"optional" json:"ports" yaml:"ports"`
 }
 
+// Describes how the network policy should configure egress / ingress traffic.
 type NetworkPolicyTraffic struct {
+	// Specifies the default behavior of the policy when no rules are defined. Default: - unset, the policy does not change the behavior.
 	Default NetworkPolicyTrafficDefault `field:"optional" json:"default" yaml:"default"`
-	Rules   *[]*NetworkPolicyRule       `field:"optional" json:"rules" yaml:"rules"`
+	// List of rules to be applied to the selected pods.
+	//
+	// If empty, the behavior of the policy is dictated by the `default` property. Default: - no rules.
+	Rules *[]*NetworkPolicyRule `field:"optional" json:"rules" yaml:"rules"`
 }
 
+// Options for `NetworkPolicy.addEgressRule`.
 type NetworkPolicyAddEgressRuleOptions struct {
+	// Ports the rule should allow outgoing traffic to. Default: - If the peer is a managed pod, take its ports. Otherwise, all ports are allowed.
 	Ports *[]NetworkPolicyPort `field:"optional" json:"ports" yaml:"ports"`
 }
 
+// Properties for `NetworkPolicy`.
 type NetworkPolicyProps struct {
+	// Metadata that all persisted resources must have, which includes all objects users must create.
 	Metadata *cdk8s.ApiObjectMetadata `field:"optional" json:"metadata" yaml:"metadata"`
-	Egress   *NetworkPolicyTraffic    `field:"optional" json:"egress" yaml:"egress"`
-	Ingress  *NetworkPolicyTraffic    `field:"optional" json:"ingress" yaml:"ingress"`
-	Selector IPodSelector             `field:"optional" json:"selector" yaml:"selector"`
+	// Egress traffic configuration. Default: - the policy doesn't change egress behavior of the pods it selects.
+	Egress *NetworkPolicyTraffic `field:"optional" json:"egress" yaml:"egress"`
+	// Ingress traffic configuration. Default: - the policy doesn't change ingress behavior of the pods it selects.
+	Ingress *NetworkPolicyTraffic `field:"optional" json:"ingress" yaml:"ingress"`
+	// Which pods does this policy object applies to.
+	//
+	// This can either be a single pod / workload, or a grouping of pods selected via the `Pods.select` function. Rules is applied to any pods selected by this property. Multiple network policies can select the same set of pods. In this case, the rules for each are combined additively.
+	//
+	// Note that. Default: - will select all pods in the namespace of the policy.
+	Selector IPodSelector `field:"optional" json:"selector" yaml:"selector"`
 }
 
+// Control traffic flow at the IP address or port level (OSI layer 3 or 4), network policies are an application-centric construct which allow you to specify how a pod is allowed to communicate with various network peers.
+//
+//   - Outgoing traffic is allowed if there are no network policies selecting the pod (and cluster policy otherwise allows the traffic), OR if the traffic matches at least one egress rule across all of the network policies that select the pod.
+//
+//   - Incoming traffic is allowed to a pod if there are no network policies selecting the pod (and cluster policy otherwise allows the traffic), OR if the traffic source is the pod's local node, OR if the traffic matches at least one ingress rule across all of the network policies that select the pod.
+//
+// Network policies do not conflict; they are additive. If any policy or policies apply to a given pod for a given direction, the connections allowed in that direction from that pod is the union of what the applicable policies allow. Thus, order of evaluation does not affect the policy result.
+//
+// For a connection from a source pod to a destination pod to be allowed, both the egress policy on the source pod and the ingress policy on the destination pod need to allow the connection. If either side does not allow the connection, it will not happen. See: https://kubernetes.io/docs/concepts/services-networking/network-policies/#networkpolicy-resource
 type NetworkPolicy interface {
 	Resource
+	// Allow outgoing traffic to the peer.
+	//
+	// If ports are not passed, traffic will be allowed on all ports.
 	AddEgressRule(peer INetworkPolicyPeer, ports *[]NetworkPolicyPort)
+	// Allow incoming traffic from the peer.
+	//
+	// If ports are not passed, traffic will be allowed on all ports.
 	AddIngressRule(peer INetworkPolicyPeer, ports *[]NetworkPolicyPort)
 }
 
@@ -292,6 +367,13 @@ func NewNetworkPolicy_Override(policy NetworkPolicy, scope constructs.Construct,
 	applyOverride(policy, NewNetworkPolicy(scope, id, props), "NetworkPolicy")
 }
 
+// Checks if `x` is a construct.
+//
+// Use this method instead of `instanceof` to properly detect `Construct` instances, even when the construct library is symlinked.
+//
+// Explanation: in JavaScript, multiple copies of the `constructs` library on disk are seen as independent, completely different libraries. As a consequence, the class `Construct` in each copy of the `constructs` library is seen as a different class, and an instance of one class will not test as `instanceof` the other class. `npm install` will not create installations like this, but users may manually symlink construct libraries together or use a monorepo tool: in those cases, multiple copies of the `constructs` library can be accidentally installed, and `instanceof` will behave unpredictably. It is safest to avoid using `instanceof`, and using this type-testing method instead.
+//
+// Returns: true if `x` is an object created from a class which extends `Construct`.
 func NetworkPolicy_IsConstruct(x interface{}) *bool {
 	return constructs.Construct_IsConstruct(x)
 }

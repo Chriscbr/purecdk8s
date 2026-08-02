@@ -6,18 +6,27 @@ import (
 	"github.com/Chriscbr/purecdk8s/jsii"
 )
 
+// Options for `LabelSelector.of`.
 type LabelSelectorOptions struct {
-	Expressions *[]LabelExpression  `field:"optional" json:"expressions" yaml:"expressions"`
-	Labels      *map[string]*string `field:"optional" json:"labels" yaml:"labels"`
+	// Expression based label matchers.
+	Expressions *[]LabelExpression `field:"optional" json:"expressions" yaml:"expressions"`
+	// Strict label matchers.
+	Labels *map[string]*string `field:"optional" json:"labels" yaml:"labels"`
 }
 
+// A label selector requirement is a selector that contains values, a key, and an operator that relates the key and values.
 type LabelSelectorRequirement struct {
-	Key      *string    `field:"required" json:"key" yaml:"key"`
-	Operator *string    `field:"required" json:"operator" yaml:"operator"`
-	Values   *[]*string `field:"optional" json:"values" yaml:"values"`
+	// The label key that the selector applies to.
+	Key *string `field:"required" json:"key" yaml:"key"`
+	// Represents a key's relationship to a set of values.
+	Operator *string `field:"required" json:"operator" yaml:"operator"`
+	// An array of string values.
+	//
+	// If the operator is In or NotIn, the values array must be non-empty. If the operator is Exists or DoesNotExist, the values array must be empty. This array is replaced during a strategic merge patch.
+	Values *[]*string `field:"optional" json:"values" yaml:"values"`
 }
 
-// LabelSelector matches Kubernetes resources by labels and expressions.
+// Match a resource by labels.
 type LabelSelector interface {
 	IsEmpty() *bool
 	toManifest() map[string]interface{}
@@ -120,7 +129,7 @@ func labelSelectorManifest(selector LabelSelector) map[string]interface{} {
 	return selector.toManifest()
 }
 
-// LabelExpression is an expression-based label matcher.
+// Represents a query that can be performed against resources with labels.
 type LabelExpression interface {
 	Key() *string
 	Operator() *string
@@ -151,6 +160,7 @@ func newLabelExpression(key *string, operator string, values *[]*string) LabelEx
 	return &labelExpressionImpl{key: key, operator: jsii.String(operator), values: values}
 }
 
+// Requires value of label `key` to be one of `values`.
 func LabelExpression_In(key *string, values *[]*string) LabelExpression {
 	if values == nil {
 		panic("values are required")
@@ -158,6 +168,7 @@ func LabelExpression_In(key *string, values *[]*string) LabelExpression {
 	return newLabelExpression(key, "In", values)
 }
 
+// Requires value of label `key` to be none of `values`.
 func LabelExpression_NotIn(key *string, values *[]*string) LabelExpression {
 	if values == nil {
 		panic("values are required")
@@ -165,46 +176,70 @@ func LabelExpression_NotIn(key *string, values *[]*string) LabelExpression {
 	return newLabelExpression(key, "NotIn", values)
 }
 
+// Requires label `key` to exist.
 func LabelExpression_Exists(key *string) LabelExpression {
 	return newLabelExpression(key, "Exists", nil)
 }
 
+// Requires label `key` to not exist.
 func LabelExpression_DoesNotExist(key *string) LabelExpression {
 	return newLabelExpression(key, "DoesNotExist", nil)
 }
 
-// NetworkPolicyPeerConfig describes an IP block or a pod selection.
+// Configuration for network peers.
+//
+// A peer can either by an ip block, or a selection of pods, not both.
 type NetworkPolicyPeerConfig struct {
-	IpBlock     NetworkPolicyIpBlock `field:"optional" json:"ipBlock" yaml:"ipBlock"`
-	PodSelector *PodSelectorConfig   `field:"optional" json:"podSelector" yaml:"podSelector"`
+	// The ip block this peer represents.
+	IpBlock NetworkPolicyIpBlock `field:"optional" json:"ipBlock" yaml:"ipBlock"`
+	// The pod selector this peer represents.
+	PodSelector *PodSelectorConfig `field:"optional" json:"podSelector" yaml:"podSelector"`
 }
 
+// Describes a peer to allow traffic to/from.
 type INetworkPolicyPeer interface {
 	constructs.IConstruct
+	// Return the configuration of this peer.
 	ToNetworkPolicyPeerConfig() *NetworkPolicyPeerConfig
+	// Convert the peer into a pod selector, if possible.
 	ToPodSelector() IPodSelector
 }
 
+// Represents an object that can select namespaces.
 type INamespaceSelector interface {
 	constructs.IConstruct
+	// Return the configuration of this selector.
 	ToNamespaceSelectorConfig() *NamespaceSelectorConfig
 }
 
+// Options for `Pods.all`.
 type PodsAllOptions struct {
+	// Namespaces the pods are allowed to be in.
+	//
+	// Use `Namespaces.all()` to allow all namespaces. Default: - unset, implies the namespace of the resource this selection is used in.
 	Namespaces Namespaces `field:"optional" json:"namespaces" yaml:"namespaces"`
 }
 
+// Options for `Pods.select`.
 type PodsSelectOptions struct {
-	Expressions *[]LabelExpression  `field:"optional" json:"expressions" yaml:"expressions"`
-	Labels      *map[string]*string `field:"optional" json:"labels" yaml:"labels"`
-	Namespaces  Namespaces          `field:"optional" json:"namespaces" yaml:"namespaces"`
+	// Expressions the pods must satisify. Default: - no expressions requirements.
+	Expressions *[]LabelExpression `field:"optional" json:"expressions" yaml:"expressions"`
+	// Labels the pods must have. Default: - no strict labels requirements.
+	Labels *map[string]*string `field:"optional" json:"labels" yaml:"labels"`
+	// Namespaces the pods are allowed to be in.
+	//
+	// Use `Namespaces.all()` to allow all namespaces. Default: - unset, implies the namespace of the resource this selection is used in.
+	Namespaces Namespaces `field:"optional" json:"namespaces" yaml:"namespaces"`
 }
 
+// Represents a group of pods.
 type Pods interface {
 	constructs.Construct
 	IPodSelector
 	INetworkPolicyPeer
+	// See: INetworkPolicyPeer.toNetworkPolicyPeerConfig ()
 	ToNetworkPolicyPeerConfig() *NetworkPolicyPeerConfig
+	// See: INetworkPolicyPeer.toPodSelector ()
 	ToPodSelector() IPodSelector
 }
 
@@ -244,6 +279,7 @@ func NewPods_Override(pods Pods, scope constructs.Construct, id *string, express
 	applyOverride(pods, NewPods(scope, id, expressions, labels, namespaces), "Pods")
 }
 
+// Select pods in the cluster with various selectors.
 func Pods_Select(scope constructs.Construct, id *string, options *PodsSelectOptions) Pods {
 	if options == nil {
 		panic("options is required")
@@ -251,6 +287,7 @@ func Pods_Select(scope constructs.Construct, id *string, options *PodsSelectOpti
 	return NewPods(scope, id, options.Expressions, options.Labels, options.Namespaces)
 }
 
+// Select all pods.
 func Pods_All(scope constructs.Construct, id *string, options *PodsAllOptions) Pods {
 	if options == nil {
 		options = &PodsAllOptions{}
@@ -258,6 +295,13 @@ func Pods_All(scope constructs.Construct, id *string, options *PodsAllOptions) P
 	return NewPods(scope, id, nil, nil, options.Namespaces)
 }
 
+// Checks if `x` is a construct.
+//
+// Use this method instead of `instanceof` to properly detect `Construct` instances, even when the construct library is symlinked.
+//
+// Explanation: in JavaScript, multiple copies of the `constructs` library on disk are seen as independent, completely different libraries. As a consequence, the class `Construct` in each copy of the `constructs` library is seen as a different class, and an instance of one class will not test as `instanceof` the other class. `npm install` will not create installations like this, but users may manually symlink construct libraries together or use a monorepo tool: in those cases, multiple copies of the `constructs` library can be accidentally installed, and `instanceof` will behave unpredictably. It is safest to avoid using `instanceof`, and using this type-testing method instead.
+//
+// Returns: true if `x` is an object created from a class which extends `Construct`.
 func Pods_IsConstruct(x interface{}) *bool {
 	return constructs.Construct_IsConstruct(x)
 }
@@ -278,12 +322,21 @@ func (p *podsImpl) ToPodSelector() IPodSelector {
 	return p
 }
 
+// Options for `Namespaces.select`.
 type NamespacesSelectOptions struct {
-	Expressions *[]LabelExpression  `field:"optional" json:"expressions" yaml:"expressions"`
-	Labels      *map[string]*string `field:"optional" json:"labels" yaml:"labels"`
-	Names       *[]*string          `field:"optional" json:"names" yaml:"names"`
+	// Namespaces must satisfy these selectors.
+	//
+	// The selectors query labels, just like the `labels` property, but they provide a more advanced matching mechanism. Default: - no selector requirements.
+	Expressions *[]LabelExpression `field:"optional" json:"expressions" yaml:"expressions"`
+	// Labels the namespaces must have.
+	//
+	// This is equivalent to using an 'Is' selector. Default: - no strict labels requirements.
+	Labels *map[string]*string `field:"optional" json:"labels" yaml:"labels"`
+	// Namespaces names must be one of these. Default: - no name requirements.
+	Names *[]*string `field:"optional" json:"names" yaml:"names"`
 }
 
+// Represents a group of namespaces.
 type Namespaces interface {
 	constructs.Construct
 	INamespaceSelector
@@ -328,6 +381,7 @@ func NewNamespaces_Override(namespaces Namespaces, scope constructs.Construct, i
 	applyOverride(namespaces, NewNamespaces(scope, id, expressions, names, labels), "Namespaces")
 }
 
+// Select specific namespaces.
 func Namespaces_Select(scope constructs.Construct, id *string, options *NamespacesSelectOptions) Namespaces {
 	if options == nil {
 		panic("options is required")
@@ -335,10 +389,18 @@ func Namespaces_Select(scope constructs.Construct, id *string, options *Namespac
 	return NewNamespaces(scope, id, options.Expressions, options.Names, options.Labels)
 }
 
+// Select all namespaces.
 func Namespaces_All(scope constructs.Construct, id *string) Namespaces {
 	return NewNamespaces(scope, id, &[]LabelExpression{}, nil, &map[string]*string{})
 }
 
+// Checks if `x` is a construct.
+//
+// Use this method instead of `instanceof` to properly detect `Construct` instances, even when the construct library is symlinked.
+//
+// Explanation: in JavaScript, multiple copies of the `constructs` library on disk are seen as independent, completely different libraries. As a consequence, the class `Construct` in each copy of the `constructs` library is seen as a different class, and an instance of one class will not test as `instanceof` the other class. `npm install` will not create installations like this, but users may manually symlink construct libraries together or use a monorepo tool: in those cases, multiple copies of the `constructs` library can be accidentally installed, and `instanceof` will behave unpredictably. It is safest to avoid using `instanceof`, and using this type-testing method instead.
+//
+// Returns: true if `x` is an object created from a class which extends `Construct`.
 func Namespaces_IsConstruct(x interface{}) *bool {
 	return constructs.Construct_IsConstruct(x)
 }
@@ -357,6 +419,7 @@ func (n *namespacesImpl) ToPodSelector() IPodSelector {
 
 // Node is a factory for node selectors.
 type (
+	// Represents a node in the cluster.
 	Node     interface{}
 	nodeImpl struct{}
 )
@@ -370,6 +433,7 @@ func NewNode_Override(_ Node) {
 }
 
 type (
+	// A node that is matched by its name.
 	NamedNode     interface{ Name() *string }
 	namedNodeImpl struct{ name *string }
 )
@@ -390,6 +454,7 @@ func (n *namedNodeImpl) Name() *string {
 }
 
 type (
+	// A node that is matched by taint selectors.
 	TaintedNode     interface{ TaintSelector() *[]NodeTaintQuery }
 	taintedNodeImpl struct{ selector []NodeTaintQuery }
 )
@@ -423,28 +488,44 @@ func NewLabeledNode_Override(node LabeledNode, selector *[]NodeLabelQuery) {
 	applyOverride(node, NewLabeledNode(selector), "LabeledNode")
 }
 
+// Match a node by its name.
 func Node_Named(name *string) NamedNode {
 	return NewNamedNode(name)
 }
 
+// Match a node by its taints.
 func Node_Tainted(selector ...NodeTaintQuery) TaintedNode {
 	return NewTaintedNode(&selector)
 }
 
+// Taint effects.
 type TaintEffect string
 
 const (
-	TaintEffect_NO_SCHEDULE        TaintEffect = "NO_SCHEDULE"
+	// This means that no pod will be able to schedule onto the node unless it has a matching toleration.
+	TaintEffect_NO_SCHEDULE TaintEffect = "NO_SCHEDULE"
+	// This is a "preference" or "soft" version of `NO_SCHEDULE` -- the system will try to avoid placing a pod that does not tolerate the taint on the node, but it is not required.
 	TaintEffect_PREFER_NO_SCHEDULE TaintEffect = "PREFER_NO_SCHEDULE"
-	TaintEffect_NO_EXECUTE         TaintEffect = "NO_EXECUTE"
+	// This affects pods that are already running on the node as follows:.
+	//
+	//   - Pods that do not tolerate the taint are evicted immediately.
+	//   - Pods that tolerate the taint without specifying `duration` remain bound forever.
+	//   - Pods that tolerate the taint with a specified `duration` remain bound for the specified amount of time.
+	TaintEffect_NO_EXECUTE TaintEffect = "NO_EXECUTE"
 )
 
+// Options for `NodeTaintQuery`.
 type NodeTaintQueryOptions struct {
-	Effect     TaintEffect    `field:"optional" json:"effect" yaml:"effect"`
+	// The taint effect to match. Default: - all effects are matched.
+	Effect TaintEffect `field:"optional" json:"effect" yaml:"effect"`
+	// How much time should a pod that tolerates the `NO_EXECUTE` effect be bound to the node.
+	//
+	// Only applies for the `NO_EXECUTE` effect. Default: - bound forever.
 	EvictAfter cdk8s.Duration `field:"optional" json:"evictAfter" yaml:"evictAfter"`
 }
 
 type (
+	// Taint queries that can be perfomed against nodes.
 	NodeTaintQuery     interface{ toManifest() map[string]interface{} }
 	nodeTaintQueryImpl struct {
 		operator   string
@@ -454,6 +535,7 @@ type (
 	}
 )
 
+// Matches a taint with a specific key and value.
 func NodeTaintQuery_Is(key, value *string, options *NodeTaintQueryOptions) NodeTaintQuery {
 	if key == nil || value == nil {
 		panic("key and value are required")
@@ -461,6 +543,7 @@ func NodeTaintQuery_Is(key, value *string, options *NodeTaintQueryOptions) NodeT
 	return newNodeTaintQuery("Equal", key, value, options)
 }
 
+// Matches a tain with any value of a specific key.
 func NodeTaintQuery_Exists(key *string, options *NodeTaintQueryOptions) NodeTaintQuery {
 	if key == nil {
 		panic("key is required")
@@ -468,6 +551,7 @@ func NodeTaintQuery_Exists(key *string, options *NodeTaintQueryOptions) NodeTain
 	return newNodeTaintQuery("Exists", key, nil, options)
 }
 
+// Matches any taint.
 func NodeTaintQuery_Any() NodeTaintQuery {
 	return &nodeTaintQueryImpl{operator: "Exists"}
 }
@@ -515,6 +599,7 @@ func taintEffectManifest(value TaintEffect) string {
 }
 
 type (
+	// Available topology domains.
 	Topology     interface{ Key() *string }
 	topologyImpl struct{ key *string }
 )
@@ -523,6 +608,7 @@ func (t *topologyImpl) Key() *string {
 	return t.key
 }
 
+// Custom key for the node label that the system uses to denote the topology domain.
 func Topology_Custom(key *string) Topology {
 	if key == nil {
 		panic("key is required")

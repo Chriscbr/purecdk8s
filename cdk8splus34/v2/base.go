@@ -23,48 +23,69 @@ func (p lazyProducer) Produce() interface{} {
 	return p.produce()
 }
 
-// IApiResource represents a Kubernetes API resource or collection.
+// Represents a resource or collection of resources.
 type IApiResource interface {
+	// The group portion of the API version (e.g. `authorization.k8s.io`).
 	ApiGroup() *string
+	// The unique, namespace-global, name of an object inside the Kubernetes cluster.
+	//
+	// If this is omitted, the ApiResource should represent all objects of the given type.
 	ResourceName() *string
+	// The name of a resource type as it appears in the relevant API endpoint.
+	//
+	// Example:
+	//   - "pods" or "pods/log"
+	//
+	// See: https://kubernetes.io/docs/reference/access-authn-authz/rbac/#referring-to-resources
 	ResourceType() *string
 }
 
-// IApiEndpoint is either an API resource or a non-resource URL.
+// An API Endpoint can either be a resource descriptor (e.g /pods) or a non resource url (e.g /healthz). It must be one or the other, and not both.
 type IApiEndpoint interface {
+	// Return the IApiResource this object represents.
 	AsApiResource() IApiResource
+	// Return the non resource url this object represents.
 	AsNonApiResource() *string
 }
 
-// IResource is the common contract of cdk8s+ resources.
+// Represents a resource.
 type IResource interface {
 	constructs.IConstruct
 	IApiResource
+	// The object's API version (e.g. "authorization.k8s.io/v1").
 	ApiVersion() *string
+	// The object kind (e.g. "Deployment").
 	Kind() *string
+	// The Kubernetes name of this resource.
 	Name() *string
 }
 
-// Resource is the base interface of all high-level Kubernetes resources.
+// Base class for all Kubernetes objects in stdk8s.
+//
+// Represents a single resource.
 type Resource interface {
 	constructs.Construct
 	IApiEndpoint
 	IApiResource
 	IResource
+	// The underlying cdk8s API object.
 	ApiObject() cdk8s.ApiObject
 	Metadata() cdk8s.ApiObjectMetadataDefinition
 	Permissions() ResourcePermissions
 }
 
-// ResourceProps contains common persisted-object properties.
+// Initialization properties for resources.
 type ResourceProps struct {
+	// Metadata that all persisted resources must have, which includes all objects users must create.
 	Metadata *cdk8s.ApiObjectMetadata `field:"optional" json:"metadata" yaml:"metadata"`
 }
 
-// ResourcePermissions controls RBAC grants for a resource.
+// Controls permissions for operations on resources.
 type ResourcePermissions interface {
 	Instance() Resource
+	// Grants the list of subjects permissions to read this resource.
 	GrantRead(subjects ...ISubject) RoleBinding
+	// Grants the list of subjects permissions to read and write this resource.
 	GrantReadWrite(subjects ...ISubject) RoleBinding
 }
 
@@ -167,6 +188,13 @@ func (r *resourceBase) Permissions() ResourcePermissions {
 	return r.permissions
 }
 
+// Checks if `x` is a construct.
+//
+// Use this method instead of `instanceof` to properly detect `Construct` instances, even when the construct library is symlinked.
+//
+// Explanation: in JavaScript, multiple copies of the `constructs` library on disk are seen as independent, completely different libraries. As a consequence, the class `Construct` in each copy of the `constructs` library is seen as a different class, and an instance of one class will not test as `instanceof` the other class. `npm install` will not create installations like this, but users may manually symlink construct libraries together or use a monorepo tool: in those cases, multiple copies of the `constructs` library can be accidentally installed, and `instanceof` will behave unpredictably. It is safest to avoid using `instanceof`, and using this type-testing method instead.
+//
+// Returns: true if `x` is an object created from a class which extends `Construct`.
 func Resource_IsConstruct(x interface{}) *bool {
 	return constructs.Construct_IsConstruct(x)
 }

@@ -50,12 +50,14 @@ type appImpl struct {
 	recordConstructMetadata bool
 }
 
+// Defines an app.
 func NewApp(props *AppProps) App {
 	result := &appImpl{}
 	initializeApp(result, props)
 	return result
 }
 
+// Defines an app.
 func NewApp_Override(app App, props *AppProps) {
 	if app == nil {
 		panic("parameter app is required, but nil was provided")
@@ -266,6 +268,9 @@ func App_Of(construct constructs.IConstruct) App {
 	return app
 }
 
+// Checks if `x` is a construct.
+//
+// Returns: true if `x` is an object created from a class which extends `Construct`. Deprecated: use `x instanceof Construct` instead.
 func App_IsConstruct(value interface{}) *bool {
 	if value == nil {
 		panic("parameter x is required, but nil was provided")
@@ -398,6 +403,7 @@ func (c *chartImpl) ToJson() *[]interface{} {
 	return &result
 }
 
+// Finds the chart in which a node is defined.
 func Chart_Of(construct constructs.IConstruct) Chart {
 	if construct == nil {
 		panic("cannot find a parent chart (directly or indirectly)")
@@ -412,6 +418,9 @@ func Chart_Of(construct constructs.IConstruct) Chart {
 	return Chart_Of(parent)
 }
 
+// Return whether the given object is a Chart.
+//
+// We do attribute detection since we can't reliably use 'instanceof'.
 func Chart_IsChart(value interface{}) *bool {
 	if value == nil {
 		panic("parameter x is required, but nil was provided")
@@ -420,6 +429,9 @@ func Chart_IsChart(value interface{}) *bool {
 	return &ok
 }
 
+// Checks if `x` is a construct.
+//
+// Returns: true if `x` is an object created from a class which extends `Construct`. Deprecated: use `x instanceof Construct` instead.
 func Chart_IsConstruct(value interface{}) *bool {
 	return App_IsConstruct(value)
 }
@@ -436,6 +448,7 @@ type apiObjectImpl struct {
 	patches    []JsonPatch
 }
 
+// Defines an API object.
 func NewApiObject(scope constructs.Construct, id *string, props *ApiObjectProps) ApiObject {
 	return NewApiObjectWithManifest(scope, id, props, props)
 }
@@ -547,6 +560,7 @@ func ApiObjectManifest(props *ApiObjectProps, manifest interface{}) interface{} 
 	return orderTopLevel(result)
 }
 
+// Defines an API object.
 func NewApiObject_Override(object ApiObject, scope constructs.Construct, id *string, props *ApiObjectProps) {
 	NewApiObjectWithManifest_Override(object, scope, id, props, props)
 }
@@ -608,6 +622,9 @@ func (a *apiObjectImpl) ToJson() interface{} {
 	return orderTopLevel(result)
 }
 
+// Returns the `ApiObject` named `Resource` which is a child of the given construct.
+//
+// If `c` is an `ApiObject`, it is returned directly. Throws an exception if the construct does not have a child named `Default` _or_ if this child is not an `ApiObject`.
 func ApiObject_Of(construct constructs.IConstruct) ApiObject {
 	if construct == nil {
 		panic("parameter c is required, but nil was provided")
@@ -625,6 +642,9 @@ func ApiObject_Of(construct constructs.IConstruct) ApiObject {
 	return ApiObject_Of(child)
 }
 
+// Return whether the given object is an `ApiObject`.
+//
+// We do attribute detection since we can't reliably use 'instanceof'.
 func ApiObject_IsApiObject(value interface{}) *bool {
 	if value == nil {
 		panic("parameter o is required, but nil was provided")
@@ -633,6 +653,9 @@ func ApiObject_IsApiObject(value interface{}) *bool {
 	return &ok
 }
 
+// Checks if `x` is a construct.
+//
+// Returns: true if `x` is an object created from a class which extends `Construct`. Deprecated: use `x instanceof Construct` instead.
 func ApiObject_IsConstruct(value interface{}) *bool {
 	return App_IsConstruct(value)
 }
@@ -1212,6 +1235,7 @@ func setEmbeddedImplementation(target interface{}, implementation interface{}) b
 	return false
 }
 
+// Returns an app for testing with the following properties: - Output directory is a temp dir.
 func Testing_App(props *AppProps) App {
 	directory, err := os.MkdirTemp("", "cdk8s.outdir.")
 	if err != nil {
@@ -1227,10 +1251,12 @@ func Testing_App(props *AppProps) App {
 	return NewApp(&cloned)
 }
 
+// Returns: a Chart that can be used for tests.
 func Testing_Chart() Chart {
 	return NewChart(Testing_App(nil), jsii.String("test"), nil)
 }
 
+// Returns the Kubernetes manifest synthesized from this chart.
 func Testing_Synth(chart Chart) *[]interface{} {
 	if chart == nil {
 		panic("parameter chart is required, but nil was provided")

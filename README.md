@@ -351,12 +351,14 @@ The remaining local checks are available through `make`:
 make format
 make format-check
 make build
+make vet
 make api
 make test
 ```
 
 `make test` runs unit tests, API checks, and integration tests.
-`make api` checks constructs and cdk8s+ API compatibility.
+`make api` checks the exported types and Go doc comments in constructs, cdk8s,
+and cdk8s+ against their upstream packages.
 
 ## Compatibility notes
 

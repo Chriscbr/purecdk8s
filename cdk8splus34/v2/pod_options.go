@@ -2,14 +2,20 @@ package cdk8splus34
 
 import "github.com/Chriscbr/purecdk8s/jsii"
 
-// DnsPolicy controls how a pod resolves DNS names.
+// Pod DNS policies.
 type DnsPolicy string
 
 const (
-	DnsPolicy_CLUSTER_FIRST               DnsPolicy = "CLUSTER_FIRST"
+	// Any DNS query that does not match the configured cluster domain suffix, such as "www.kubernetes.io", is forwarded to the upstream nameserver inherited from the node. Cluster administrators may have extra stub-domain and upstream DNS servers configured.
+	DnsPolicy_CLUSTER_FIRST DnsPolicy = "CLUSTER_FIRST"
+	// For Pods running with hostNetwork, you should explicitly set its DNS policy "ClusterFirstWithHostNet".
 	DnsPolicy_CLUSTER_FIRST_WITH_HOST_NET DnsPolicy = "CLUSTER_FIRST_WITH_HOST_NET"
-	DnsPolicy_DEFAULT                     DnsPolicy = "DEFAULT"
-	DnsPolicy_NONE                        DnsPolicy = "NONE"
+	// The Pod inherits the name resolution configuration from the node that the pods run on.
+	DnsPolicy_DEFAULT DnsPolicy = "DEFAULT"
+	// It allows a Pod to ignore DNS settings from the Kubernetes environment.
+	//
+	// All DNS settings are supposed to be provided using the dnsConfig field in the Pod Spec.
+	DnsPolicy_NONE DnsPolicy = "NONE"
 )
 
 func dnsPolicyManifestValue(value DnsPolicy) string {
@@ -27,40 +33,75 @@ func dnsPolicyManifestValue(value DnsPolicy) string {
 	}
 }
 
-// DnsOption is a custom DNS resolver option.
+// Custom DNS option.
 type DnsOption struct {
-	Name  *string `field:"required" json:"name" yaml:"name"`
+	// Option name.
+	Name *string `field:"required" json:"name" yaml:"name"`
+	// Option value. Default: - No value.
 	Value *string `field:"optional" json:"value" yaml:"value"`
 }
 
-// HostAlias adds host names to a pod's /etc/hosts file.
+// HostAlias holds the mapping between IP and hostnames that will be injected as an entry in the pod's /etc/hosts file.
 type HostAlias struct {
+	// Hostnames for the chosen IP address.
 	Hostnames *[]*string `field:"required" json:"hostnames" yaml:"hostnames"`
-	Ip        *string    `field:"required" json:"ip" yaml:"ip"`
+	// IP address of the host file entry.
+	Ip *string `field:"required" json:"ip" yaml:"ip"`
 }
 
-// PodDnsProps configures Pod DNS settings.
+// Properties for `PodDns`.
 type PodDnsProps struct {
-	Hostname       *string       `field:"optional" json:"hostname" yaml:"hostname"`
-	HostnameAsFQDN *bool         `field:"optional" json:"hostnameAsFQDN" yaml:"hostnameAsFQDN"`
-	Nameservers    *[]*string    `field:"optional" json:"nameservers" yaml:"nameservers"`
-	Options        *[]*DnsOption `field:"optional" json:"options" yaml:"options"`
-	Policy         DnsPolicy     `field:"optional" json:"policy" yaml:"policy"`
-	Searches       *[]*string    `field:"optional" json:"searches" yaml:"searches"`
-	Subdomain      *string       `field:"optional" json:"subdomain" yaml:"subdomain"`
+	// Specifies the hostname of the Pod. Default: - Set to a system-defined value.
+	Hostname *string `field:"optional" json:"hostname" yaml:"hostname"`
+	// If true the pod's hostname will be configured as the pod's FQDN, rather than the leaf name (the default).
+	//
+	// In Linux containers, this means setting the FQDN in the hostname field of the kernel (the nodename field of struct utsname). In Windows containers, this means setting the registry value of hostname for the registry key HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\Tcpip\Parameters to FQDN. If a pod does not have FQDN, this has no effect. Default: false.
+	HostnameAsFQDN *bool `field:"optional" json:"hostnameAsFQDN" yaml:"hostnameAsFQDN"`
+	// A list of IP addresses that will be used as DNS servers for the Pod.
+	//
+	// There can be at most 3 IP addresses specified. When the policy is set to "NONE", the list must contain at least one IP address, otherwise this property is optional. The servers listed will be combined to the base nameservers generated from the specified DNS policy with duplicate addresses removed.
+	Nameservers *[]*string `field:"optional" json:"nameservers" yaml:"nameservers"`
+	// List of objects where each object may have a name property (required) and a value property (optional).
+	//
+	// The contents in this property will be merged to the options generated from the specified DNS policy. Duplicate entries are removed.
+	Options *[]*DnsOption `field:"optional" json:"options" yaml:"options"`
+	// Set DNS policy for the pod.
+	//
+	// If policy is set to `None`, other configuration must be supplied. Default: DnsPolicy.CLUSTER_FIRST
+	Policy DnsPolicy `field:"optional" json:"policy" yaml:"policy"`
+	// A list of DNS search domains for hostname lookup in the Pod.
+	//
+	// When specified, the provided list will be merged into the base search domain names generated from the chosen DNS policy. Duplicate domain names are removed.
+	//
+	// Kubernetes allows for at most 6 search domains.
+	Searches *[]*string `field:"optional" json:"searches" yaml:"searches"`
+	// If specified, the fully qualified Pod hostname will be "<hostname>.<subdomain>.<pod namespace>.svc.<cluster domain>". Default: - No subdomain.
+	Subdomain *string `field:"optional" json:"subdomain" yaml:"subdomain"`
 }
 
-// PodDns holds mutable pod DNS settings.
+// Holds dns settings of the pod.
 type PodDns interface {
+	// The configured hostname of the pod.
+	//
+	// Undefined means its set to a system-defined value.
 	Hostname() *string
+	// Whether or not the pods hostname is set to its FQDN.
 	HostnameAsFQDN() *bool
+	// Nameservers defined for this pod.
 	Nameservers() *[]*string
+	// Custom dns options defined for this pod.
 	Options() *[]*DnsOption
+	// The DNS policy of this pod.
 	Policy() DnsPolicy
+	// Search domains defined for this pod.
 	Searches() *[]*string
+	// The configured subdomain of the pod.
 	Subdomain() *string
+	// Add a nameserver.
 	AddNameserver(nameservers ...*string)
+	// Add a custom option.
 	AddOption(options ...*DnsOption)
+	// Add a search domain.
 	AddSearch(searches ...*string)
 	toManifest() map[string]interface{}
 }
@@ -178,12 +219,15 @@ func (p *podDnsImpl) toManifest() map[string]interface{} {
 	return result
 }
 
-// FsGroupChangePolicy controls when Kubernetes changes volume ownership.
 type FsGroupChangePolicy string
 
 const (
+	// Only change permissions and ownership if permission and ownership of root directory does not match with expected permissions of the volume.
+	//
+	// This could help shorten the time it takes to change ownership and permission of a volume.
 	FsGroupChangePolicy_ON_ROOT_MISMATCH FsGroupChangePolicy = "ON_ROOT_MISMATCH"
-	FsGroupChangePolicy_ALWAYS           FsGroupChangePolicy = "ALWAYS"
+	// Always change permission and ownership of the volume when volume is mounted.
+	FsGroupChangePolicy_ALWAYS FsGroupChangePolicy = "ALWAYS"
 )
 
 func fsGroupChangePolicyManifestValue(value FsGroupChangePolicy) string {
@@ -197,23 +241,37 @@ func fsGroupChangePolicyManifestValue(value FsGroupChangePolicy) string {
 	}
 }
 
-// Sysctl defines a kernel parameter to be set for a pod.
+// Sysctl defines a kernel parameter to be set.
 type Sysctl struct {
-	Name  *string `field:"required" json:"name" yaml:"name"`
+	// Name of a property to set.
+	Name *string `field:"required" json:"name" yaml:"name"`
+	// Value of a property to set.
 	Value *string `field:"required" json:"value" yaml:"value"`
 }
 
-// PodSecurityContextProps configures pod-level security settings.
+// Properties for `PodSecurityContext`.
 type PodSecurityContextProps struct {
-	EnsureNonRoot       *bool               `field:"optional" json:"ensureNonRoot" yaml:"ensureNonRoot"`
-	FsGroup             *float64            `field:"optional" json:"fsGroup" yaml:"fsGroup"`
+	// Indicates that the container must run as a non-root user.
+	//
+	// If true, the Kubelet will validate the image at runtime to ensure that it does not run as UID 0 (root) and fail to start the container if it does. Default: true.
+	EnsureNonRoot *bool `field:"optional" json:"ensureNonRoot" yaml:"ensureNonRoot"`
+	// Modify the ownership and permissions of pod volumes to this GID. Default: - Volume ownership is not changed.
+	FsGroup *float64 `field:"optional" json:"fsGroup" yaml:"fsGroup"`
+	// Defines behavior of changing ownership and permission of the volume before being exposed inside Pod.
+	//
+	// This field will only apply to volume types which support fsGroup based ownership(and permissions). It will have no effect on ephemeral volume types such as: secret, configmaps and emptydir. Default: FsGroupChangePolicy.ALWAYS
 	FsGroupChangePolicy FsGroupChangePolicy `field:"optional" json:"fsGroupChangePolicy" yaml:"fsGroupChangePolicy"`
-	Group               *float64            `field:"optional" json:"group" yaml:"group"`
-	Sysctls             *[]*Sysctl          `field:"optional" json:"sysctls" yaml:"sysctls"`
-	User                *float64            `field:"optional" json:"user" yaml:"user"`
+	// The GID to run the entrypoint of the container process. Default: - Group configured by container runtime.
+	Group *float64 `field:"optional" json:"group" yaml:"group"`
+	// Sysctls hold a list of namespaced sysctls used for the pod.
+	//
+	// Pods with unsupported sysctls (by the container runtime) might fail to launch. Default: - No sysctls.
+	Sysctls *[]*Sysctl `field:"optional" json:"sysctls" yaml:"sysctls"`
+	// The UID to run the entrypoint of the container process. Default: - User specified in image metadata.
+	User *float64 `field:"optional" json:"user" yaml:"user"`
 }
 
-// PodSecurityContext holds pod-level security attributes.
+// Holds pod-level security attributes and common container settings.
 type PodSecurityContext interface {
 	EnsureNonRoot() *bool
 	FsGroup() *float64

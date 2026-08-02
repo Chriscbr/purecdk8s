@@ -12,83 +12,311 @@ import (
 	"sync"
 )
 
+// Trait marker for classes that can be depended upon.
+//
+// The presence of this interface indicates that an object has
+// an `IDependable` implementation.
+//
+// This interface can be used to take an (ordering) dependency on a set of
+// constructs. An ordering dependency implies that the resources represented by
+// those constructs are deployed before the resources depending ON them are
+// deployed.
 type IDependable interface{}
 
+// Represents a construct.
 type IConstruct interface {
 	IDependable
+	// Applies one or more mixins to this construct.
+	//
+	// Mixins are applied in order. The list of constructs is captured at the
+	// start of the call, so constructs added by a mixin will not be visited.
+	//
+	// Returns: This construct for chaining.
 	With(mixins ...IMixin) IConstruct
+	// The tree node.
 	Node() Node
 }
 
+// Represents the building block of the construct graph.
+//
+// All constructs besides the root construct must be created within the scope of
+// another construct.
 type Construct interface {
 	IConstruct
+	// The tree node.
 	Node() Node
+	// Returns a string representation of this construct.
 	ToString() *string
+	// Applies one or more mixins to this construct.
+	//
+	// Mixins are applied in order. The list of constructs is captured at the
+	// start of the call, so constructs added by a mixin will not be visited.
+	// Use multiple `with()` calls if subsequent mixins should apply to added
+	// constructs.
+	//
+	// Returns: This construct for chaining.
 	With(mixins ...IMixin) IConstruct
 }
 
+// Creates a new root construct node.
+//
+// The root construct represents the top of the construct tree and is not contained within a parent scope itself.
+// For root constructs, the id is optional.
 type RootConstruct interface {
 	Construct
+	// The tree node.
 	Node() Node
+	// Returns a string representation of this construct.
 	ToString() *string
+	// Applies one or more mixins to this construct.
+	//
+	// Mixins are applied in order. The list of constructs is captured at the
+	// start of the call, so constructs added by a mixin will not be visited.
+	// Use multiple `with()` calls if subsequent mixins should apply to added
+	// constructs.
+	//
+	// Returns: This construct for chaining.
 	With(mixins ...IMixin) IConstruct
 }
 
+// A mixin is a reusable piece of functionality that can be applied to constructs to add behavior, properties, or modify existing functionality without inheritance.
 type IMixin interface {
+	// Applies the mixin functionality to the target construct.
 	ApplyTo(construct IConstruct)
+	// Determines whether this mixin can be applied to the given construct.
 	Supports(construct IConstruct) *bool
 }
 
+// Implement this interface in order for the construct to be able to validate itself.
 type IValidation interface {
+	// Validate the current construct.
+	//
+	// This method can be implemented by derived constructs in order to perform
+	// validation logic. It is called on all constructs before synthesis.
+	//
+	// Returns: An array of validation error messages, or an empty array if there the construct is valid.
 	Validate() *[]*string
 }
 
+// In what order to return constructs.
 type ConstructOrder string
 
 const (
-	ConstructOrder_PREORDER  ConstructOrder = "PREORDER"
+	// Depth-first, pre-order.
+	ConstructOrder_PREORDER ConstructOrder = "PREORDER"
+	// Depth-first, post-order (leaf nodes first).
 	ConstructOrder_POSTORDER ConstructOrder = "POSTORDER"
 )
 
+// An entry in the construct metadata table.
 type MetadataEntry struct {
-	Data  interface{} `field:"required" json:"data" yaml:"data"`
-	Type  *string     `field:"required" json:"type" yaml:"type"`
-	Trace *[]*string  `field:"optional" json:"trace" yaml:"trace"`
+	// The data.
+	Data interface{} `field:"required" json:"data" yaml:"data"`
+	// The metadata entry type.
+	Type *string `field:"required" json:"type" yaml:"type"`
+	// Stack trace at the point of adding the metadata.
+	//
+	// Only available if `addMetadata()` is called with `stackTrace: true`.
+	// Default: - no trace information.
+	//
+	Trace *[]*string `field:"optional" json:"trace" yaml:"trace"`
 }
 
+// Options for `construct.addMetadata()`.
 type MetadataOptions struct {
-	StackTrace         *bool       `field:"optional" json:"stackTrace" yaml:"stackTrace"`
-	StackTraceOverride *[]*string  `field:"optional" json:"stackTraceOverride" yaml:"stackTraceOverride"`
-	TraceFromFunction  interface{} `field:"optional" json:"traceFromFunction" yaml:"traceFromFunction"`
+	// Include stack trace with metadata entry.
+	// Default: false.
+	//
+	StackTrace *bool `field:"optional" json:"stackTrace" yaml:"stackTrace"`
+	// The actual stack trace to be added to the metadata.
+	//
+	// If this
+	// parameter is passed, the stackTrace parameter is ignored.
+	StackTraceOverride *[]*string `field:"optional" json:"stackTraceOverride" yaml:"stackTraceOverride"`
+	// A JavaScript function to begin tracing from.
+	//
+	// This option is ignored unless `stackTrace` is `true`.
+	// Default: addMetadata().
+	//
+	TraceFromFunction interface{} `field:"optional" json:"traceFromFunction" yaml:"traceFromFunction"`
 }
 
+// Represents the construct node in the scope tree.
 type Node interface {
+	// An opaque, deterministic address for this construct, derived from its path.
+	//
+	// The address is a 42 character string: the prefix "c8" followed by 40
+	// lowercase hexadecimal characters (0-9a-f). It is a SHA-1 over the ids of
+	// the constructs on the path from the root of the tree down to this
+	// construct.
+	//
+	// To enable refactoring of construct trees, constructs with the ID `Default`
+	// are excluded from the calculation. Within a tree, `a/Default/b` and `a/b`
+	// have the same address.
+	//
+	// This means the address is *not* guaranteed to identify a construct uniquely:
+	//
+	// - Any construct whose path is made up of the same ids has the same address.
+	//   Two trees that are shaped alike therefore hand out the same addresses.
+	// - As described above, a construct under a `Default` scope has the same
+	//   address as its counterpart outside of that scope.
+	// - The digest is of fixed width, so even distinct paths can in principle hash
+	//   to the same address. SHA-1 in particular is no longer collision resistant.
+	//
+	// Use an address to derive stable, deterministic names from the location of a
+	// construct in the tree. Do not use it as the identity of a construct:
+	// instead, compare construct instances or use the `path`.
+	//
+	// Example:
+	//   c83a2846e506bcc5f10682b564084bca2d275709ee
+	//
 	Addr() *string
+	// All direct children of this construct.
 	Children() *[]IConstruct
+	// Returns the child construct that has the id `Default` or `Resource`.
+	//
+	// This is usually the construct that provides the bulk of the underlying functionality.
+	// Useful for modifications of the underlying construct that are not available at the higher levels.
+	// Override the defaultChild property.
+	//
+	// This should only be used in the cases where the correct
+	// default child is not named 'Resource' or 'Default' as it
+	// should be.
+	//
+	// If you set this to undefined, the default behavior of finding
+	// the child named 'Resource' or 'Default' will be used.
+	//
+	// Returns: a construct or undefined if there is no default child.
 	DefaultChild() IConstruct
 	SetDefaultChild(val IConstruct)
+	// Constructs that this construct depends on directly.
+	//
+	// This expands the sets of `Dependables` to the set of `Constructs` that they
+	// represent.
 	Dependencies() *[]IConstruct
+	// The id of this construct within the current scope.
+	//
+	// This is a scope-unique id. To obtain an id that reflects the full location
+	// of this construct in the tree, use `path` or `addr`.
 	Id() *string
+	// Returns true if this construct or the scopes in which it is defined are locked.
 	Locked() *bool
+	// An immutable array of metadata objects associated with this construct.
+	//
+	// This can be used, for example, to implement support for deprecation notices, source mapping, etc.
 	Metadata() *[]*MetadataEntry
+	// The full, absolute path of this construct in the tree.
+	//
+	// Components are separated by '/'.
 	Path() *string
+	// Returns the root of the construct tree.
+	//
+	// Returns: The root of the construct tree.
 	Root() IConstruct
+	// Returns the scope in which this construct is defined.
+	//
+	// The value is `undefined` at the root of the construct scope tree.
 	Scope() IConstruct
+	// All parent scopes of this construct.
+	//
+	// Returns: a list of parent scopes. The last element in the list will always
+	// be the current construct and the first element will be the root of the
+	// tree.
 	Scopes() *[]IConstruct
+	// Add an ordering dependency on a Dependable (a construct or set of constructs).
+	//
+	// It is up to the target document language to decide what an ordering
+	// relationship means and how it should be rendered; for example, in the AWS
+	// CDK for CloudFormation it means a dependency from every resource in scope
+	// of the current construct to every resource in scope of the target set
+	// of constructs, that get realized as either stack dependencies or
+	// `DependsOn` relationships in the synthesized template.
+	//
+	// `IDependable` is a marker interface that indicates that a class has used
+	// `Dependable.implement()` to implement the `IDependable` interface. It
+	// can be used to make the target object represent more than one set of
+	// constructs at a time. For example, a `DependencyGroup` uses this
+	// interface to represent an explicit list of 0 or more constructs that should
+	// be involved in the dependency relationship.
 	AddDependency(deps ...IDependable)
+	// Adds a metadata entry to this construct.
+	//
+	// Entries are arbitrary values and will also include a stack trace to allow tracing back to
+	// the code location for when the entry was added. It can be used, for example, to include source
+	// mapping in CloudFormation templates to improve diagnostics.
+	// Note that construct metadata is not the same as CloudFormation resource metadata and is never written to the CloudFormation template.
+	// The metadata entries are written to the Cloud Assembly Manifest if the `treeMetadata` property is specified in the props of the App that contains this Construct.
 	AddMetadata(type_ *string, data interface{}, options *MetadataOptions)
+	// Adds a validation to this construct.
+	//
+	// When `node.validate()` is called, the `validate()` method will be called on
+	// all validations and all errors will be returned.
 	AddValidation(validation IValidation)
+	// Return this construct and all of its children in the given order.
 	FindAll(order ConstructOrder) *[]IConstruct
+	// Return a direct child by id.
+	//
+	// Throws an error if the child is not found.
+	//
+	// Returns: Child with the given id.
 	FindChild(id *string) IConstruct
+	// Retrieves the all context of a node from tree context.
+	//
+	// Context is usually initialized at the root, but can be overridden at any point in the tree.
+	//
+	// Returns: The context object or an empty object if there is discovered context.
 	GetAllContext(defaults *map[string]interface{}) interface{}
+	// Retrieves a value from tree context if present. Otherwise, would throw an error.
+	//
+	// Context is usually initialized at the root, but can be overridden at any point in the tree.
+	//
+	// Returns: The context value or throws error if there is no context value for this key.
 	GetContext(key *string) interface{}
+	// Locks this construct from allowing more children to be added.
+	//
+	// After this
+	// call, no more children can be added to this construct or to any children.
 	Lock()
+	// Remove an ordering dependency on a Dependenable (a construct or set of constructs).
+	//
+	// This removes any dependency added using `node.addDependency()`. It must
+	// use the exact same object that was involved in the `addDependency()` call.
 	RemoveDependency(deps ...IDependable)
+	// This can be used to set contextual values.
+	//
+	// Context must be set before any children are added, since children may consult context info during construction.
+	// If the key already exists, it will be overridden.
 	SetContext(key *string, value interface{})
+	// Return a direct child by id, or undefined.
+	//
+	// Returns: the child if found, or undefined.
 	TryFindChild(id *string) IConstruct
+	// Retrieves a value from tree context.
+	//
+	// Context is usually initialized at the root, but can be overridden at any point in the tree.
+	//
+	// Returns: The context value or `undefined` if there is no context value for this key.
 	TryGetContext(key *string) interface{}
+	// Remove the child with the given name, if present.
+	//
+	// Returns: Whether a child with the given name was deleted.
 	TryRemoveChild(childName *string) *bool
+	// Validates this construct.
+	//
+	// Invokes the `validate()` method on all validations added through
+	// `addValidation()`.
+	//
+	// Returns: an array of validation error messages associated with this
+	// construct.
 	Validate() *[]*string
+	// Applies one or more mixins to this construct.
+	//
+	// Mixins are applied in order. The list of constructs is captured at the
+	// start of the call, so constructs added by a mixin will not be visited.
+	// Use multiple `with()` calls if subsequent mixins should apply to added
+	// constructs.
+	//
+	// Returns: This construct for chaining.
 	With(mixins ...IMixin) IConstruct
 }
 
@@ -140,6 +368,7 @@ type nodeImpl struct {
 	addr         string
 }
 
+// Creates a new construct node.
 func NewConstruct(scope Construct, id *string) Construct {
 	if scope == nil {
 		panic("parameter scope is required, but nil was provided")
@@ -152,6 +381,7 @@ func NewConstruct(scope Construct, id *string) Construct {
 	return result
 }
 
+// Creates a new construct node.
 func NewConstruct_Override(c Construct, scope Construct, id *string) {
 	if c == nil {
 		panic("parameter c is required, but nil was provided")
@@ -165,12 +395,14 @@ func NewConstruct_Override(c Construct, scope Construct, id *string) {
 	initializeConstruct(c, scope, id)
 }
 
+// Creates a new root construct node.
 func NewRootConstruct(id *string) RootConstruct {
 	result := &constructImpl{}
 	NewRootConstruct_Override(result, id)
 	return result
 }
 
+// Creates a new root construct node.
 func NewRootConstruct_Override(r RootConstruct, id *string) {
 	if r == nil {
 		panic("parameter r is required, but nil was provided")
@@ -250,6 +482,8 @@ func newNode(host Construct, scope IConstruct, id *string) *nodeImpl {
 	return result
 }
 
+// Returns the node associated with a construct.
+// Deprecated: use `construct.node` instead
 func Node_Of(construct IConstruct) Node {
 	if construct == nil {
 		panic("parameter construct is required, but nil was provided")
@@ -262,6 +496,23 @@ func Node_PATH_SEP() *string {
 	return &result
 }
 
+// Checks if `x` is a construct.
+//
+// Use this method instead of `instanceof` to properly detect `Construct`
+// instances, even when the construct library is symlinked.
+//
+// Explanation: in JavaScript, multiple copies of the `constructs` library on
+// disk are seen as independent, completely different libraries. As a
+// consequence, the class `Construct` in each copy of the `constructs` library
+// is seen as a different class, and an instance of one class will not test as
+// `instanceof` the other class. `npm install` will not create installations
+// like this, but users may manually symlink construct libraries together or
+// use a monorepo tool: in those cases, multiple copies of the `constructs`
+// library can be accidentally installed, and `instanceof` will behave
+// unpredictably. It is safest to avoid using `instanceof`, and using
+// this type-testing method instead.
+//
+// Returns: true if `x` is an object created from a class which extends `Construct`.
 func Construct_IsConstruct(x interface{}) *bool {
 	if x == nil {
 		result := false
@@ -271,6 +522,23 @@ func Construct_IsConstruct(x interface{}) *bool {
 	return &ok
 }
 
+// Checks if `x` is a construct.
+//
+// Use this method instead of `instanceof` to properly detect `Construct`
+// instances, even when the construct library is symlinked.
+//
+// Explanation: in JavaScript, multiple copies of the `constructs` library on
+// disk are seen as independent, completely different libraries. As a
+// consequence, the class `Construct` in each copy of the `constructs` library
+// is seen as a different class, and an instance of one class will not test as
+// `instanceof` the other class. `npm install` will not create installations
+// like this, but users may manually symlink construct libraries together or
+// use a monorepo tool: in those cases, multiple copies of the `constructs`
+// library can be accidentally installed, and `instanceof` will behave
+// unpredictably. It is safest to avoid using `instanceof`, and using
+// this type-testing method instead.
+//
+// Returns: true if `x` is an object created from a class which extends `Construct`.
 func RootConstruct_IsConstruct(x interface{}) *bool {
 	return Construct_IsConstruct(x)
 }
@@ -650,12 +918,34 @@ func javascriptArrayIndex(value string) (uint64, bool) {
 	return index, true
 }
 
+// Trait for IDependable.
+//
+// Traits are interfaces that are privately implemented by objects. Instead of
+// showing up in the public interface of a class, they need to be queried
+// explicitly. This is used to implement certain framework features that are
+// not intended to be used by Construct consumers, and so should be hidden
+// from accidental use.
+//
+// Example:
+//
+//	// Usage
+//	const roots = Dependable.of(construct).dependencyRoots;
+//
+//	// Definition
+//	Dependable.implement(construct, {
+//	      dependencyRoots: [construct],
+//	});
 type Dependable interface {
+	// The set of constructs that form the root of this dependable.
+	//
+	// All resources under all returned constructs are included in the ordering
+	// dependency.
 	DependencyRoots() *[]IConstruct
 }
 
 var dependableTraits sync.Map
 
+// Turn any object into an IDependable.
 func Dependable_Implement(instance IDependable, trait Dependable) {
 	if instance == nil {
 		panic("parameter instance is required, but nil was provided")
@@ -672,6 +962,7 @@ func Dependable_Implement(instance IDependable, trait Dependable) {
 func NewDependable_Override(d Dependable) {
 }
 
+// Return the matching Dependable for the given class instance.
 func Dependable_Of(instance IDependable) Dependable {
 	if instance == nil {
 		panic("parameter instance is required, but nil was provided")
@@ -693,6 +984,8 @@ func Dependable_Of(instance IDependable) Dependable {
 	panic(fmt.Sprintf(`%v does not implement IDependable. Use "Dependable_Implement()" to implement`, instance))
 }
 
+// Return the matching Dependable for the given class instance.
+// Deprecated: use `of`.
 func Dependable_Get(instance IDependable) Dependable {
 	return Dependable_Of(instance)
 }
@@ -704,8 +997,13 @@ func (d *singleDependable) DependencyRoots() *[]IConstruct {
 	return &result
 }
 
+// A set of constructs to be used as a dependable.
+//
+// This class can be used when a set of constructs which are disjoint in the
+// construct tree needs to be combined to be used as a single dependable.
 type DependencyGroup interface {
 	IDependable
+	// Add a construct to the dependency roots.
 	Add(scopes ...IDependable)
 }
 

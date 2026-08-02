@@ -24,7 +24,7 @@ var (
 	yaml11Octal   = regexp.MustCompile(`^[+-]?0[0-7_]+$`)
 )
 
-// Yaml_FormatObjects is retained for API compatibility.
+// Deprecated: use `stringify(doc[, doc, ...])`
 func Yaml_FormatObjects(docs *[]interface{}) *string {
 	if docs == nil {
 		panic("parameter docs is required, but nil was provided")
@@ -32,7 +32,11 @@ func Yaml_FormatObjects(docs *[]interface{}) *string {
 	return Yaml_Stringify((*docs)...)
 }
 
-// Yaml_Load loads all non-empty documents from a local file or HTTP(S) URL.
+// Downloads a set of YAML documents (k8s manifest for example) from a URL or a file and returns them as javascript objects.
+//
+// Empty documents are filtered out.
+//
+// Returns: an array of objects, each represents a document inside the YAML.
 func Yaml_Load(urlOrFile *string) *[]interface{} {
 	if urlOrFile == nil {
 		panic("parameter urlOrFile is required, but nil was provided")
@@ -61,7 +65,7 @@ func Yaml_Load(urlOrFile *string) *[]interface{} {
 	return &result
 }
 
-// Yaml_Save writes docs as a multi-document YAML stream.
+// Saves a set of objects as a multi-document YAML file.
 func Yaml_Save(filePath *string, docs *[]interface{}) {
 	if filePath == nil {
 		panic("parameter filePath is required, but nil was provided")
@@ -75,7 +79,11 @@ func Yaml_Save(filePath *string, docs *[]interface{}) {
 	}
 }
 
-// Yaml_Stringify formats one or more values as YAML 1.1 documents.
+// Stringify a document (or multiple documents) into YAML.
+//
+// We convert undefined values to null, but ignore any documents that are undefined.
+//
+// Returns: a YAML string. Multiple docs are separated by `---`.
 func Yaml_Stringify(docs ...interface{}) *string {
 	var output strings.Builder
 	for index, document := range docs {
@@ -143,7 +151,9 @@ func orderYAMLTopLevel(node *yaml.Node) {
 	target.Content = result
 }
 
-// Yaml_Tmp saves docs to temp.yaml in a newly created cdk8s-* directory.
+// Saves a set of YAML documents into a temp file (in /tmp).
+//
+// Returns: the path to the temporary file.
 func Yaml_Tmp(docs *[]interface{}) *string {
 	if docs == nil {
 		panic("parameter docs is required, but nil was provided")

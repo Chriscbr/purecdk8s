@@ -7,45 +7,82 @@ import (
 )
 
 type (
-	IRole          interface{ IResource }
-	IClusterRole   interface{ IResource }
+	// A reference to any Role or ClusterRole.
+	IRole interface{ IResource }
+	// Represents a cluster-level role.
+	IClusterRole interface{ IResource }
+	// Policy rule of a `Role.
 	RolePolicyRule struct {
-		Verbs     *[]*string      `field:"required" json:"verbs" yaml:"verbs"`
+		// Verbs to allow.
+		//
+		// (e.g ['get', 'watch'])
+		Verbs *[]*string `field:"required" json:"verbs" yaml:"verbs"`
+		// Resources this rule applies to.
 		Resources *[]IApiResource `field:"required" json:"resources" yaml:"resources"`
 	}
 )
 
+// Policy rule of a `ClusterRole.
 type ClusterRolePolicyRule struct {
-	Verbs     *[]*string      `field:"required" json:"verbs" yaml:"verbs"`
+	// Verbs to allow.
+	//
+	// (e.g ['get', 'watch'])
+	Verbs *[]*string `field:"required" json:"verbs" yaml:"verbs"`
+	// Endpoints this rule applies to.
+	//
+	// Can be either api resources or non api resources.
 	Endpoints *[]IApiEndpoint `field:"required" json:"endpoints" yaml:"endpoints"`
 }
 
+// Properties for `Role`.
 type RoleProps struct {
+	// Metadata that all persisted resources must have, which includes all objects users must create.
 	Metadata *cdk8s.ApiObjectMetadata `field:"optional" json:"metadata" yaml:"metadata"`
-	Rules    *[]*RolePolicyRule       `field:"optional" json:"rules" yaml:"rules"`
+	// A list of rules the role should allow. Default: [].
+	Rules *[]*RolePolicyRule `field:"optional" json:"rules" yaml:"rules"`
 }
 
+// Properties for `ClusterRole`.
 type ClusterRoleProps struct {
-	Metadata          *cdk8s.ApiObjectMetadata  `field:"optional" json:"metadata" yaml:"metadata"`
-	Rules             *[]*ClusterRolePolicyRule `field:"optional" json:"rules" yaml:"rules"`
-	AggregationLabels *map[string]*string       `field:"optional" json:"aggregationLabels" yaml:"aggregationLabels"`
+	// Metadata that all persisted resources must have, which includes all objects users must create.
+	Metadata *cdk8s.ApiObjectMetadata `field:"optional" json:"metadata" yaml:"metadata"`
+	// A list of rules the role should allow. Default: [].
+	Rules *[]*ClusterRolePolicyRule `field:"optional" json:"rules" yaml:"rules"`
+	// Specify labels that should be used to locate ClusterRoles, whose rules will be automatically filled into this ClusterRole's rules.
+	AggregationLabels *map[string]*string `field:"optional" json:"aggregationLabels" yaml:"aggregationLabels"`
 }
 
+// Role is a namespaced, logical grouping of PolicyRules that can be referenced as a unit by a RoleBinding.
 type Role interface {
 	Resource
 	IRole
+	// Rules associaated with this Role.
+	//
+	// Returns a copy, use `allow` to add rules.
 	Rules() *[]*RolePolicyRule
+	// Add permission to perform a list of HTTP verbs on a collection of resources. See: https://kubernetes.io/docs/reference/access-authn-authz/authorization/#determine-the-request-verb
 	Allow(verbs *[]*string, resources ...IApiResource)
+	// Add "create" permission for the resources.
 	AllowCreate(resources ...IApiResource)
+	// Add "get" permission for the resources.
 	AllowGet(resources ...IApiResource)
+	// Add "list" permission for the resources.
 	AllowList(resources ...IApiResource)
+	// Add "watch" permission for the resources.
 	AllowWatch(resources ...IApiResource)
+	// Add "update" permission for the resources.
 	AllowUpdate(resources ...IApiResource)
+	// Add "patch" permission for the resources.
 	AllowPatch(resources ...IApiResource)
+	// Add "delete" permission for the resources.
 	AllowDelete(resources ...IApiResource)
+	// Add "deletecollection" permission for the resources.
 	AllowDeleteCollection(resources ...IApiResource)
+	// Add "get", "list", and "watch" permissions for the resources.
 	AllowRead(resources ...IApiResource)
+	// Add "get", "list", "watch", "create", "update", "patch", "delete", and "deletecollection" permissions for the resources.
 	AllowReadWrite(resources ...IApiResource)
+	// Create a RoleBinding that binds the permissions in this Role to a list of subjects, that will only apply this role's namespace.
 	Bind(subjects ...ISubject) RoleBinding
 }
 
@@ -77,10 +114,18 @@ func NewRole_Override(role Role, scope constructs.Construct, id *string, props *
 	applyOverride(role, NewRole(scope, id, props), "Role")
 }
 
+// Checks if `x` is a construct.
+//
+// Use this method instead of `instanceof` to properly detect `Construct` instances, even when the construct library is symlinked.
+//
+// Explanation: in JavaScript, multiple copies of the `constructs` library on disk are seen as independent, completely different libraries. As a consequence, the class `Construct` in each copy of the `constructs` library is seen as a different class, and an instance of one class will not test as `instanceof` the other class. `npm install` will not create installations like this, but users may manually symlink construct libraries together or use a monorepo tool: in those cases, multiple copies of the `constructs` library can be accidentally installed, and `instanceof` will behave unpredictably. It is safest to avoid using `instanceof`, and using this type-testing method instead.
+//
+// Returns: true if `x` is an object created from a class which extends `Construct`.
 func Role_IsConstruct(x interface{}) *bool {
 	return constructs.Construct_IsConstruct(x)
 }
 
+// Imports a role from the cluster as a reference.
 func Role_FromRoleName(scope constructs.Construct, id, name *string) IRole {
 	return newImportedRole(scope, id, name, "Role", "roles")
 }
@@ -149,25 +194,44 @@ func (r *roleImpl) Bind(subjects ...ISubject) RoleBinding {
 	return binding
 }
 
+// ClusterRole is a cluster level, logical grouping of PolicyRules that can be referenced as a unit by a RoleBinding or ClusterRoleBinding.
 type ClusterRole interface {
 	Resource
 	IClusterRole
 	IRole
+	// Rules associaated with this Role.
+	//
+	// Returns a copy, use `allow` to add rules.
 	Rules() *[]*ClusterRolePolicyRule
+	// Add permission to perform a list of HTTP verbs on a collection of resources. See: https://kubernetes.io/docs/reference/access-authn-authz/authorization/#determine-the-request-verb
 	Allow(verbs *[]*string, endpoints ...IApiEndpoint)
+	// Add "create" permission for the resources.
 	AllowCreate(endpoints ...IApiEndpoint)
+	// Add "get" permission for the resources.
 	AllowGet(endpoints ...IApiEndpoint)
+	// Add "list" permission for the resources.
 	AllowList(endpoints ...IApiEndpoint)
+	// Add "watch" permission for the resources.
 	AllowWatch(endpoints ...IApiEndpoint)
+	// Add "update" permission for the resources.
 	AllowUpdate(endpoints ...IApiEndpoint)
+	// Add "patch" permission for the resources.
 	AllowPatch(endpoints ...IApiEndpoint)
+	// Add "delete" permission for the resources.
 	AllowDelete(endpoints ...IApiEndpoint)
+	// Add "deletecollection" permission for the resources.
 	AllowDeleteCollection(endpoints ...IApiEndpoint)
+	// Add "get", "list", and "watch" permissions for the resources.
 	AllowRead(endpoints ...IApiEndpoint)
+	// Add "get", "list", "watch", "create", "update", "patch", "delete", and "deletecollection" permissions for the resources.
 	AllowReadWrite(endpoints ...IApiEndpoint)
+	// Aggregate rules from roles matching this label selector.
 	Aggregate(key, value *string)
+	// Combines the rules of the argument ClusterRole into this ClusterRole using aggregation labels.
 	Combine(role ClusterRole)
+	// Create a ClusterRoleBinding that binds the permissions in this ClusterRole to a list of subjects, without namespace restrictions.
 	Bind(subjects ...ISubject) ClusterRoleBinding
+	// Create a RoleBinding that binds the permissions in this ClusterRole to a list of subjects, that will only apply to the given namespace.
 	BindInNamespace(namespace *string, subjects ...ISubject) RoleBinding
 }
 
@@ -206,10 +270,18 @@ func NewClusterRole_Override(role ClusterRole, scope constructs.Construct, id *s
 	applyOverride(role, NewClusterRole(scope, id, props), "ClusterRole")
 }
 
+// Checks if `x` is a construct.
+//
+// Use this method instead of `instanceof` to properly detect `Construct` instances, even when the construct library is symlinked.
+//
+// Explanation: in JavaScript, multiple copies of the `constructs` library on disk are seen as independent, completely different libraries. As a consequence, the class `Construct` in each copy of the `constructs` library is seen as a different class, and an instance of one class will not test as `instanceof` the other class. `npm install` will not create installations like this, but users may manually symlink construct libraries together or use a monorepo tool: in those cases, multiple copies of the `constructs` library can be accidentally installed, and `instanceof` will behave unpredictably. It is safest to avoid using `instanceof`, and using this type-testing method instead.
+//
+// Returns: true if `x` is an object created from a class which extends `Construct`.
 func ClusterRole_IsConstruct(x interface{}) *bool {
 	return constructs.Construct_IsConstruct(x)
 }
 
+// Imports a role from the cluster as a reference.
 func ClusterRole_FromClusterRoleName(scope constructs.Construct, id, name *string) IClusterRole {
 	return newImportedRole(scope, id, name, "ClusterRole", "clusterroles")
 }

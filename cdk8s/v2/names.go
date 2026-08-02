@@ -25,7 +25,21 @@ var (
 	invalidLabelStart      = regexp.MustCompile(`^[^0-9a-zA-Z]+`)
 )
 
-// Names_ToDnsLabel generates a stable RFC-1123 DNS label for scope.
+// Generates a unique and stable name compatible DNS_LABEL from RFC-1123 from a path.
+//
+// The generated name will:
+//   - contain at most 63 characters
+//   - contain only lowercase alphanumeric characters or ‘-’
+//   - start with an alphanumeric character
+//   - end with an alphanumeric character
+//
+// The generated name will have the form:
+//
+//	<comp0>-<comp1>-..-<compN>-<short-hash>
+//
+// Where <comp> are the path components (assuming they are is separated by "/").
+//
+// Note that if the total length is longer than 63 characters, we will trim the first components since the last components usually encode more meaning.
 func Names_ToDnsLabel(scope constructs.Construct, options *NameOptions) *string {
 	if scope == nil {
 		panic("parameter scope is required, but nil was provided")
@@ -54,7 +68,19 @@ func Names_ToDnsLabel(scope constructs.Construct, options *NameOptions) *string 
 	return &result
 }
 
-// Names_ToLabelValue generates a stable Kubernetes label value for scope.
+// Generates a unique and stable name compatible label key name segment and label value from a path.
+//
+// The name segment is required and must be 63 characters or less, beginning and ending with an alphanumeric character ([a-z0-9A-Z]) with dashes (-), underscores (_), dots (.), and alphanumerics between.
+//
+// Valid label values must be 63 characters or less and must be empty or begin and end with an alphanumeric character ([a-z0-9A-Z]) with dashes (-), underscores (_), dots (.), and alphanumerics between.
+//
+// The generated name will have the form:
+//
+//	<comp0><delim><comp1><delim>..<delim><compN><delim><short-hash>
+//
+// Where <comp> are the path components (assuming they are is separated by "/").
+//
+// Note that if the total length is longer than 63 characters, we will trim the first components since the last components usually encode more meaning.
 func Names_ToLabelValue(scope constructs.Construct, options *NameOptions) *string {
 	if scope == nil {
 		panic("parameter scope is required, but nil was provided")

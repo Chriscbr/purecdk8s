@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-# Verify that purecdk8s+ exposes an API compatible with cdk8s-plus-go. The
-# comparison normalizes purecdk8s' cdk8s and constructs import paths before
-# passing the package metadata to apidiff.
+# Verify that purecdk8s+ exposes an API and Go doc comments compatible with
+# cdk8s-plus-go. The comparison normalizes purecdk8s' cdk8s and constructs
+# import paths before passing the package metadata to apidiff.
 set -euo pipefail
 
 if [[ "$#" -ne 1 ]]; then

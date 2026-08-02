@@ -28,22 +28,37 @@ type durationImpl struct {
 	unit   durationUnit
 }
 
+// Create a Duration representing an amount of days.
+//
+// Returns: a new `Duration` representing `amount` Days.
 func Duration_Days(amount *float64) Duration {
 	return newDuration(requiredDurationAmount(amount), durationDays)
 }
 
+// Create a Duration representing an amount of hours.
+//
+// Returns: a new `Duration` representing `amount` Hours.
 func Duration_Hours(amount *float64) Duration {
 	return newDuration(requiredDurationAmount(amount), durationHours)
 }
 
+// Create a Duration representing an amount of milliseconds.
+//
+// Returns: a new `Duration` representing `amount` ms.
 func Duration_Millis(amount *float64) Duration {
 	return newDuration(requiredDurationAmount(amount), durationMilliseconds)
 }
 
+// Create a Duration representing an amount of minutes.
+//
+// Returns: a new `Duration` representing `amount` Minutes.
 func Duration_Minutes(amount *float64) Duration {
 	return newDuration(requiredDurationAmount(amount), durationMinutes)
 }
 
+// Parse a period formatted according to the ISO 8601 standard.
+//
+// Returns: the parsed `Duration`. See: https://www.iso.org/fr/standard/70907.html
 func Duration_Parse(duration *string) Duration {
 	if duration == nil {
 		panic("parameter duration is required, but nil was provided")
@@ -67,6 +82,9 @@ func Duration_Parse(duration *string) Duration {
 	return newDuration(milliseconds, durationMilliseconds)
 }
 
+// Create a Duration representing an amount of seconds.
+//
+// Returns: a new `Duration` representing `amount` Seconds.
 func Duration_Seconds(amount *float64) Duration {
 	return newDuration(requiredDurationAmount(amount), durationSeconds)
 }

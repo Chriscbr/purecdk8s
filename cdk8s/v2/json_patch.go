@@ -20,12 +20,22 @@ type jsonPatchImpl struct {
 	operation jsonPatchOperation
 }
 
+// Adds a value to an object or inserts it into an array.
+//
+// In the case of an array, the value is inserted before the given index. The - character can be used instead of an index to insert at the end of an array.
+//
+// Example:
+//
+//	JsonPatch.add('/biscuits/1', { "name": "Ginger Nut" })
 func JsonPatch_Add(path *string, value interface{}) JsonPatch {
 	requirePatchPath(path, "path")
 	requirePatchValue(value)
 	return &jsonPatchImpl{operation: jsonPatchOperation{op: "add", path: *path, value: value}}
 }
 
+// Applies a set of JSON-Patch (RFC-6902) operations to `document` and returns the result.
+//
+// Returns: The result document.
 func JsonPatch_Apply(document interface{}, ops ...JsonPatch) interface{} {
 	if document == nil {
 		panic("parameter document is required, but nil was provided")
@@ -41,29 +51,62 @@ func JsonPatch_Apply(document interface{}, ops ...JsonPatch) interface{} {
 	return result
 }
 
+// Copies a value from one location to another within the JSON document.
+//
+// Both from and path are JSON Pointers.
+//
+// Example:
+//
+//	JsonPatch.copy('/biscuits/0', '/best_biscuit')
 func JsonPatch_Copy(from *string, path *string) JsonPatch {
 	requirePatchPath(from, "from")
 	requirePatchPath(path, "path")
 	return &jsonPatchImpl{operation: jsonPatchOperation{op: "copy", from: *from, path: *path}}
 }
 
+// Moves a value from one location to the other.
+//
+// Both from and path are JSON Pointers.
+//
+// Example:
+//
+//	JsonPatch.move('/biscuits', '/cookies')
 func JsonPatch_Move(from *string, path *string) JsonPatch {
 	requirePatchPath(from, "from")
 	requirePatchPath(path, "path")
 	return &jsonPatchImpl{operation: jsonPatchOperation{op: "move", from: *from, path: *path}}
 }
 
+// Removes a value from an object or array.
+//
+// Example:
+//
+//	JsonPatch.remove('/biscuits/0')
 func JsonPatch_Remove(path *string) JsonPatch {
 	requirePatchPath(path, "path")
 	return &jsonPatchImpl{operation: jsonPatchOperation{op: "remove", path: *path}}
 }
 
+// Replaces a value.
+//
+// Equivalent to a “remove” followed by an “add”.
+//
+// Example:
+//
+//	JsonPatch.replace('/biscuits/0/name', 'Chocolate Digestive')
 func JsonPatch_Replace(path *string, value interface{}) JsonPatch {
 	requirePatchPath(path, "path")
 	requirePatchValue(value)
 	return &jsonPatchImpl{operation: jsonPatchOperation{op: "replace", path: *path, value: value}}
 }
 
+// Tests that the specified value is set in the document.
+//
+// If the test fails, then the patch as a whole should not apply.
+//
+// Example:
+//
+//	JsonPatch.test('/best_biscuit/name', 'Choco Leibniz')
 func JsonPatch_Test(path *string, value interface{}) JsonPatch {
 	requirePatchPath(path, "path")
 	requirePatchValue(value)

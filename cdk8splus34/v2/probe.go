@@ -5,68 +5,148 @@ import (
 	"github.com/Chriscbr/purecdk8s/jsii"
 )
 
-// ConnectionScheme controls the protocol used by an HTTP probe.
 type ConnectionScheme string
 
 const (
-	ConnectionScheme_HTTP  ConnectionScheme = "HTTP"
+	// Use HTTP request for connecting to host.
+	ConnectionScheme_HTTP ConnectionScheme = "HTTP"
+	// Use HTTPS request for connecting to host.
 	ConnectionScheme_HTTPS ConnectionScheme = "HTTPS"
 )
 
-// HttpHeader is one HTTP header used by an HTTP probe.
 type HttpHeader struct {
-	Name  *string `field:"required" json:"name" yaml:"name"`
+	// The HTTP Header name to be used.
+	Name *string `field:"required" json:"name" yaml:"name"`
+	// The HTTP header value to be set.
 	Value *string `field:"required" json:"value" yaml:"value"`
 }
 
-// ProbeOptions configures Kubernetes health probes.
+// Probe options.
 type ProbeOptions struct {
-	FailureThreshold    *float64       `field:"optional" json:"failureThreshold" yaml:"failureThreshold"`
+	// Minimum consecutive failures for the probe to be considered failed after having succeeded.
+	//
+	// Defaults to 3. Minimum value is 1. Default: 3.
+	FailureThreshold *float64 `field:"optional" json:"failureThreshold" yaml:"failureThreshold"`
+	// Number of seconds after the container has started before liveness probes are initiated. See: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes
+	//
+	// Default: - immediate.
 	InitialDelaySeconds cdk8s.Duration `field:"optional" json:"initialDelaySeconds" yaml:"initialDelaySeconds"`
-	PeriodSeconds       cdk8s.Duration `field:"optional" json:"periodSeconds" yaml:"periodSeconds"`
-	SuccessThreshold    *float64       `field:"optional" json:"successThreshold" yaml:"successThreshold"`
-	TimeoutSeconds      cdk8s.Duration `field:"optional" json:"timeoutSeconds" yaml:"timeoutSeconds"`
+	// How often (in seconds) to perform the probe.
+	//
+	// Default to 10 seconds. Minimum value is 1. Default: Duration.seconds(10) Minimum value is 1.
+	PeriodSeconds cdk8s.Duration `field:"optional" json:"periodSeconds" yaml:"periodSeconds"`
+	// Minimum consecutive successes for the probe to be considered successful after having failed. Defaults to 1.
+	//
+	// Must be 1 for liveness and startup. Minimum value is 1. Default: 1 Must be 1 for liveness and startup. Minimum value is 1.
+	SuccessThreshold *float64 `field:"optional" json:"successThreshold" yaml:"successThreshold"`
+	// Number of seconds after which the probe times out.
+	//
+	// Defaults to 1 second. Minimum value is 1. See: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes
+	//
+	// Default: Duration.seconds(1)
+	TimeoutSeconds cdk8s.Duration `field:"optional" json:"timeoutSeconds" yaml:"timeoutSeconds"`
 }
 
-// CommandProbeOptions configures a command probe.
+// Options for `Probe.fromCommand()`.
 type CommandProbeOptions = ProbeOptions
 
-// HttpGetProbeOptions configures an HTTP health probe.
+// Options for `Probe.fromHttpGet()`.
 type HttpGetProbeOptions struct {
-	FailureThreshold    *float64         `field:"optional" json:"failureThreshold" yaml:"failureThreshold"`
-	InitialDelaySeconds cdk8s.Duration   `field:"optional" json:"initialDelaySeconds" yaml:"initialDelaySeconds"`
-	PeriodSeconds       cdk8s.Duration   `field:"optional" json:"periodSeconds" yaml:"periodSeconds"`
-	SuccessThreshold    *float64         `field:"optional" json:"successThreshold" yaml:"successThreshold"`
-	TimeoutSeconds      cdk8s.Duration   `field:"optional" json:"timeoutSeconds" yaml:"timeoutSeconds"`
-	Host                *string          `field:"optional" json:"host" yaml:"host"`
-	HttpHeaders         *[]*HttpHeader   `field:"optional" json:"httpHeaders" yaml:"httpHeaders"`
-	Port                *float64         `field:"optional" json:"port" yaml:"port"`
-	Scheme              ConnectionScheme `field:"optional" json:"scheme" yaml:"scheme"`
+	// Minimum consecutive failures for the probe to be considered failed after having succeeded.
+	//
+	// Defaults to 3. Minimum value is 1. Default: 3.
+	FailureThreshold *float64 `field:"optional" json:"failureThreshold" yaml:"failureThreshold"`
+	// Number of seconds after the container has started before liveness probes are initiated. See: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes
+	//
+	// Default: - immediate.
+	InitialDelaySeconds cdk8s.Duration `field:"optional" json:"initialDelaySeconds" yaml:"initialDelaySeconds"`
+	// How often (in seconds) to perform the probe.
+	//
+	// Default to 10 seconds. Minimum value is 1. Default: Duration.seconds(10) Minimum value is 1.
+	PeriodSeconds cdk8s.Duration `field:"optional" json:"periodSeconds" yaml:"periodSeconds"`
+	// Minimum consecutive successes for the probe to be considered successful after having failed. Defaults to 1.
+	//
+	// Must be 1 for liveness and startup. Minimum value is 1. Default: 1 Must be 1 for liveness and startup. Minimum value is 1.
+	SuccessThreshold *float64 `field:"optional" json:"successThreshold" yaml:"successThreshold"`
+	// Number of seconds after which the probe times out.
+	//
+	// Defaults to 1 second. Minimum value is 1. See: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes
+	//
+	// Default: Duration.seconds(1)
+	TimeoutSeconds cdk8s.Duration `field:"optional" json:"timeoutSeconds" yaml:"timeoutSeconds"`
+	// The host name to connect to on the container. Default: - defaults to the pod IP.
+	Host *string `field:"optional" json:"host" yaml:"host"`
+	// Custom HTTP headers to set in the probe request.
+	//
+	// Note that HTTP allows repeated headers. Default: - no custom headers are set.
+	HttpHeaders *[]*HttpHeader `field:"optional" json:"httpHeaders" yaml:"httpHeaders"`
+	// The TCP port to use when sending the GET request. Default: - defaults to `container.port`.
+	Port *float64 `field:"optional" json:"port" yaml:"port"`
+	// Scheme to use for connecting to the host (HTTP or HTTPS). Default: ConnectionScheme.HTTP
+	Scheme ConnectionScheme `field:"optional" json:"scheme" yaml:"scheme"`
 }
 
-// TcpSocketProbeOptions configures a TCP health probe.
+// Options for `Probe.fromTcpSocket()`.
 type TcpSocketProbeOptions struct {
-	FailureThreshold    *float64       `field:"optional" json:"failureThreshold" yaml:"failureThreshold"`
+	// Minimum consecutive failures for the probe to be considered failed after having succeeded.
+	//
+	// Defaults to 3. Minimum value is 1. Default: 3.
+	FailureThreshold *float64 `field:"optional" json:"failureThreshold" yaml:"failureThreshold"`
+	// Number of seconds after the container has started before liveness probes are initiated. See: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes
+	//
+	// Default: - immediate.
 	InitialDelaySeconds cdk8s.Duration `field:"optional" json:"initialDelaySeconds" yaml:"initialDelaySeconds"`
-	PeriodSeconds       cdk8s.Duration `field:"optional" json:"periodSeconds" yaml:"periodSeconds"`
-	SuccessThreshold    *float64       `field:"optional" json:"successThreshold" yaml:"successThreshold"`
-	TimeoutSeconds      cdk8s.Duration `field:"optional" json:"timeoutSeconds" yaml:"timeoutSeconds"`
-	Host                *string        `field:"optional" json:"host" yaml:"host"`
-	Port                *float64       `field:"optional" json:"port" yaml:"port"`
+	// How often (in seconds) to perform the probe.
+	//
+	// Default to 10 seconds. Minimum value is 1. Default: Duration.seconds(10) Minimum value is 1.
+	PeriodSeconds cdk8s.Duration `field:"optional" json:"periodSeconds" yaml:"periodSeconds"`
+	// Minimum consecutive successes for the probe to be considered successful after having failed. Defaults to 1.
+	//
+	// Must be 1 for liveness and startup. Minimum value is 1. Default: 1 Must be 1 for liveness and startup. Minimum value is 1.
+	SuccessThreshold *float64 `field:"optional" json:"successThreshold" yaml:"successThreshold"`
+	// Number of seconds after which the probe times out.
+	//
+	// Defaults to 1 second. Minimum value is 1. See: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes
+	//
+	// Default: Duration.seconds(1)
+	TimeoutSeconds cdk8s.Duration `field:"optional" json:"timeoutSeconds" yaml:"timeoutSeconds"`
+	// The host name to connect to on the container. Default: - defaults to the pod IP.
+	Host *string `field:"optional" json:"host" yaml:"host"`
+	// The TCP port to connect to on the container. Default: - defaults to `container.port`.
+	Port *float64 `field:"optional" json:"port" yaml:"port"`
 }
 
-// GrpcProbeOptions configures a gRPC health probe.
+// Options for `Probe.fromGrpc()`.
 type GrpcProbeOptions struct {
-	FailureThreshold    *float64       `field:"optional" json:"failureThreshold" yaml:"failureThreshold"`
+	// Minimum consecutive failures for the probe to be considered failed after having succeeded.
+	//
+	// Defaults to 3. Minimum value is 1. Default: 3.
+	FailureThreshold *float64 `field:"optional" json:"failureThreshold" yaml:"failureThreshold"`
+	// Number of seconds after the container has started before liveness probes are initiated. See: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes
+	//
+	// Default: - immediate.
 	InitialDelaySeconds cdk8s.Duration `field:"optional" json:"initialDelaySeconds" yaml:"initialDelaySeconds"`
-	PeriodSeconds       cdk8s.Duration `field:"optional" json:"periodSeconds" yaml:"periodSeconds"`
-	SuccessThreshold    *float64       `field:"optional" json:"successThreshold" yaml:"successThreshold"`
-	TimeoutSeconds      cdk8s.Duration `field:"optional" json:"timeoutSeconds" yaml:"timeoutSeconds"`
-	Port                *float64       `field:"optional" json:"port" yaml:"port"`
-	Service             *string        `field:"optional" json:"service" yaml:"service"`
+	// How often (in seconds) to perform the probe.
+	//
+	// Default to 10 seconds. Minimum value is 1. Default: Duration.seconds(10) Minimum value is 1.
+	PeriodSeconds cdk8s.Duration `field:"optional" json:"periodSeconds" yaml:"periodSeconds"`
+	// Minimum consecutive successes for the probe to be considered successful after having failed. Defaults to 1.
+	//
+	// Must be 1 for liveness and startup. Minimum value is 1. Default: 1 Must be 1 for liveness and startup. Minimum value is 1.
+	SuccessThreshold *float64 `field:"optional" json:"successThreshold" yaml:"successThreshold"`
+	// Number of seconds after which the probe times out.
+	//
+	// Defaults to 1 second. Minimum value is 1. See: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes
+	//
+	// Default: Duration.seconds(1)
+	TimeoutSeconds cdk8s.Duration `field:"optional" json:"timeoutSeconds" yaml:"timeoutSeconds"`
+	// The TCP port to connect to on the container. Default: - defaults to `container.port`.
+	Port *float64 `field:"optional" json:"port" yaml:"port"`
+	// Service is the name of the service to place in the gRPC HealthCheckRequest (see https://github.com/grpc/grpc/blob/master/doc/health-checking.md). Default: - If this is not specified, the default behavior is defined by gRPC.
+	Service *string `field:"optional" json:"service" yaml:"service"`
 }
 
-// Probe describes a health check for a container.
+// Probe describes a health check to be performed against a container to determine whether it is alive or ready to receive traffic.
 type Probe interface {
 	toManifest(container *containerImpl) map[string]interface{}
 }
@@ -76,7 +156,7 @@ type commandProbe struct {
 	options *CommandProbeOptions
 }
 
-// Probe_FromCommand creates a probe that executes command in its container.
+// Defines a probe based on a command which is executed within the container.
 func Probe_FromCommand(command *[]*string, options *CommandProbeOptions) Probe {
 	if command == nil {
 		panic("command is required")
@@ -90,7 +170,7 @@ func (p *commandProbe) toManifest(_ *containerImpl) map[string]interface{} {
 	return result
 }
 
-// Probe_FromHttpGet creates an HTTP GET health probe.
+// Defines a probe based on an HTTP GET request to the IP address of the container.
 func Probe_FromHttpGet(path *string, options *HttpGetProbeOptions) Probe {
 	if path == nil {
 		panic("path is required")
@@ -138,7 +218,7 @@ func (p *httpGetProbe) toManifest(container *containerImpl) map[string]interface
 	return result
 }
 
-// Probe_FromTcpSocket creates a TCP health probe.
+// Defines a probe based opening a connection to a TCP socket on the container.
 func Probe_FromTcpSocket(options *TcpSocketProbeOptions) Probe {
 	return &tcpSocketProbe{options: options}
 }
@@ -160,7 +240,7 @@ func (p *tcpSocketProbe) toManifest(container *containerImpl) map[string]interfa
 	return result
 }
 
-// Probe_FromGrpc creates a gRPC health probe.
+// Defines a probe based on a gRPC request to the container.
 func Probe_FromGrpc(options *GrpcProbeOptions) Probe {
 	return &grpcProbe{options: options}
 }

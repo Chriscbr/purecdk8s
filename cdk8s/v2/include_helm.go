@@ -101,6 +101,9 @@ func includedObjects(node constructs.Node) *[]ApiObject {
 	return &result
 }
 
+// Checks if `x` is a construct.
+//
+// Returns: true if `x` is an object created from a class which extends `Construct`. Deprecated: use `x instanceof Construct` instead.
 func Include_IsConstruct(value interface{}) *bool {
 	return App_IsConstruct(value)
 }
@@ -220,6 +223,9 @@ func (h *helmImpl) ReleaseName() *string {
 	return &h.releaseName
 }
 
+// Checks if `x` is a construct.
+//
+// Returns: true if `x` is an object created from a class which extends `Construct`. Deprecated: use `x instanceof Construct` instead.
 func Helm_IsConstruct(value interface{}) *bool {
 	return App_IsConstruct(value)
 }

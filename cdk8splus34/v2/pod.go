@@ -9,12 +9,15 @@ import (
 	"github.com/Chriscbr/purecdk8s/jsii"
 )
 
-// RestartPolicy controls what Kubernetes does when a container exits.
+// Restart policy for all containers within the pod.
 type RestartPolicy string
 
 const (
-	RestartPolicy_ALWAYS     RestartPolicy = "ALWAYS"
-	RestartPolicy_NEVER      RestartPolicy = "NEVER"
+	// Always restart the pod after it exits.
+	RestartPolicy_ALWAYS RestartPolicy = "ALWAYS"
+	// Never restart the pod.
+	RestartPolicy_NEVER RestartPolicy = "NEVER"
+	// Only restart if the pod exits with a non-zero exit code.
 	RestartPolicy_ON_FAILURE RestartPolicy = "ON_FAILURE"
 )
 
@@ -31,32 +34,75 @@ func restartPolicyManifestValue(value RestartPolicy) string {
 	}
 }
 
-// PodProps contains the common pod fields used by native workload constructs.
+// Properties for `Pod`.
 type PodProps struct {
-	Metadata                     *cdk8s.ApiObjectMetadata `field:"optional" json:"metadata" yaml:"metadata"`
-	Containers                   *[]*ContainerProps       `field:"optional" json:"containers" yaml:"containers"`
-	Dns                          *PodDnsProps             `field:"optional" json:"dns" yaml:"dns"`
-	DockerRegistryAuth           ISecret                  `field:"optional" json:"dockerRegistryAuth" yaml:"dockerRegistryAuth"`
-	InitContainers               *[]*ContainerProps       `field:"optional" json:"initContainers" yaml:"initContainers"`
-	Volumes                      *[]Volume                `field:"optional" json:"volumes" yaml:"volumes"`
-	AutomountServiceAccountToken *bool                    `field:"optional" json:"automountServiceAccountToken" yaml:"automountServiceAccountToken"`
-	EnableServiceLinks           *bool                    `field:"optional" json:"enableServiceLinks" yaml:"enableServiceLinks"`
-	HostAliases                  *[]*HostAlias            `field:"optional" json:"hostAliases" yaml:"hostAliases"`
-	HostNetwork                  *bool                    `field:"optional" json:"hostNetwork" yaml:"hostNetwork"`
-	Isolate                      *bool                    `field:"optional" json:"isolate" yaml:"isolate"`
-	RestartPolicy                RestartPolicy            `field:"optional" json:"restartPolicy" yaml:"restartPolicy"`
-	SecurityContext              *PodSecurityContextProps `field:"optional" json:"securityContext" yaml:"securityContext"`
-	ServiceAccount               IServiceAccount          `field:"optional" json:"serviceAccount" yaml:"serviceAccount"`
-	ShareProcessNamespace        *bool                    `field:"optional" json:"shareProcessNamespace" yaml:"shareProcessNamespace"`
-	TerminationGracePeriod       cdk8s.Duration           `field:"optional" json:"terminationGracePeriod" yaml:"terminationGracePeriod"`
+	// Metadata that all persisted resources must have, which includes all objects users must create.
+	Metadata *cdk8s.ApiObjectMetadata `field:"optional" json:"metadata" yaml:"metadata"`
+	// List of containers belonging to the pod.
+	//
+	// Containers cannot currently be added or removed. There must be at least one container in a Pod.
+	//
+	// You can add additionnal containers using `podSpec.addContainer()` Default: - No containers. Note that a pod spec must include at least one container.
+	Containers *[]*ContainerProps `field:"optional" json:"containers" yaml:"containers"`
+	// DNS settings for the pod. See: https://kubernetes.io/docs/concepts/services-networking/dns-pod-service/
+	//
+	// Default: policy: DnsPolicy.CLUSTER_FIRST hostnameAsFQDN: false.
+	Dns *PodDnsProps `field:"optional" json:"dns" yaml:"dns"`
+	// A secret containing docker credentials for authenticating to a registry. Default: - No auth. Images are assumed to be publicly available.
+	DockerRegistryAuth ISecret `field:"optional" json:"dockerRegistryAuth" yaml:"dockerRegistryAuth"`
+	// List of initialization containers belonging to the pod.
+	//
+	// Init containers are executed in order prior to containers being started. If any init container fails, the pod is considered to have failed and is handled according to its restartPolicy. The name for an init container or normal container must be unique among all containers. Init containers may not have Lifecycle actions, Readiness probes, Liveness probes, or Startup probes. The resourceRequirements of an init container are taken into account during scheduling by finding the highest request/limit for each resource type, and then using the max of of that value or the sum of the normal containers. Limits are applied to init containers in a similar fashion.
+	//
+	// Init containers cannot currently be added ,removed or updated. See: https://kubernetes.io/docs/concepts/workloads/pods/init-containers/
+	//
+	// Default: - No init containers.
+	InitContainers *[]*ContainerProps `field:"optional" json:"initContainers" yaml:"initContainers"`
+	// List of volumes that can be mounted by containers belonging to the pod.
+	//
+	// You can also add volumes later using `podSpec.addVolume()` See: https://kubernetes.io/docs/concepts/storage/volumes
+	//
+	// Default: - No volumes.
+	Volumes *[]Volume `field:"optional" json:"volumes" yaml:"volumes"`
+	// Indicates whether a service account token should be automatically mounted. See: https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/#use-the-default-service-account-to-access-the-api-server
+	//
+	// Default: false.
+	AutomountServiceAccountToken *bool `field:"optional" json:"automountServiceAccountToken" yaml:"automountServiceAccountToken"`
+	// Indicates whether information about services should be injected into pod's environment variables, matching the syntax of Docker links. See: https://kubernetes.io/docs/concepts/services-networking/connect-applications-service/#accessing-the-service
+	//
+	// Default: true.
+	EnableServiceLinks *bool `field:"optional" json:"enableServiceLinks" yaml:"enableServiceLinks"`
+	// HostAlias holds the mapping between IP and hostnames that will be injected as an entry in the pod's hosts file.
+	HostAliases *[]*HostAlias `field:"optional" json:"hostAliases" yaml:"hostAliases"`
+	// Host network for the pod. Default: false.
+	HostNetwork *bool `field:"optional" json:"hostNetwork" yaml:"hostNetwork"`
+	// Isolates the pod.
+	//
+	// This will prevent any ingress or egress connections to / from this pod. You can however allow explicit connections post instantiation by using the `.connections` property. Default: false.
+	Isolate *bool `field:"optional" json:"isolate" yaml:"isolate"`
+	// Restart policy for all containers within the pod. See: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#restart-policy
+	//
+	// Default: RestartPolicy.ALWAYS
+	RestartPolicy RestartPolicy `field:"optional" json:"restartPolicy" yaml:"restartPolicy"`
+	// SecurityContext holds pod-level security attributes and common container settings. Default: fsGroupChangePolicy: FsGroupChangePolicy.FsGroupChangePolicy.ALWAYS ensureNonRoot: true.
+	SecurityContext *PodSecurityContextProps `field:"optional" json:"securityContext" yaml:"securityContext"`
+	// A service account provides an identity for processes that run in a Pod.
+	//
+	// When you (a human) access the cluster (for example, using kubectl), you are authenticated by the apiserver as a particular User Account (currently this is usually admin, unless your cluster administrator has customized your cluster). Processes in containers inside pods can also contact the apiserver. When they do, they are authenticated as a particular Service Account (for example, default). See: https://kubernetes.io/docs/tasks/configure-pod-container/configure-service-account/
+	//
+	// Default: - No service account.
+	ServiceAccount IServiceAccount `field:"optional" json:"serviceAccount" yaml:"serviceAccount"`
+	// When process namespace sharing is enabled, processes in a container are visible to all other containers in the same pod. See: https://kubernetes.io/docs/tasks/configure-pod-container/share-process-namespace/
+	//
+	// Default: false.
+	ShareProcessNamespace *bool `field:"optional" json:"shareProcessNamespace" yaml:"shareProcessNamespace"`
+	// Grace period until the pod is terminated. Default: Duration.seconds(30)
+	TerminationGracePeriod cdk8s.Duration `field:"optional" json:"terminationGracePeriod" yaml:"terminationGracePeriod"`
 }
 
-// AbstractPodProps configures the shared pod portion of Pod and workload
-// resources. PodProps is its concrete counterpart for a standalone Pod.
+// Properties for `AbstractPod`.
 type AbstractPodProps = PodProps
 
-// AbstractPod is the common behavior shared by Pods and workload pod
-// templates. It mirrors the cdk8s+ abstract base without relying on JSII.
 type AbstractPod interface {
 	Resource
 	AutomountServiceAccountToken() *bool
@@ -80,9 +126,13 @@ type AbstractPod interface {
 	AddInitContainer(*ContainerProps) Container
 	AddVolume(Volume)
 	AttachContainer(Container)
+	// Return the configuration of this peer. See: INetworkPolicyPeer.toNetworkPolicyPeerConfig ()
 	ToNetworkPolicyPeerConfig() *NetworkPolicyPeerConfig
+	// Convert the peer into a pod selector, if possible. See: INetworkPolicyPeer.toPodSelector ()
 	ToPodSelector() IPodSelector
+	// Return the configuration of this selector. See: IPodSelector.toPodSelectorConfig ()
 	ToPodSelectorConfig() *PodSelectorConfig
+	// Return the subject configuration. See: ISubect.toSubjectConfiguration ()
 	ToSubjectConfiguration() *SubjectConfiguration
 }
 
@@ -262,7 +312,9 @@ func (p *podState) manifest(restartPolicy RestartPolicy) map[string]interface{} 
 	return spec
 }
 
-// Pod is a native Kubernetes Pod construct.
+// Pod is a collection of containers that can run on a host.
+//
+// This resource is created by clients and scheduled onto hosts.
 type Pod interface {
 	AbstractPod
 	Containers() *[]Container
@@ -271,6 +323,7 @@ type Pod interface {
 	AddContainer(props *ContainerProps) Container
 	AddInitContainer(props *ContainerProps) Container
 	AddVolume(volume Volume)
+	// Return the configuration of this selector. See: IPodSelector.toPodSelectorConfig ()
 	ToPodSelectorConfig() *PodSelectorConfig
 	Connections() PodConnections
 	Scheduling() PodScheduling
@@ -314,6 +367,13 @@ func NewPod_Override(pod Pod, scope constructs.Construct, id *string, props *Pod
 	applyOverride(pod, NewPod(scope, id, props), "Pod")
 }
 
+// Checks if `x` is a construct.
+//
+// Use this method instead of `instanceof` to properly detect `Construct` instances, even when the construct library is symlinked.
+//
+// Explanation: in JavaScript, multiple copies of the `constructs` library on disk are seen as independent, completely different libraries. As a consequence, the class `Construct` in each copy of the `constructs` library is seen as a different class, and an instance of one class will not test as `instanceof` the other class. `npm install` will not create installations like this, but users may manually symlink construct libraries together or use a monorepo tool: in those cases, multiple copies of the `constructs` library can be accidentally installed, and `instanceof` will behave unpredictably. It is safest to avoid using `instanceof`, and using this type-testing method instead.
+//
+// Returns: true if `x` is an object created from a class which extends `Construct`.
 func Pod_IsConstruct(x interface{}) *bool {
 	return constructs.Construct_IsConstruct(x)
 }
@@ -469,6 +529,13 @@ func (p *podImpl) Scheduling() PodScheduling {
 	return p.scheduling
 }
 
+// Checks if `x` is a construct.
+//
+// Use this method instead of `instanceof` to properly detect `Construct` instances, even when the construct library is symlinked.
+//
+// Explanation: in JavaScript, multiple copies of the `constructs` library on disk are seen as independent, completely different libraries. As a consequence, the class `Construct` in each copy of the `constructs` library is seen as a different class, and an instance of one class will not test as `instanceof` the other class. `npm install` will not create installations like this, but users may manually symlink construct libraries together or use a monorepo tool: in those cases, multiple copies of the `constructs` library can be accidentally installed, and `instanceof` will behave unpredictably. It is safest to avoid using `instanceof`, and using this type-testing method instead.
+//
+// Returns: true if `x` is an object created from a class which extends `Construct`.
 func AbstractPod_IsConstruct(x interface{}) *bool {
 	return constructs.Construct_IsConstruct(x)
 }
