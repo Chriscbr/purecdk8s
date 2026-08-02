@@ -1,4 +1,4 @@
-module github.com/purecdk8s/purecdk8s
+module github.com/Chriscbr/purecdk8s
 
 go 1.23.0
 

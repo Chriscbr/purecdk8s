@@ -3,7 +3,7 @@ package cdk8splus34
 import (
 	"os"
 
-	"github.com/purecdk8s/purecdk8s/jsii"
+	"github.com/Chriscbr/purecdk8s/jsii"
 )
 
 // EnvFieldPaths identifies a Pod field available to an environment variable.

@@ -17,7 +17,7 @@ const (
 	initTemplateGoLibrary        = "go-library"
 	initTemplateGoLibraryPublic  = "go-library-public"
 	initTemplateGoLibraryPrivate = "go-library-private"
-	purecdk8sModule              = "github.com/purecdk8s/purecdk8s"
+	purecdk8sModule              = "github.com/Chriscbr/purecdk8s"
 	purecdk8sInitialVersion      = "v0.1.0"
 )
 

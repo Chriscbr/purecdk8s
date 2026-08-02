@@ -12,9 +12,9 @@ import (
 )
 
 const (
-	defaultCoreImport          = "github.com/purecdk8s/purecdk8s/cdk8s/v2"
-	defaultConstructsImport    = "github.com/purecdk8s/purecdk8s/constructs/v10"
-	defaultSerializationImport = "github.com/purecdk8s/purecdk8s/serialization"
+	defaultCoreImport          = "github.com/Chriscbr/purecdk8s/cdk8s/v2"
+	defaultConstructsImport    = "github.com/Chriscbr/purecdk8s/constructs/v10"
+	defaultSerializationImport = "github.com/Chriscbr/purecdk8s/serialization"
 )
 
 // GenerateOptions controls source generation independently of source

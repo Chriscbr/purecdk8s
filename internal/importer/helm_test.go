@@ -674,7 +674,7 @@ import (
 	"strings"
 	"testing"
 
-	cdk8s "github.com/purecdk8s/purecdk8s/cdk8s/v2"
+	cdk8s "github.com/Chriscbr/purecdk8s/cdk8s/v2"
 )
 
 type customWebapp struct {

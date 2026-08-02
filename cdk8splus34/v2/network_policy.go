@@ -4,9 +4,9 @@ import (
 	"net"
 	"strings"
 
-	"github.com/purecdk8s/purecdk8s/cdk8s/v2"
-	"github.com/purecdk8s/purecdk8s/constructs/v10"
-	"github.com/purecdk8s/purecdk8s/jsii"
+	"github.com/Chriscbr/purecdk8s/cdk8s/v2"
+	"github.com/Chriscbr/purecdk8s/constructs/v10"
+	"github.com/Chriscbr/purecdk8s/jsii"
 )
 
 type NetworkProtocol string

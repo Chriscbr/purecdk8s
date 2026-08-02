@@ -1,8 +1,8 @@
 package cdk8splus34
 
 import (
-	"github.com/purecdk8s/purecdk8s/cdk8s/v2"
-	"github.com/purecdk8s/purecdk8s/jsii"
+	"github.com/Chriscbr/purecdk8s/cdk8s/v2"
+	"github.com/Chriscbr/purecdk8s/jsii"
 )
 
 // ConnectionScheme controls the protocol used by an HTTP probe.

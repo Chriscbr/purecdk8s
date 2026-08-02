@@ -4,9 +4,9 @@ package k8s
 import (
 	"encoding/json"
 	"fmt"
-	cdk8s "github.com/purecdk8s/purecdk8s/cdk8s/v2"
-	constructs "github.com/purecdk8s/purecdk8s/constructs/v10"
-	purecdk8sserialization "github.com/purecdk8s/purecdk8s/serialization"
+	cdk8s "github.com/Chriscbr/purecdk8s/cdk8s/v2"
+	constructs "github.com/Chriscbr/purecdk8s/constructs/v10"
+	purecdk8sserialization "github.com/Chriscbr/purecdk8s/serialization"
 	"reflect"
 	"strings"
 	"time"

@@ -3,7 +3,7 @@ package cdk8splus34
 import (
 	"sort"
 
-	"github.com/purecdk8s/purecdk8s/jsii"
+	"github.com/Chriscbr/purecdk8s/jsii"
 )
 
 // Protocol is the network protocol for container and service ports.

@@ -1,6 +1,6 @@
 package cdk8splus34
 
-import "github.com/purecdk8s/purecdk8s/cdk8s/v2"
+import "github.com/Chriscbr/purecdk8s/cdk8s/v2"
 
 // WorkloadProps configures the common pod-template portion of a workload.
 type WorkloadProps struct {

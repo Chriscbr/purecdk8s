@@ -3,7 +3,7 @@ package cdk8splus34
 import (
 	"fmt"
 
-	"github.com/purecdk8s/purecdk8s/constructs/v10"
+	"github.com/Chriscbr/purecdk8s/constructs/v10"
 )
 
 // NodeLabelQuery describes a label requirement for nodes.

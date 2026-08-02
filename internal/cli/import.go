@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/purecdk8s/purecdk8s/internal/importer"
+	"github.com/Chriscbr/purecdk8s/internal/importer"
 	"gopkg.in/yaml.v3"
 )
 

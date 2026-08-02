@@ -11,9 +11,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/purecdk8s/purecdk8s/constructs/v10"
-	"github.com/purecdk8s/purecdk8s/jsii"
-	purecdk8sserialization "github.com/purecdk8s/purecdk8s/serialization"
+	"github.com/Chriscbr/purecdk8s/constructs/v10"
+	"github.com/Chriscbr/purecdk8s/jsii"
+	purecdk8sserialization "github.com/Chriscbr/purecdk8s/serialization"
 )
 
 type constructBase struct {

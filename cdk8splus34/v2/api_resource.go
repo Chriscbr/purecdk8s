@@ -1,6 +1,6 @@
 package cdk8splus34
 
-import "github.com/purecdk8s/purecdk8s/jsii"
+import "github.com/Chriscbr/purecdk8s/jsii"
 
 // ApiResourceOptions identifies a Kubernetes API resource type.
 type ApiResourceOptions struct {

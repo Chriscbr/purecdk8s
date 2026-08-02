@@ -47,7 +47,7 @@ Once a tagged module version is available, the equivalent remote installation
 is:
 
 ```console
-go install github.com/purecdk8s/purecdk8s/cmd/purecdk8s@latest
+go install github.com/Chriscbr/purecdk8s/cmd/purecdk8s@latest
 ```
 
 The library requires Go 1.23 or newer.
@@ -58,17 +58,17 @@ These are the core import-path changes for application code:
 
 | Upstream import | Native replacement |
 | --- | --- |
-| `github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2` | `github.com/purecdk8s/purecdk8s/cdk8s/v2` |
-| `github.com/aws/constructs-go/constructs/v10` | `github.com/purecdk8s/purecdk8s/constructs/v10` |
-| `github.com/aws/jsii-runtime-go` | `github.com/purecdk8s/purecdk8s/jsii` |
+| `github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2` | `github.com/Chriscbr/purecdk8s/cdk8s/v2` |
+| `github.com/aws/constructs-go/constructs/v10` | `github.com/Chriscbr/purecdk8s/constructs/v10` |
+| `github.com/aws/jsii-runtime-go` | `github.com/Chriscbr/purecdk8s/jsii` |
 
 Native cdk8s+ packages use the same versioned import convention:
 
 | Upstream import | Native replacement |
 | --- | --- |
-| `github.com/cdk8s-team/cdk8s-plus-go/cdk8splus34/v2` | `github.com/purecdk8s/purecdk8s/cdk8splus34/v2` |
-| `github.com/cdk8s-team/cdk8s-plus-go/cdk8splus35/v2` | `github.com/purecdk8s/purecdk8s/cdk8splus35/v2` |
-| `github.com/cdk8s-team/cdk8s-plus-go/cdk8splus36/v2` | `github.com/purecdk8s/purecdk8s/cdk8splus36/v2` |
+| `github.com/cdk8s-team/cdk8s-plus-go/cdk8splus34/v2` | `github.com/Chriscbr/purecdk8s/cdk8splus34/v2` |
+| `github.com/cdk8s-team/cdk8s-plus-go/cdk8splus35/v2` | `github.com/Chriscbr/purecdk8s/cdk8splus35/v2` |
+| `github.com/cdk8s-team/cdk8s-plus-go/cdk8splus36/v2` | `github.com/Chriscbr/purecdk8s/cdk8splus36/v2` |
 
 The replacement helper package is still named `jsii`, so calls such as
 `jsii.String("default")` and `jsii.Number(3)` do not need to change.
@@ -91,9 +91,9 @@ package main
 
 import (
 	"example.com/my-app/imports/k8s"
-	"github.com/purecdk8s/purecdk8s/cdk8s/v2"
-	"github.com/purecdk8s/purecdk8s/constructs/v10"
-	"github.com/purecdk8s/purecdk8s/jsii"
+	"github.com/Chriscbr/purecdk8s/cdk8s/v2"
+	"github.com/Chriscbr/purecdk8s/constructs/v10"
+	"github.com/Chriscbr/purecdk8s/jsii"
 )
 
 func newChart(scope constructs.Construct, id string) cdk8s.Chart {
@@ -148,7 +148,7 @@ If the module has not been published at the version used by the generated
 `go.mod`, point the project at a local checkout:
 
 ```console
-go mod edit -replace github.com/purecdk8s/purecdk8s=/absolute/path/to/purecdk8s
+go mod edit -replace github.com/Chriscbr/purecdk8s=/absolute/path/to/purecdk8s
 go mod tidy
 ```
 
@@ -263,8 +263,8 @@ required. With API v2, imported CRD documents are copied into `crds/`.
 3. Add the native module. For a local checkout:
 
    ```console
-   go mod edit -replace github.com/purecdk8s/purecdk8s=/absolute/path/to/purecdk8s
-   go get github.com/purecdk8s/purecdk8s@v0.0.0
+   go mod edit -replace github.com/Chriscbr/purecdk8s=/absolute/path/to/purecdk8s
+   go get github.com/Chriscbr/purecdk8s@v0.0.0
    go mod tidy
    ```
 

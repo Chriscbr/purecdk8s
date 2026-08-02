@@ -122,7 +122,7 @@ import (
 	"reflect"
 	"testing"
 
-	cdk8s "github.com/purecdk8s/purecdk8s/cdk8s/v2"
+	cdk8s "github.com/Chriscbr/purecdk8s/cdk8s/v2"
 )
 
 func TestGeneratedRequiredValidation(t *testing.T) {
@@ -445,7 +445,7 @@ func compileGenerated(t *testing.T, generated *Generation, testSource ...string)
 	t.Helper()
 	temp := t.TempDir()
 	root := moduleRoot(t)
-	goMod := "module example.com/generatedtest\n\ngo 1.23.0\n\nrequire github.com/purecdk8s/purecdk8s v0.0.0\n\nreplace github.com/purecdk8s/purecdk8s => " + root + "\n"
+	goMod := "module example.com/generatedtest\n\ngo 1.23.0\n\nrequire github.com/Chriscbr/purecdk8s v0.0.0\n\nreplace github.com/Chriscbr/purecdk8s => " + root + "\n"
 	if err := os.WriteFile(filepath.Join(temp, "go.mod"), []byte(goMod), 0o644); err != nil {
 		t.Fatal(err)
 	}

@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/purecdk8s/purecdk8s/cdk8s/v2"
-	"github.com/purecdk8s/purecdk8s/jsii"
+	"github.com/Chriscbr/purecdk8s/cdk8s/v2"
+	"github.com/Chriscbr/purecdk8s/jsii"
 )
 
 func TestDeploymentServiceConfigMapAndVolume(t *testing.T) {

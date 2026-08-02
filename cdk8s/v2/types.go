@@ -1,6 +1,6 @@
 package cdk8s
 
-import "github.com/purecdk8s/purecdk8s/constructs/v10"
+import "github.com/Chriscbr/purecdk8s/constructs/v10"
 
 type ApiObjectMetadata struct {
 	Annotations     *map[string]*string `field:"optional" json:"annotations" yaml:"annotations"`

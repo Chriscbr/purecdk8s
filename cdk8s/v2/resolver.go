@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	purecdk8sserialization "github.com/purecdk8s/purecdk8s/serialization"
+	purecdk8sserialization "github.com/Chriscbr/purecdk8s/serialization"
 )
 
 type resolutionContextImpl struct {

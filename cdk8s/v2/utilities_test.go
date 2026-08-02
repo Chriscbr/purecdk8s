@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/purecdk8s/purecdk8s/constructs/v10"
+	"github.com/Chriscbr/purecdk8s/constructs/v10"
 )
 
 func TestCronParity(t *testing.T) {

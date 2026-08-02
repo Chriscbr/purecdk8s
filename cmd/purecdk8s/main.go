@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/purecdk8s/purecdk8s/internal/cli"
+	"github.com/Chriscbr/purecdk8s/internal/cli"
 )
 
 var version = cli.DefaultVersion

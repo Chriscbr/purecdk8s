@@ -6,8 +6,8 @@
 package cdk8splus36
 
 import (
-	plus34 "github.com/purecdk8s/purecdk8s/cdk8splus34/v2"
-	constructs "github.com/purecdk8s/purecdk8s/constructs/v10"
+	plus34 "github.com/Chriscbr/purecdk8s/cdk8splus34/v2"
+	constructs "github.com/Chriscbr/purecdk8s/constructs/v10"
 )
 
 type AbstractPod = plus34.AbstractPod

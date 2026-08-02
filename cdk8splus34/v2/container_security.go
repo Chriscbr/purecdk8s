@@ -1,6 +1,6 @@
 package cdk8splus34
 
-import "github.com/purecdk8s/purecdk8s/jsii"
+import "github.com/Chriscbr/purecdk8s/jsii"
 
 // Capability is a POSIX capability for a container process.
 type Capability string

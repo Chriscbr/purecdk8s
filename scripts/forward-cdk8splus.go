@@ -149,7 +149,7 @@ func render(minor string, types, constants []string, functions []function, impor
 	fmt.Fprintln(&output, "// users can use this package together with its version-specific k8s subpackage.")
 	fmt.Fprintf(&output, "package cdk8splus%s\n\n", minor)
 	fmt.Fprintln(&output, "import (")
-	fmt.Fprintln(&output, "\tplus34 \"github.com/purecdk8s/purecdk8s/cdk8splus34/v2\"")
+	fmt.Fprintln(&output, "\tplus34 \"github.com/Chriscbr/purecdk8s/cdk8splus34/v2\"")
 	var aliases []string
 	for alias := range imports {
 		aliases = append(aliases, alias)

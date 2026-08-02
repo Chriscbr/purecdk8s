@@ -1,8 +1,8 @@
 package cdk8splus34
 
 import (
-	"github.com/purecdk8s/purecdk8s/constructs/v10"
-	"github.com/purecdk8s/purecdk8s/jsii"
+	"github.com/Chriscbr/purecdk8s/constructs/v10"
+	"github.com/Chriscbr/purecdk8s/jsii"
 )
 
 type User interface {

@@ -8,7 +8,7 @@ repository_root="$(git rev-parse --show-toplevel)"
 cd "$repository_root"
 
 readonly upstream_package="github.com/aws/constructs-go/constructs/v10"
-readonly local_package="github.com/purecdk8s/purecdk8s/constructs/v10"
+readonly local_package="github.com/Chriscbr/purecdk8s/constructs/v10"
 readonly tool_module="$repository_root/tools/api-check"
 
 report="$(mktemp "${TMPDIR:-/tmp}/constructs-api.XXXXXX")"

@@ -9,7 +9,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/purecdk8s/purecdk8s/constructs/v10"
+	"github.com/Chriscbr/purecdk8s/constructs/v10"
 )
 
 const (
