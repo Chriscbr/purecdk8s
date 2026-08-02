@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"go/ast"
+	"go/doc/comment"
 	"go/parser"
 	"go/printer"
 	"go/token"
@@ -284,7 +285,12 @@ func commentText(leading, trailing *ast.CommentGroup) string {
 	if trailing != nil {
 		result += trailing.Text()
 	}
-	return result
+	if result == "" {
+		return ""
+	}
+	parser := comment.Parser{}
+	printer := comment.Printer{TextWidth: -1}
+	return string(printer.Text(parser.Parse(result)))
 }
 
 func loadPackage(path string, overlay map[string][]byte) (*packages.Package, error) {
@@ -360,7 +366,7 @@ func prepare(file *ast.File, replacements replacements) error {
 			if !function.Name.IsExported() || !hasExportedReceiver(function) {
 				continue
 			}
-			function.Body = panicBody()
+			function.Body = panicBody(function.Body)
 		}
 		if typeDeclaration, ok := declaration.(*ast.GenDecl); ok && typeDeclaration.Tok == token.TYPE {
 			for _, spec := range typeDeclaration.Specs {
@@ -521,13 +527,28 @@ func receiverName(expression ast.Expr) *ast.Ident {
 	}
 }
 
-func panicBody() *ast.BlockStmt {
-	return &ast.BlockStmt{List: []ast.Stmt{
+func panicBody(original *ast.BlockStmt) *ast.BlockStmt {
+	position := token.NoPos
+	if original != nil {
+		position = original.Lbrace
+	}
+	body := &ast.BlockStmt{List: []ast.Stmt{
 		&ast.ExprStmt{X: &ast.CallExpr{
-			Fun:  ast.NewIdent("panic"),
-			Args: []ast.Expr{&ast.BasicLit{Kind: token.STRING, Value: strconv.Quote("API-only package")}},
+			Fun: &ast.Ident{Name: "panic", NamePos: position},
+			Args: []ast.Expr{&ast.BasicLit{
+				Kind:     token.STRING,
+				Value:    strconv.Quote("API-only package"),
+				ValuePos: position,
+			}},
+			Lparen: position,
+			Rparen: position,
 		}},
 	}}
+	if original != nil {
+		body.Lbrace = original.Lbrace
+		body.Rbrace = original.Rbrace
+	}
+	return body
 }
 
 func importsUsedByDeclarations(file *ast.File) map[string]bool {

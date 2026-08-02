@@ -351,6 +351,7 @@ The remaining local checks are available through `make`:
 make format
 make format-check
 make build
+make vet
 make api
 make test
 ```

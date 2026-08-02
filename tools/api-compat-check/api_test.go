@@ -101,13 +101,52 @@ func (*Pair[A, B]) Swap() {}
 `)
 
 	want := map[string]string{
-		"const Ready":      "Status values.\nReady is available.\n",
+		"const Ready":      "Status values. Ready is available.\n",
 		"const Waiting":    "Status values.\n",
 		"method Pair.Swap": "Swap swaps the values.\n",
 		"type Pair":        "Pair stores two values.\n",
 	}
 	if got := packageDocumentation(files); !reflect.DeepEqual(got, want) {
 		t.Fatalf("packageDocumentation() = %#v, want %#v", got, want)
+	}
+}
+
+func TestCommentTextNormalizesEquivalentExampleFormatting(t *testing.T) {
+	t.Parallel()
+
+	oldStyle := &ast.CommentGroup{List: []*ast.Comment{
+		{Text: "// Example:"},
+		{Text: "//   first()"},
+		{Text: "//   second()"},
+	}}
+	gofmtStyle := &ast.CommentGroup{List: []*ast.Comment{
+		{Text: "// Example:"},
+		{Text: "//"},
+		{Text: "//\tfirst()"},
+		{Text: "//\tsecond()"},
+	}}
+	if old, formatted := commentText(oldStyle, nil), commentText(gofmtStyle, nil); old != formatted {
+		t.Fatalf("old-style docs = %q, gofmt-style docs = %q", old, formatted)
+	}
+}
+
+func TestCommentTextIgnoresTrailingWhitespaceAndExtraBlankLines(t *testing.T) {
+	t.Parallel()
+
+	compact := &ast.CommentGroup{List: []*ast.Comment{
+		{Text: "// Summary."},
+		{Text: "//"},
+		{Text: "// Details."},
+	}}
+	spaced := &ast.CommentGroup{List: []*ast.Comment{
+		{Text: "// Summary.   "},
+		{Text: "//"},
+		{Text: "//"},
+		{Text: "// Details.\t"},
+		{Text: "//"},
+	}}
+	if want, got := commentText(compact, nil), commentText(spaced, nil); got != want {
+		t.Fatalf("docs with extra whitespace = %q, want %q", got, want)
 	}
 }
 
@@ -161,10 +200,13 @@ func First() {
 	// This implementation comment is not documentation.
 }
 
+func Between() {}
+
+// Second has documentation after a removed declaration.
+func Second() {}
+
 // privateDocs documents a declaration removed by prepare.
 func privateDocs() {}
-
-func Second() {}
 `, parser.ParseComments)
 	if err != nil {
 		t.Fatal(err)
@@ -179,8 +221,9 @@ func Second() {}
 	}
 	prepared := parseFiles(t, overlay.String())
 	want := map[string]string{
-		"func First":  "",
-		"func Second": "",
+		"func Between": "",
+		"func First":   "",
+		"func Second":  "Second has documentation after a removed declaration.\n",
 	}
 	if got := packageDocumentation(prepared); !reflect.DeepEqual(got, want) {
 		t.Fatalf("packageDocumentation() = %#v, want %#v\noverlay:\n%s", got, want, overlay.String())

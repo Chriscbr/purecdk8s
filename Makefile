@@ -24,6 +24,10 @@ format-check: ## Check if source code is gofumpt-formatted
 build: ## Compile every Go package
 	go build ./...
 
+.PHONY: vet
+vet: ## Run Go static analysis
+	go vet ./...
+
 .PHONY: build-cli
 build-cli: ## Build bin/purecdk8s
 	mkdir -p bin
@@ -67,4 +71,4 @@ integration-example: ## Run one example (EXAMPLE=name, optional MODE=upstream|pu
 	./integration/run.sh "$(EXAMPLE)" "$(MODE)"
 
 .PHONY: test
-test: format-check build unittest api integration ## Run every local check
+test: format-check build vet unittest api integration ## Run every local check
