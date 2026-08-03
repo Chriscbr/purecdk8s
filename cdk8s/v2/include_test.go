@@ -13,21 +13,6 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func includeAssertEqual(t *testing.T, got, want interface{}) {
-	t.Helper()
-	gotJSON, err := json.MarshalIndent(got, "", "  ")
-	if err != nil {
-		t.Fatalf("marshal actual value: %v", err)
-	}
-	wantJSON, err := json.MarshalIndent(want, "", "  ")
-	if err != nil {
-		t.Fatalf("marshal expected value: %v", err)
-	}
-	if string(gotJSON) != string(wantJSON) {
-		t.Fatalf("value mismatch\n--- got ---\n%s\n--- want ---\n%s", gotJSON, wantJSON)
-	}
-}
-
 func includeParseYAML(t *testing.T, source string) []interface{} {
 	t.Helper()
 	decoder := yaml.NewDecoder(strings.NewReader(source))
@@ -205,7 +190,7 @@ func TestIncludeCanLoadFromYAML(t *testing.T) {
 	cdk8s.NewInclude(chart, jsii.String("guestbook"), &cdk8s.IncludeProps{Url: &path})
 
 	expected := includeParseYAML(t, includeGuestbook)
-	includeAssertEqual(t, *cdk8s.Testing_Synth(chart), expected)
+	coreAssertEqual(t, *cdk8s.Testing_Synth(chart), expected)
 }
 
 // Ported from:
@@ -246,7 +231,7 @@ func TestIncludeSameNameDifferentKind(t *testing.T) {
 	for _, child := range children {
 		ids = append(ids, *child.Node().Id())
 	}
-	includeAssertEqual(t, ids, []string{"resource1-foo", "resource1-bar"})
+	coreAssertEqual(t, ids, []string{"resource1-foo", "resource1-bar"})
 }
 
 // Ported from:
@@ -275,5 +260,5 @@ func TestIncludeApiObjectsReturnsAllObjects(t *testing.T) {
 		kinds = append(kinds, *object.Kind())
 	}
 	sort.Strings(kinds)
-	includeAssertEqual(t, kinds, []string{"Bar", "Foo"})
+	coreAssertEqual(t, kinds, []string{"Bar", "Foo"})
 }

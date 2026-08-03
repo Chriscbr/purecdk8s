@@ -1,27 +1,11 @@
 package cdk8s_test
 
 import (
-	"encoding/json"
 	"testing"
 
 	cdk8s "github.com/Chriscbr/purecdk8s/cdk8s/v2"
 	"github.com/Chriscbr/purecdk8s/jsii"
 )
-
-func tokenAssertEqual(t *testing.T, got, want interface{}) {
-	t.Helper()
-	gotJSON, err := json.MarshalIndent(got, "", "  ")
-	if err != nil {
-		t.Fatalf("marshal actual value: %v", err)
-	}
-	wantJSON, err := json.MarshalIndent(want, "", "  ")
-	if err != nil {
-		t.Fatalf("marshal expected value: %v", err)
-	}
-	if string(gotJSON) != string(wantJSON) {
-		t.Fatalf("value mismatch\n--- got ---\n%s\n--- want ---\n%s", gotJSON, wantJSON)
-	}
-}
 
 type tokenProducer struct{ value interface{} }
 
@@ -47,7 +31,7 @@ func TestTokenLazy(t *testing.T) {
 		},
 	})
 
-	tokenAssertEqual(t, object.ToJson(), map[string]interface{}{
+	coreAssertEqual(t, object.ToJson(), map[string]interface{}{
 		"apiVersion": "v1",
 		"kind":       "Pod",
 		"metadata":   map[string]interface{}{"name": "mypod"},
@@ -74,7 +58,7 @@ func TestTokenDoesNotResolveAWSCdkTokens(t *testing.T) {
 		},
 	})
 
-	tokenAssertEqual(t, *chart.ToJson(), []interface{}{
+	coreAssertEqual(t, *chart.ToJson(), []interface{}{
 		map[string]interface{}{
 			"apiVersion": "v1",
 			"kind":       "Pod",

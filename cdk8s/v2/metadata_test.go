@@ -1,27 +1,11 @@
 package cdk8s_test
 
 import (
-	"encoding/json"
 	"testing"
 
 	cdk8s "github.com/Chriscbr/purecdk8s/cdk8s/v2"
 	"github.com/Chriscbr/purecdk8s/jsii"
 )
-
-func metadataAssertEqual(t *testing.T, got, want interface{}) {
-	t.Helper()
-	gotJSON, err := json.MarshalIndent(got, "", "  ")
-	if err != nil {
-		t.Fatalf("marshal actual value: %v", err)
-	}
-	wantJSON, err := json.MarshalIndent(want, "", "  ")
-	if err != nil {
-		t.Fatalf("marshal expected value: %v", err)
-	}
-	if string(gotJSON) != string(wantJSON) {
-		t.Fatalf("value mismatch\n--- got ---\n%s\n--- want ---\n%s", gotJSON, wantJSON)
-	}
-}
 
 func metadataCreateApiObject() cdk8s.ApiObject {
 	chart := cdk8s.Testing_Chart()
@@ -43,7 +27,7 @@ func TestMetadataCanAddLabel(t *testing.T) {
 	})
 	metadata.AddLabel(jsii.String("key"), jsii.String("value"))
 
-	metadataAssertEqual(t, metadata.ToJson(), map[string]interface{}{
+	coreAssertEqual(t, metadata.ToJson(), map[string]interface{}{
 		"labels": map[string]interface{}{"key": "value"},
 	})
 }
@@ -56,7 +40,7 @@ func TestMetadataCanAddAnnotation(t *testing.T) {
 	})
 	metadata.AddAnnotation(jsii.String("key"), jsii.String("value"))
 
-	metadataAssertEqual(t, metadata.ToJson(), map[string]interface{}{
+	coreAssertEqual(t, metadata.ToJson(), map[string]interface{}{
 		"annotations": map[string]interface{}{"key": "value"},
 	})
 }
@@ -69,7 +53,7 @@ func TestMetadataCanAddFinalizer(t *testing.T) {
 	})
 	metadata.AddFinalizers(jsii.String("my-finalizer"))
 
-	metadataAssertEqual(t, metadata.ToJson(), map[string]interface{}{
+	coreAssertEqual(t, metadata.ToJson(), map[string]interface{}{
 		"finalizers": []interface{}{"my-finalizer"},
 	})
 }
@@ -87,7 +71,7 @@ func TestMetadataCanAddOwnerReference(t *testing.T) {
 		Uid:        jsii.String("abcdef12-3456-7890-abcd-ef1234567890"),
 	})
 
-	metadataAssertEqual(t, metadata.ToJson(), map[string]interface{}{
+	coreAssertEqual(t, metadata.ToJson(), map[string]interface{}{
 		"ownerReferences": []interface{}{
 			map[string]interface{}{
 				"apiVersion": "v1",
@@ -112,7 +96,7 @@ func TestMetadataInstantiationPropertiesAreRespected(t *testing.T) {
 		Namespace:   jsii.String("namespace"),
 	})
 
-	metadataAssertEqual(t, metadata.ToJson(), map[string]interface{}{
+	coreAssertEqual(t, metadata.ToJson(), map[string]interface{}{
 		"name":        "name",
 		"namespace":   "namespace",
 		"annotations": map[string]interface{}{"key": "value"},
@@ -141,7 +125,7 @@ func TestMetadataLazyPropertiesAreResolved(t *testing.T) {
 		},
 	})
 
-	metadataAssertEqual(t, object.Metadata().ToJson(), map[string]interface{}{
+	coreAssertEqual(t, object.Metadata().ToJson(), map[string]interface{}{
 		"name":      "name",
 		"namespace": "namespace",
 		"annotations": map[string]interface{}{
@@ -178,7 +162,7 @@ func TestMetadataCanIncludeArbitraryKeyValueOptions(t *testing.T) {
 	// ApiObject contributes its generated name on this public construction path;
 	// it is orthogonal to the arbitrary constructor attributes under test.
 	delete(actual, "name")
-	metadataAssertEqual(t, actual, map[string]interface{}{
+	coreAssertEqual(t, actual, map[string]interface{}{
 		"bar": "baz",
 		"foo": float64(123),
 	})
@@ -198,7 +182,7 @@ func TestMetadataLabelsAreCloned(t *testing.T) {
 		Labels:    &shared,
 	})
 
-	metadataAssertEqual(t, metadata2.ToJson(), map[string]interface{}{
+	coreAssertEqual(t, metadata2.ToJson(), map[string]interface{}{
 		"labels": map[string]interface{}{"foo": "bar"},
 	})
 }
@@ -217,7 +201,7 @@ func TestMetadataAnnotationsAreCloned(t *testing.T) {
 		Annotations: &shared,
 	})
 
-	metadataAssertEqual(t, metadata2.ToJson(), map[string]interface{}{
+	coreAssertEqual(t, metadata2.ToJson(), map[string]interface{}{
 		"annotations": map[string]interface{}{"foo": "bar"},
 	})
 }
@@ -236,7 +220,7 @@ func TestMetadataFinalizersAreCloned(t *testing.T) {
 		Finalizers: &shared,
 	})
 
-	metadataAssertEqual(t, metadata2.ToJson(), map[string]interface{}{
+	coreAssertEqual(t, metadata2.ToJson(), map[string]interface{}{
 		"finalizers": []interface{}{"foo"},
 	})
 }
@@ -265,7 +249,7 @@ func TestMetadataOwnerReferencesAreCloned(t *testing.T) {
 		OwnerReferences: &shared,
 	})
 
-	metadataAssertEqual(t, metadata2.ToJson(), map[string]interface{}{
+	coreAssertEqual(t, metadata2.ToJson(), map[string]interface{}{
 		"ownerReferences": []interface{}{
 			map[string]interface{}{
 				"apiVersion": "v1",

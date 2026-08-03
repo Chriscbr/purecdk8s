@@ -2,9 +2,7 @@ package cdk8s_test
 
 import (
 	"encoding/json"
-	"fmt"
 	"reflect"
-	"strings"
 	"testing"
 
 	cdk8s "github.com/Chriscbr/purecdk8s/cdk8s/v2"
@@ -40,20 +38,6 @@ func utilMetadata(t *testing.T, values map[string]interface{}) map[string]interf
 		metadata.Add(&key, value)
 	}
 	return utilMap(t, metadata.ToJson())
-}
-
-func utilRequirePanicContains(t *testing.T, want string, callback func()) {
-	t.Helper()
-	defer func() {
-		value := recover()
-		if value == nil {
-			t.Fatalf("expected panic containing %q", want)
-		}
-		if got := fmt.Sprint(value); !strings.Contains(got, want) {
-			t.Fatalf("panic = %q, want it to contain %q", got, want)
-		}
-	}()
-	callback()
 }
 
 type utilDummy func()
@@ -133,7 +117,7 @@ func TestUtilSanitizeValueDefaultOptions(t *testing.T) {
 	}
 
 	bad := utilNewObject(t, map[string]interface{}{"bad": utilDummy(func() {})})
-	utilRequirePanicContains(t, "can't render non-simple object of type 'cdk8s_test.utilDummy'", func() {
+	coreRequirePanicContains(t, "can't render non-simple object of type 'cdk8s_test.utilDummy'", func() {
 		bad.ToJson()
 	})
 }

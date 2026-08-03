@@ -2,12 +2,10 @@ package cdk8s_test
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
 	"sort"
-	"strings"
 	"testing"
 
 	cdk8s "github.com/Chriscbr/purecdk8s/cdk8s/v2"
@@ -44,41 +42,6 @@ func chartManifest(apiVersion, kind, name string) map[string]interface{} {
 			"name": name,
 		},
 	}
-}
-
-func chartAssertJSONEqual(t *testing.T, got, want interface{}) {
-	t.Helper()
-	normalize := func(value interface{}) interface{} {
-		data, err := json.Marshal(value)
-		if err != nil {
-			t.Fatalf("marshal value: %v", err)
-		}
-		var result interface{}
-		if err := json.Unmarshal(data, &result); err != nil {
-			t.Fatalf("unmarshal value: %v", err)
-		}
-		return result
-	}
-	gotNormalized, wantNormalized := normalize(got), normalize(want)
-	if !reflect.DeepEqual(gotNormalized, wantNormalized) {
-		gotJSON, _ := json.MarshalIndent(gotNormalized, "", "  ")
-		wantJSON, _ := json.MarshalIndent(wantNormalized, "", "  ")
-		t.Fatalf("value mismatch\n--- got ---\n%s\n--- want ---\n%s", gotJSON, wantJSON)
-	}
-}
-
-func chartRequirePanicContains(t *testing.T, want string, callback func()) {
-	t.Helper()
-	defer func() {
-		panicValue := recover()
-		if panicValue == nil {
-			t.Fatalf("expected panic containing %q", want)
-		}
-		if got := fmt.Sprint(panicValue); !strings.Contains(got, want) {
-			t.Fatalf("panic = %q, want it to contain %q", got, want)
-		}
-	}()
-	callback()
 }
 
 type chartProducer struct{ value interface{} }
@@ -121,7 +84,7 @@ func TestChartEmptyStack(t *testing.T) {
 	app := chartApp(t)
 	chart := cdk8s.NewChart(app, chartString("empty"), nil)
 
-	chartAssertJSONEqual(t, *cdk8s.Testing_Synth(chart), []interface{}{})
+	coreAssertJSONEqual(t, *cdk8s.Testing_Synth(chart), []interface{}{})
 }
 
 // Ported from:
@@ -140,7 +103,7 @@ func TestChartDisablingResourceNameHashesAtChartLevel(t *testing.T) {
 	if got, want := *object2.Name(), "test-resource2"; got != want {
 		t.Fatalf("second name = %q, want %q", got, want)
 	}
-	chartAssertJSONEqual(t, *cdk8s.Testing_Synth(chart), []interface{}{
+	coreAssertJSONEqual(t, *cdk8s.Testing_Synth(chart), []interface{}{
 		chartManifest("v1", "Resource1", "test-resource1"),
 		chartManifest("v1", "Resource3", "test-resource2"),
 	})
@@ -159,7 +122,7 @@ func TestChartResourceNameHashesWorkByDefault(t *testing.T) {
 	if got, want := *object2.Name(), "test-resource2-c8c6bd27"; got != want {
 		t.Fatalf("second name = %q, want %q", got, want)
 	}
-	chartAssertJSONEqual(t, *cdk8s.Testing_Synth(chart), []interface{}{
+	coreAssertJSONEqual(t, *cdk8s.Testing_Synth(chart), []interface{}{
 		chartManifest("v1", "Resource1", "test-resource1-c85cb0fc"),
 		chartManifest("v1", "Resource3", "test-resource2-c8c6bd27"),
 	})
@@ -176,7 +139,7 @@ func TestChartOutputIncludesAllSynthesizedResources(t *testing.T) {
 	chartNewObject(scope, "resource1", "Resource1")
 	chartNewObject(scope, "resource2", "Resource2")
 
-	chartAssertJSONEqual(t, *cdk8s.Testing_Synth(chart), []interface{}{
+	coreAssertJSONEqual(t, *cdk8s.Testing_Synth(chart), []interface{}{
 		chartManifest("v1", "Resource1", "test-resource1-c85cb0fc"),
 		chartManifest("v1", "Resource2", "test-resource2-c8c6bd27"),
 		chartManifest("v1", "Resource3", "test-resource3-c8ccc739"),
@@ -221,7 +184,7 @@ func TestChartTokensAreResolvedDuringSynth(t *testing.T) {
 		"foo":           123,
 		"implicitToken": map[string]interface{}{"foo": "bar"},
 	}
-	chartAssertJSONEqual(t, *cdk8s.Testing_Synth(chart), []interface{}{want})
+	coreAssertJSONEqual(t, *cdk8s.Testing_Synth(chart), []interface{}{want})
 }
 
 // Ported from:
@@ -256,7 +219,7 @@ func TestChartOfFailsWithoutParentChart(t *testing.T) {
 	app := chartApp(t)
 	child := constructs.NewConstruct(app, chartString("MyConstruct"))
 
-	chartRequirePanicContains(t, "cannot find a parent chart (directly or indirectly)", func() {
+	coreRequirePanicContains(t, "cannot find a parent chart (directly or indirectly)", func() {
 		cdk8s.Chart_Of(child)
 	})
 }
@@ -269,7 +232,7 @@ func TestChartToJsonSynthesizesSpecificChart(t *testing.T) {
 	chartNewObject(chart, "obj1", "Kind1")
 	chartNewObject(chart, "obj2", "Kind2")
 
-	chartAssertJSONEqual(t, *chart.ToJson(), []interface{}{
+	coreAssertJSONEqual(t, *chart.ToJson(), []interface{}{
 		chartManifest("v1", "Kind1", "chart-obj1-c80aa35c"),
 		chartManifest("v1", "Kind2", "chart-obj2-c8016fab"),
 	})
@@ -340,7 +303,7 @@ func TestChartToJsonReturnsOrderedList(t *testing.T) {
 	object1.AddDependency(object2)
 	object2.AddDependency(object3)
 
-	chartAssertJSONEqual(t, *chart.ToJson(), []interface{}{
+	coreAssertJSONEqual(t, *chart.ToJson(), []interface{}{
 		object3.ToJson(), object2.ToJson(), object1.ToJson(),
 	})
 }
@@ -355,7 +318,7 @@ func TestChartToJsonIgnoresObjectsFromDifferentChart(t *testing.T) {
 	object2 := chartNewObject(chart2, "obj2", "Kind2")
 	object1.AddDependency(object2)
 
-	chartAssertJSONEqual(t, *chart1.ToJson(), []interface{}{object1.ToJson()})
+	coreAssertJSONEqual(t, *chart1.ToJson(), []interface{}{object1.ToJson()})
 }
 
 // Ported from:
@@ -369,7 +332,7 @@ func TestChartToJsonIgnoresChartObjects(t *testing.T) {
 	object1.AddDependency(object2)
 	chart1.AddDependency(chart2)
 
-	chartAssertJSONEqual(t, *chart1.ToJson(), []interface{}{object1.ToJson()})
+	coreAssertJSONEqual(t, *chart1.ToJson(), []interface{}{object1.ToJson()})
 }
 
 // Ported from:
@@ -381,7 +344,7 @@ func TestChartToJsonOrdersCustomConstructs(t *testing.T) {
 	database := chartNewCustomConstruct(chart, "Database")
 	microService.construct.Node().AddDependency(database.construct)
 
-	chartAssertJSONEqual(t, *chart.ToJson(), []interface{}{
+	coreAssertJSONEqual(t, *chart.ToJson(), []interface{}{
 		database.object.ToJson(), microService.object.ToJson(),
 	})
 }
@@ -395,7 +358,7 @@ func TestChartToJsonOrdersTransitiveCustomConstructs(t *testing.T) {
 	database := chartNewNestedCustomConstruct(chart, "Database")
 	microService.construct.Node().AddDependency(database.construct)
 
-	chartAssertJSONEqual(t, *chart.ToJson(), []interface{}{
+	coreAssertJSONEqual(t, *chart.ToJson(), []interface{}{
 		database.object.ToJson(), microService.object.ToJson(),
 	})
 }
@@ -409,7 +372,7 @@ func TestChartToJsonApiObjectDependsOnCustomConstruct(t *testing.T) {
 	database := chartNewCustomConstruct(chart, "Database")
 	microService.AddDependency(database.construct)
 
-	chartAssertJSONEqual(t, *chart.ToJson(), []interface{}{
+	coreAssertJSONEqual(t, *chart.ToJson(), []interface{}{
 		database.object.ToJson(), microService.ToJson(),
 	})
 }
@@ -423,7 +386,7 @@ func TestChartToJsonConstructDependsOnApiObject(t *testing.T) {
 	microService := chartNewCustomConstruct(chart, "Database")
 	microService.construct.Node().AddDependency(database)
 
-	chartAssertJSONEqual(t, *chart.ToJson(), []interface{}{
+	coreAssertJSONEqual(t, *chart.ToJson(), []interface{}{
 		database.ToJson(), microService.object.ToJson(),
 	})
 }
@@ -437,10 +400,10 @@ func TestChartParentExcludesObjectsFromChildCharts(t *testing.T) {
 	chartNewCustomConstruct(chart, "child1")
 	chartNewCustomConstruct(childChart, "child2")
 
-	chartAssertJSONEqual(t, *chart.ToJson(), []interface{}{
+	coreAssertJSONEqual(t, *chart.ToJson(), []interface{}{
 		chartManifest("v1", "CustomConstruct", "chart1-child1-child1obj-c868628e"),
 	})
-	chartAssertJSONEqual(t, *childChart.ToJson(), []interface{}{
+	coreAssertJSONEqual(t, *childChart.ToJson(), []interface{}{
 		chartManifest("v1", "CustomConstruct", "chart1-chart2-child2-child2obj-c828dca6"),
 	})
 }
@@ -465,7 +428,7 @@ func TestChartConstructMetadataRecordedWhenRequestedByAPI(t *testing.T) {
 	if err := json.Unmarshal(data, &got); err != nil {
 		t.Fatal(err)
 	}
-	chartAssertJSONEqual(t, got, map[string]interface{}{
+	coreAssertJSONEqual(t, got, map[string]interface{}{
 		"version": "1.0.0",
 		"resources": map[string]interface{}{
 			"chart1-obj1-c818e77f": map[string]interface{}{"path": "chart1/obj1"},
@@ -491,7 +454,7 @@ func TestChartConstructMetadataRecordedWhenRequestedByEnvironment(t *testing.T) 
 	if err := json.Unmarshal(data, &got); err != nil {
 		t.Fatal(err)
 	}
-	chartAssertJSONEqual(t, got, map[string]interface{}{
+	coreAssertJSONEqual(t, got, map[string]interface{}{
 		"version": "1.0.0",
 		"resources": map[string]interface{}{
 			"chart1-obj1-c818e77f": map[string]interface{}{"path": "chart1/obj1"},

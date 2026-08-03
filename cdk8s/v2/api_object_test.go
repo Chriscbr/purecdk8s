@@ -3,42 +3,12 @@ package cdk8s_test
 import (
 	"encoding/json"
 	"fmt"
-	"strings"
 	"testing"
 
 	cdk8s "github.com/Chriscbr/purecdk8s/cdk8s/v2"
 	constructs "github.com/Chriscbr/purecdk8s/constructs/v10"
 	"github.com/Chriscbr/purecdk8s/jsii"
 )
-
-func apiObjectAssertEqual(t *testing.T, got, want interface{}) {
-	t.Helper()
-	gotJSON, err := json.MarshalIndent(got, "", "  ")
-	if err != nil {
-		t.Fatalf("marshal actual value: %v", err)
-	}
-	wantJSON, err := json.MarshalIndent(want, "", "  ")
-	if err != nil {
-		t.Fatalf("marshal expected value: %v", err)
-	}
-	if string(gotJSON) != string(wantJSON) {
-		t.Fatalf("value mismatch\n--- got ---\n%s\n--- want ---\n%s", gotJSON, wantJSON)
-	}
-}
-
-func apiObjectRequirePanicContains(t *testing.T, want string, callback func()) {
-	t.Helper()
-	defer func() {
-		panicValue := recover()
-		if panicValue == nil {
-			t.Fatalf("expected panic containing %q", want)
-		}
-		if got := fmt.Sprint(panicValue); !strings.Contains(got, want) {
-			t.Fatalf("panic = %q, want it to contain %q", got, want)
-		}
-	}()
-	callback()
-}
 
 type apiObjectProducer struct{ value interface{} }
 
@@ -137,7 +107,7 @@ func TestApiObjectMinimalConfiguration(t *testing.T) {
 		Kind:       jsii.String("MyResource"),
 	})
 
-	apiObjectAssertEqual(t, *cdk8s.Testing_Synth(chart), []interface{}{
+	coreAssertEqual(t, *cdk8s.Testing_Synth(chart), []interface{}{
 		map[string]interface{}{
 			"apiVersion": "v1",
 			"kind":       "MyResource",
@@ -232,12 +202,12 @@ func TestApiObjectDisableSortEnvironmentVariable(t *testing.T) {
 			"zzz": float64(123),
 		},
 	}
-	apiObjectAssertEqual(t, object.ToJson(), want)
+	coreAssertEqual(t, object.ToJson(), want)
 
 	// Go maps intentionally have no observable insertion order. The portable
 	// assertion is that disabling sorting preserves every manifest value.
 	t.Setenv("CDK8S_DISABLE_SORT", "1")
-	apiObjectAssertEqual(t, object.ToJson(), want)
+	coreAssertEqual(t, object.ToJson(), want)
 }
 
 // Ported from:
@@ -265,7 +235,7 @@ func TestApiObjectSynthesizedResourceNameIsBasedOnPath(t *testing.T) {
 	scope := constructs.NewConstruct(chart, jsii.String("scope"))
 	cdk8s.NewApiObject(scope, jsii.String("my-resource"), &cdk8s.ApiObjectProps{ApiVersion: jsii.String("v1"), Kind: jsii.String("MyResource")})
 
-	apiObjectAssertEqual(t, *cdk8s.Testing_Synth(chart), []interface{}{
+	coreAssertEqual(t, *cdk8s.Testing_Synth(chart), []interface{}{
 		map[string]interface{}{
 			"apiVersion": "v1",
 			"kind":       "MyResource",
@@ -290,7 +260,7 @@ func TestApiObjectExplicitNameIsRespected(t *testing.T) {
 		Metadata:   &cdk8s.ApiObjectMetadata{Name: jsii.String("boom")},
 	})
 
-	apiObjectAssertEqual(t, *cdk8s.Testing_Synth(chart), []interface{}{
+	coreAssertEqual(t, *cdk8s.Testing_Synth(chart), []interface{}{
 		map[string]interface{}{
 			"apiVersion": "v1",
 			"kind":       "MyResource",
@@ -311,7 +281,7 @@ func TestApiObjectSpecIsSynthesizedAsIs(t *testing.T) {
 		},
 	})
 
-	apiObjectAssertEqual(t, *cdk8s.Testing_Synth(chart), []interface{}{
+	coreAssertEqual(t, *cdk8s.Testing_Synth(chart), []interface{}{
 		map[string]interface{}{
 			"apiVersion": "v1",
 			"kind":       "ResourceType",
@@ -333,7 +303,7 @@ func TestApiObjectDataCanSpecifyResourceData(t *testing.T) {
 		"data": map[string]interface{}{"boom": 123},
 	})
 
-	apiObjectAssertEqual(t, *cdk8s.Testing_Synth(chart), []interface{}{
+	coreAssertEqual(t, *cdk8s.Testing_Synth(chart), []interface{}{
 		map[string]interface{}{
 			"apiVersion": "v1",
 			"data":       map[string]interface{}{"boom": float64(123)},
@@ -354,7 +324,7 @@ func TestApiObjectNamingLogicCanBeOverridden(t *testing.T) {
 	if got := *object.Name(); got != "fixed!" {
 		t.Fatalf("object name = %q, want %q", got, "fixed!")
 	}
-	apiObjectAssertEqual(t, *cdk8s.Testing_Synth(chart), []interface{}{
+	coreAssertEqual(t, *cdk8s.Testing_Synth(chart), []interface{}{
 		map[string]interface{}{
 			"apiVersion": "v1",
 			"kind":       "MyKind",
@@ -376,7 +346,7 @@ func TestApiObjectDefaultNamespaceAtChartLevel(t *testing.T) {
 		Metadata:   &cdk8s.ApiObjectMetadata{Namespace: jsii.String("foobar")},
 	})
 
-	apiObjectAssertEqual(t, *cdk8s.Testing_Synth(chart), []interface{}{
+	coreAssertEqual(t, *cdk8s.Testing_Synth(chart), []interface{}{
 		map[string]interface{}{
 			"apiVersion": "v1",
 			"kind":       "Kind1",
@@ -411,7 +381,7 @@ func TestApiObjectChartLabelsAppliedToAllObjects(t *testing.T) {
 		Metadata:   &cdk8s.ApiObjectMetadata{Labels: &objectLabels},
 	})
 
-	apiObjectAssertEqual(t, *cdk8s.Testing_Synth(chart), []interface{}{
+	coreAssertEqual(t, *cdk8s.Testing_Synth(chart), []interface{}{
 		map[string]interface{}{
 			"apiVersion": "v1",
 			"kind":       "Obj1",
@@ -436,7 +406,7 @@ func TestApiObjectChartLabelsAppliedToAllObjects(t *testing.T) {
 func TestApiObjectOfFailsWithoutDefaultChild(t *testing.T) {
 	chart := cdk8s.Testing_Chart()
 	parent := constructs.NewConstruct(chart, jsii.String("hello"))
-	apiObjectRequirePanicContains(t, "cannot find a (direct or indirect) child of type ApiObject", func() {
+	coreRequirePanicContains(t, "cannot find a (direct or indirect) child of type ApiObject", func() {
 		cdk8s.ApiObject_Of(parent)
 	})
 }
@@ -488,7 +458,7 @@ func TestApiObjectJsonPatchAppliedAfterSynthesis(t *testing.T) {
 	object.AddJsonPatch(cdk8s.JsonPatch_Remove(jsii.String("/spec/foo")))
 	object.AddJsonPatch(cdk8s.JsonPatch_Copy(jsii.String("/apiVersion"), jsii.String("/spec/apiVersion")))
 
-	apiObjectAssertEqual(t, *cdk8s.Testing_Synth(chart), []interface{}{
+	coreAssertEqual(t, *cdk8s.Testing_Synth(chart), []interface{}{
 		map[string]interface{}{
 			"apiVersion": "v1",
 			"kind":       "Obj",
@@ -512,7 +482,7 @@ func TestApiObjectCompoundResolution(t *testing.T) {
 		},
 	})
 
-	apiObjectAssertEqual(t, object.ToJson(), map[string]interface{}{
+	coreAssertEqual(t, object.ToJson(), map[string]interface{}{
 		"apiVersion": "v1",
 		"kind":       "Resource1",
 		"metadata":   map[string]interface{}{"name": "test-resource1-c85cb0fc"},
@@ -531,7 +501,7 @@ func TestApiObjectCustomResolver(t *testing.T) {
 		"spec":     map[string]interface{}{"type": "LoadBalancer", "someArray": []interface{}{1, 2}},
 	})
 
-	apiObjectAssertEqual(t, object.ToJson(), map[string]interface{}{
+	coreAssertEqual(t, object.ToJson(), map[string]interface{}{
 		"apiVersion": "newValue",
 		"kind":       "newValue",
 		"metadata":   map[string]interface{}{"foo": "newValue", "name": "newValue"},
@@ -550,7 +520,7 @@ func TestApiObjectMultipleCustomResolvers(t *testing.T) {
 		"spec":     map[string]interface{}{"type": "LoadBalancer", "someArray": []interface{}{1, 2}},
 	})
 
-	apiObjectAssertEqual(t, object.ToJson(), map[string]interface{}{
+	coreAssertEqual(t, object.ToJson(), map[string]interface{}{
 		"apiVersion": "v1",
 		"kind":       "Service",
 		"metadata":   map[string]interface{}{"foo": "bar", "name": "chart-apiobject-c830d7bd"},
@@ -569,7 +539,7 @@ func TestApiObjectAnonymousObjectCustomResolver(t *testing.T) {
 		"spec":     map[string]interface{}{"type": &apiObjectResolvable{}},
 	})
 
-	apiObjectAssertEqual(t, object.ToJson(), map[string]interface{}{
+	coreAssertEqual(t, object.ToJson(), map[string]interface{}{
 		"apiVersion": "v1",
 		"kind":       "Service",
 		"metadata":   map[string]interface{}{"foo": "bar", "name": "chart-apiobject-c830d7bd"},
@@ -583,7 +553,7 @@ func TestApiObjectCanResolveL1(t *testing.T) {
 	chart := cdk8s.Testing_Chart()
 	object := apiObjectNewL1(chart, "L1", &apiObjectIntOrString{value: 500})
 
-	apiObjectAssertEqual(t, object.ToJson(), map[string]interface{}{
+	coreAssertEqual(t, object.ToJson(), map[string]interface{}{
 		"apiVersion": "v1",
 		"kind":       "Kind",
 		"metadata":   map[string]interface{}{"name": "test-l1-c8c430b5"},
@@ -599,7 +569,7 @@ func TestApiObjectToJSONErrorMessage(t *testing.T) {
 		"data": map[string]interface{}{"size": cdk8s.Size_Gibibytes(jsii.Number(5))},
 	})
 	want := fmt.Sprintf("Failed serializing construct at path '%s' with name '%s': Error: can't render non-simple object of type 'Size'", *object.Node().Path(), *object.Name())
-	apiObjectRequirePanicContains(t, want, func() {
+	coreRequirePanicContains(t, want, func() {
 		object.ToJson()
 	})
 }

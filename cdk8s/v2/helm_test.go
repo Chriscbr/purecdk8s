@@ -3,7 +3,6 @@ package cdk8s_test
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -209,41 +208,6 @@ func helmExpectedObjects(release string, replicas int, nodeSelector map[string]i
 	return []interface{}{serviceAccount, service, deployment}
 }
 
-func helmAssertJSONEqual(t *testing.T, got, want interface{}) {
-	t.Helper()
-	normalize := func(value interface{}) interface{} {
-		data, err := json.Marshal(value)
-		if err != nil {
-			t.Fatalf("marshal value: %v", err)
-		}
-		var result interface{}
-		if err := json.Unmarshal(data, &result); err != nil {
-			t.Fatalf("unmarshal value: %v", err)
-		}
-		return result
-	}
-	gotNormalized, wantNormalized := normalize(got), normalize(want)
-	if !reflect.DeepEqual(gotNormalized, wantNormalized) {
-		gotJSON, _ := json.MarshalIndent(gotNormalized, "", "  ")
-		wantJSON, _ := json.MarshalIndent(wantNormalized, "", "  ")
-		t.Fatalf("value mismatch\n--- got ---\n%s\n--- want ---\n%s", gotJSON, wantJSON)
-	}
-}
-
-func helmRequirePanicContains(t *testing.T, want string, callback func()) {
-	t.Helper()
-	defer func() {
-		panicValue := recover()
-		if panicValue == nil {
-			t.Fatalf("expected panic containing %q", want)
-		}
-		if got := fmt.Sprint(panicValue); !strings.Contains(got, want) {
-			t.Fatalf("panic = %q, want it to contain %q", got, want)
-		}
-	}()
-	callback()
-}
-
 // Ported from:
 // https://github.com/cdk8s-team/cdk8s-core/blob/3c496b0cd654efe86628952af0d5e3bf7d4bb182/test/helm.test.ts#L9
 func TestHelmBasicUsage(t *testing.T) {
@@ -258,7 +222,7 @@ func TestHelmBasicUsage(t *testing.T) {
 	if got, expected := *helm.ReleaseName(), "test-sample-c8e2763d"; got != expected {
 		t.Fatalf("release name = %q, want %q", got, expected)
 	}
-	helmAssertJSONEqual(t, *cdk8s.Testing_Synth(chart), want)
+	coreAssertJSONEqual(t, *cdk8s.Testing_Synth(chart), want)
 	wantArgs := []string{"template", "test-sample-c8e2763d", harness.chartPath}
 	if got := helmArgs(t, harness); !reflect.DeepEqual(got, wantArgs) {
 		t.Fatalf("helm arguments = %#v, want %#v", got, wantArgs)
@@ -275,7 +239,7 @@ func TestHelmFailsIfExecutableIsNotFound(t *testing.T) {
 	chartPath := filepath.Join(t.TempDir(), "helm-sample")
 	missingExecutable := filepath.Join(t.TempDir(), "helm-port-does-not-exist")
 
-	helmRequirePanicContains(t, "unable to execute '"+missingExecutable+"' to render Helm chart", func() {
+	coreRequirePanicContains(t, "unable to execute '"+missingExecutable+"' to render Helm chart", func() {
 		cdk8s.NewHelm(chart, helmString("sample"), &cdk8s.HelmProps{
 			Chart:          &chartPath,
 			HelmExecutable: &missingExecutable,
@@ -302,9 +266,9 @@ func TestHelmValuesCanBeSpecified(t *testing.T) {
 		Values: &values,
 	})
 
-	helmAssertJSONEqual(t, *cdk8s.Testing_Synth(chart), want)
+	coreAssertJSONEqual(t, *cdk8s.Testing_Synth(chart), want)
 	loadedValues := cdk8s.Yaml_Load(&harness.valuesLog)
-	helmAssertJSONEqual(t, *loadedValues, []interface{}{values})
+	coreAssertJSONEqual(t, *loadedValues, []interface{}{values})
 	args := helmArgs(t, harness)
 	if len(args) != 5 || args[0] != "template" || args[1] != "-f" || args[3] != "test-sample-c8e2763d" || args[4] != harness.chartPath {
 		t.Fatalf("helm arguments = %#v, want template -f <values> release chart", args)
@@ -339,7 +303,7 @@ func TestHelmReleaseNameCanBeSpecified(t *testing.T) {
 			t.Errorf("resource name %q does not start with your-release-", name)
 		}
 	}
-	helmAssertJSONEqual(t, objects, want)
+	coreAssertJSONEqual(t, objects, want)
 	wantArgs := []string{"template", releaseName, harness.chartPath}
 	if got := helmArgs(t, harness); !reflect.DeepEqual(got, wantArgs) {
 		t.Fatalf("helm arguments = %#v, want %#v", got, wantArgs)
@@ -383,7 +347,7 @@ func TestHelmCanInteractWithAPIObjects(t *testing.T) {
 	}
 	manifest := serviceAccount.ToJson().(map[string]interface{})
 	metadata := manifest["metadata"].(map[string]interface{})
-	helmAssertJSONEqual(t, metadata["annotations"], map[string]interface{}{
+	coreAssertJSONEqual(t, metadata["annotations"], map[string]interface{}{
 		"my.annotation": "hey-there",
 	})
 	wantArgs := []string{"template", "test-sample-c8e2763d", harness.chartPath}
@@ -451,7 +415,7 @@ func TestHelmFlagsSpecifyAdditionalOptions(t *testing.T) {
 	}
 	t.Setenv("HELM_PORT_OUTPUT", limitHarness.output)
 	bufferChart := cdk8s.Testing_Chart()
-	helmRequirePanicContains(t, "stdout maxBuffer length exceeded", func() {
+	coreRequirePanicContains(t, "stdout maxBuffer length exceeded", func() {
 		cdk8s.NewHelm(bufferChart, helmString("sample"), &cdk8s.HelmProps{
 			Chart:     &limitHarness.chartPath,
 			HelmFlags: &flags,
@@ -467,7 +431,7 @@ func TestHelmFlagsSpecifyAdditionalOptions(t *testing.T) {
 	}
 	t.Setenv("HELM_PORT_STDERR_OUTPUT", stderrHarness.output)
 	stderrChart := cdk8s.Testing_Chart()
-	helmRequirePanicContains(t, "stderr maxBuffer length exceeded", func() {
+	coreRequirePanicContains(t, "stderr maxBuffer length exceeded", func() {
 		cdk8s.NewHelm(stderrChart, helmString("sample"), &cdk8s.HelmProps{
 			Chart:     &stderrHarness.chartPath,
 			HelmFlags: &flags,
@@ -515,7 +479,7 @@ func TestHelmPropagatesHelmFailures(t *testing.T) {
 	chart := cdk8s.Testing_Chart()
 	flags := []*string{helmString("--invalid-argument-not-found-boom-boom")}
 
-	helmRequirePanicContains(t, "unknown flag", func() {
+	coreRequirePanicContains(t, "unknown flag", func() {
 		cdk8s.NewHelm(chart, helmString("my-chart"), &cdk8s.HelmProps{
 			Chart:     &harness.chartPath,
 			HelmFlags: &flags,

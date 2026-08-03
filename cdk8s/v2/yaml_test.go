@@ -6,7 +6,6 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
-	"reflect"
 	"runtime"
 	"strings"
 	"testing"
@@ -41,27 +40,6 @@ func yamlReadFile(t *testing.T, path string) string {
 		t.Fatal(err)
 	}
 	return string(data)
-}
-
-func yamlAssertJSONEqual(t *testing.T, got, want interface{}) {
-	t.Helper()
-	normalize := func(value interface{}) interface{} {
-		data, err := json.Marshal(value)
-		if err != nil {
-			t.Fatalf("marshal value: %v", err)
-		}
-		var result interface{}
-		if err := json.Unmarshal(data, &result); err != nil {
-			t.Fatalf("unmarshal value: %v", err)
-		}
-		return result
-	}
-	gotNormalized, wantNormalized := normalize(got), normalize(want)
-	if !reflect.DeepEqual(gotNormalized, wantNormalized) {
-		gotJSON, _ := json.MarshalIndent(gotNormalized, "", "  ")
-		wantJSON, _ := json.MarshalIndent(wantNormalized, "", "  ")
-		t.Fatalf("value mismatch\n--- got ---\n%s\n--- want ---\n%s", gotJSON, wantJSON)
-	}
 }
 
 func yamlGuestbookDocuments(t *testing.T) []interface{} {
@@ -112,7 +90,7 @@ foo:
 		map[string]interface{}{"foo": []interface{}{"bar", "zoo", "goo"}},
 		[]interface{}{"hello", "world"},
 	}
-	yamlAssertJSONEqual(t, *cdk8s.Yaml_Load(&path), want)
+	coreAssertJSONEqual(t, *cdk8s.Yaml_Load(&path), want)
 }
 
 // Ported from:
@@ -121,7 +99,7 @@ func TestYamlLoadFromURL(t *testing.T) {
 	server := yamlGuestbookServer(t)
 	want := yamlGuestbookDocuments(t)
 
-	yamlAssertJSONEqual(t, *cdk8s.Yaml_Load(yamlString(server.URL)), want)
+	coreAssertJSONEqual(t, *cdk8s.Yaml_Load(yamlString(server.URL)), want)
 }
 
 // Ported from:
@@ -146,7 +124,7 @@ func TestYamlLoadFiltersEmptyDocuments(t *testing.T) {
 		0,
 		map[string]interface{}{"doc": 2},
 	}
-	yamlAssertJSONEqual(t, *cdk8s.Yaml_Load(&path), want)
+	coreAssertJSONEqual(t, *cdk8s.Yaml_Load(&path), want)
 }
 
 // Ported from:
@@ -251,7 +229,7 @@ func TestYamlEscapedCharacterDoesNotCrossLineBoundaries(t *testing.T) {
 func TestYAML11OctalNumbersParsedCorrectly(t *testing.T) {
 	path := yamlWriteFile(t, "foo: 0755")
 
-	yamlAssertJSONEqual(t, *cdk8s.Yaml_Load(&path), []interface{}{
+	coreAssertJSONEqual(t, *cdk8s.Yaml_Load(&path), []interface{}{
 		map[string]interface{}{"foo": 493},
 	})
 }
