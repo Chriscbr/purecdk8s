@@ -514,7 +514,7 @@ func initializeApiObject(result *apiObjectImpl, host ApiObject, scope constructs
 			rawMetadata[key] = value
 		}
 	}
-	if explicit, ok := rawMetadata["name"].(string); ok {
+	if explicit, ok := metadataString(rawMetadata["name"]); ok {
 		result.name = explicit
 	} else if props.Metadata != nil && props.Metadata.Name != nil {
 		result.name = *props.Metadata.Name
@@ -528,7 +528,7 @@ func initializeApiObject(result *apiObjectImpl, host ApiObject, scope constructs
 	// defaults.
 	effectiveMetadata := cloneStringMap(rawMetadata)
 	effectiveMetadata["name"] = result.name
-	if _, explicitNamespace := rawMetadata["namespace"].(string); !explicitNamespace {
+	if _, explicitNamespace := metadataString(rawMetadata["namespace"]); !explicitNamespace {
 		if namespace := result.chart.Namespace(); namespace != nil {
 			effectiveMetadata["namespace"] = *namespace
 		}
@@ -537,7 +537,7 @@ func initializeApiObject(result *apiObjectImpl, host ApiObject, scope constructs
 	for key, item := range *result.chart.Labels() {
 		labels[key] = item
 	}
-	if manifestLabels, ok := rawMetadata["labels"].(map[string]interface{}); ok {
+	if manifestLabels := shallowObjectMap(rawMetadata["labels"]); manifestLabels != nil {
 		for key, item := range manifestLabels {
 			labels[key] = item
 		}
@@ -604,16 +604,28 @@ func (a *apiObjectImpl) AddJsonPatch(operations ...JsonPatch) {
 func (a *apiObjectImpl) ToJson() interface{} {
 	defer func() {
 		if recovered := recover(); recovered != nil {
+			detail := fmt.Sprint(recovered)
+			if _, ok := recovered.(error); ok {
+				detail = "Error: " + detail
+			}
 			panic(fmt.Sprintf(
-				"Failed serializing construct at path '%s' with name '%s': %v",
-				stringValue(a.Node().Path()), a.name, recovered,
+				"Failed serializing construct at path '%s' with name '%s': %s",
+				stringValue(a.Node().Path()), a.name, detail,
 			))
 		}
 	}()
-	data := plainMap(resolveValue(a.manifest, a))
+	data := shallowObjectMap(a.manifest)
+	if data == nil {
+		data = make(map[string]interface{})
+	}
 	data["apiVersion"] = a.apiVersion
 	data["kind"] = a.kind
 	data["metadata"] = a.metadata.ToJson()
+	resolved, ok := resolveValue(data, a).(map[string]interface{})
+	if !ok {
+		panic("resolved API object is not a dictionary")
+	}
+	data = resolved
 	result := sanitizeMap(data, false)
 	if len(a.patches) > 0 {
 		patched := JsonPatch_Apply(result, a.patches...)
@@ -721,26 +733,26 @@ func newMetadataDefinition(object ApiObject, raw map[string]interface{}) *metada
 		annotations: make(map[string]interface{}),
 		additional:  cloneStringMap(raw),
 	}
-	if name, ok := raw["name"].(string); ok {
+	if name, ok := metadataString(raw["name"]); ok {
 		result.name = &name
 	}
-	if namespace, ok := raw["namespace"].(string); ok {
+	if namespace, ok := metadataString(raw["namespace"]); ok {
 		result.namespace = &namespace
 	}
-	if labels, ok := raw["labels"].(map[string]interface{}); ok {
+	if labels := shallowObjectMap(raw["labels"]); labels != nil {
 		for key, item := range labels {
 			result.labels[key] = item
 		}
 	}
-	if annotations, ok := raw["annotations"].(map[string]interface{}); ok {
+	if annotations := shallowObjectMap(raw["annotations"]); annotations != nil {
 		for key, item := range annotations {
 			result.annotations[key] = item
 		}
 	}
-	if finalizers, ok := raw["finalizers"].([]interface{}); ok {
+	if finalizers := shallowSlice(raw["finalizers"]); finalizers != nil {
 		result.finalizers = append(result.finalizers, finalizers...)
 	}
-	if owners, ok := raw["ownerReferences"].([]interface{}); ok {
+	if owners := shallowSlice(raw["ownerReferences"]); owners != nil {
 		result.ownerReferences = append(result.ownerReferences, owners...)
 	}
 	for _, key := range []string{"name", "namespace", "labels", "annotations", "finalizers", "ownerReferences", "apiObject"} {
@@ -771,7 +783,7 @@ func (m *metadataDefinition) AddAnnotation(key *string, value *string) {
 	if key == nil || value == nil {
 		panic("key and value are required")
 	}
-	m.annotations[*key] = value
+	m.annotations[*key] = *value
 }
 
 func (m *metadataDefinition) AddFinalizers(finalizers ...*string) {
@@ -779,7 +791,7 @@ func (m *metadataDefinition) AddFinalizers(finalizers ...*string) {
 		if finalizer == nil {
 			panic("parameter finalizers is required, but nil was provided")
 		}
-		m.finalizers = append(m.finalizers, finalizer)
+		m.finalizers = append(m.finalizers, *finalizer)
 	}
 }
 
@@ -787,7 +799,7 @@ func (m *metadataDefinition) AddLabel(key *string, value *string) {
 	if key == nil || value == nil {
 		panic("key and value are required")
 	}
-	m.labels[*key] = value
+	m.labels[*key] = *value
 }
 
 func (m *metadataDefinition) AddOwnerReference(owner *OwnerReference) {
@@ -825,7 +837,10 @@ func (m *metadataDefinition) ToJson() interface{} {
 	data["finalizers"] = m.finalizers
 	data["ownerReferences"] = m.ownerReferences
 	data["labels"] = m.labels
-	resolved := plainMap(resolveValueAt(appendResolutionKey(nil, "metadata"), data, m.object))
+	resolved, ok := resolveValueAt(appendResolutionKey(nil, "metadata"), data, m.object).(map[string]interface{})
+	if !ok {
+		panic("resolved metadata is not a dictionary")
+	}
 	return sanitizeMap(resolved, true)
 }
 
@@ -983,10 +998,25 @@ func plainMap(value interface{}) map[string]interface{} {
 }
 
 func manifestMetadata(manifest interface{}) map[string]interface{} {
-	if manifest == nil {
+	values := shallowObjectMap(manifest)
+	if values == nil {
 		return nil
 	}
-	value := reflect.ValueOf(manifest)
+	metadata, found := values["metadata"]
+	if !found {
+		return nil
+	}
+	return shallowObjectMap(metadata)
+}
+
+// shallowObjectMap converts only the outer object layer. Unlike plainMap, it
+// deliberately retains nested lazy values, implicit tokens, and value objects
+// so the resolver chain and sanitizer can observe them during synthesis.
+func shallowObjectMap(input interface{}) map[string]interface{} {
+	if input == nil {
+		return nil
+	}
+	value := reflect.ValueOf(input)
 	for value.IsValid() && (value.Kind() == reflect.Interface || value.Kind() == reflect.Pointer) {
 		if value.IsNil() {
 			return nil
@@ -996,39 +1026,99 @@ func manifestMetadata(manifest interface{}) map[string]interface{} {
 	if !value.IsValid() {
 		return nil
 	}
+
+	result := make(map[string]interface{})
 	switch value.Kind() {
 	case reflect.Map:
 		iterator := value.MapRange()
 		for iterator.Next() {
-			if fmt.Sprint(plainValue(iterator.Key().Interface())) == "metadata" {
-				return plainMap(iterator.Value().Interface())
+			key := fmt.Sprint(plainValue(iterator.Key().Interface()))
+			item := iterator.Value()
+			if item.IsValid() && item.CanInterface() {
+				result[key] = item.Interface()
+			} else {
+				result[key] = nil
 			}
 		}
 	case reflect.Struct:
 		typ := value.Type()
 		for index := 0; index < value.NumField(); index++ {
 			field := typ.Field(index)
-			name := field.Tag.Get("k8s")
-			if name == "" {
-				name = strings.Split(field.Tag.Get("json"), ",")[0]
-			}
-			if name == "" {
-				name = strings.Split(field.Tag.Get("yaml"), ",")[0]
-			}
-			if name == "" {
-				name = lowerFirst(field.Name)
-			}
-			if name != "metadata" {
+			if field.PkgPath != "" {
 				continue
 			}
 			fieldValue := value.Field(index)
-			if !fieldValue.IsValid() || !fieldValue.CanInterface() {
-				return nil
+			if field.Tag.Get("field") == "optional" && fieldValue.IsZero() {
+				continue
 			}
-			return plainMap(fieldValue.Interface())
+			name := serializedFieldName(field)
+			if name == "-" {
+				continue
+			}
+			if fieldValue.IsValid() && fieldValue.CanInterface() {
+				result[name] = fieldValue.Interface()
+			} else {
+				result[name] = nil
+			}
+		}
+	default:
+		return nil
+	}
+	return result
+}
+
+func shallowSlice(input interface{}) []interface{} {
+	if input == nil {
+		return nil
+	}
+	value := reflect.ValueOf(input)
+	for value.IsValid() && (value.Kind() == reflect.Interface || value.Kind() == reflect.Pointer) {
+		if value.IsNil() {
+			return nil
+		}
+		value = value.Elem()
+	}
+	if !value.IsValid() || (value.Kind() != reflect.Slice && value.Kind() != reflect.Array) {
+		return nil
+	}
+	result := make([]interface{}, value.Len())
+	for index := 0; index < value.Len(); index++ {
+		if item := value.Index(index); item.IsValid() && item.CanInterface() {
+			result[index] = item.Interface()
 		}
 	}
-	return nil
+	return result
+}
+
+func metadataString(input interface{}) (string, bool) {
+	if input == nil {
+		return "", false
+	}
+	value := reflect.ValueOf(input)
+	for value.IsValid() && (value.Kind() == reflect.Interface || value.Kind() == reflect.Pointer) {
+		if value.IsNil() {
+			return "", false
+		}
+		value = value.Elem()
+	}
+	if !value.IsValid() || value.Kind() != reflect.String {
+		return "", false
+	}
+	return value.String(), true
+}
+
+func serializedFieldName(field reflect.StructField) string {
+	name := field.Tag.Get("k8s")
+	if name == "" {
+		name = strings.Split(field.Tag.Get("json"), ",")[0]
+	}
+	if name == "" {
+		name = strings.Split(field.Tag.Get("yaml"), ",")[0]
+	}
+	if name == "" {
+		name = lowerFirst(field.Name)
+	}
+	return name
 }
 
 func plainValue(input interface{}) interface{} {
@@ -1181,8 +1271,27 @@ func sanitizeValue(input interface{}, filterEmpty bool) (interface{}, bool) {
 		}
 		return result, true
 	default:
-		return value, true
+		kind := reflect.TypeOf(value).Kind()
+		switch kind {
+		case reflect.Chan, reflect.Complex64, reflect.Complex128, reflect.Func,
+			reflect.Pointer, reflect.Struct, reflect.UnsafePointer:
+			panic(fmt.Errorf("can't render non-simple object of type '%s'", nonSimpleObjectType(value)))
+		default:
+			return value, true
+		}
 	}
+}
+
+func nonSimpleObjectType(value interface{}) string {
+	switch value.(type) {
+	case Cron:
+		return "Cron"
+	case Duration:
+		return "Duration"
+	case Size:
+		return "Size"
+	}
+	return reflect.TypeOf(value).String()
 }
 
 func cloneStringMap(input map[string]interface{}) map[string]interface{} {

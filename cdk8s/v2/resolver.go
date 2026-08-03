@@ -299,7 +299,11 @@ func resolveValueAt(key []*string, value interface{}, obj ApiObject) interface{}
 		panic("cdk8s: cannot resolve a value without an ApiObject")
 	}
 
-	context := newResolutionContext(obj, key, value)
+	resolverValue := resolverScalarValue(value)
+	if resolverValue == nil {
+		return nil
+	}
+	context := newResolutionContext(obj, key, resolverValue)
 	resolvers := App_Of(obj).Resolvers()
 	if resolvers != nil {
 		for _, resolver := range *resolvers {
@@ -312,12 +316,18 @@ func resolveValueAt(key []*string, value interface{}, obj ApiObject) interface{}
 			}
 		}
 	}
-	return resolveNestedValue(key, value, obj)
+	return resolveNestedValue(key, resolverValue, obj)
 }
 
 func resolveNestedValue(key []*string, input interface{}, obj ApiObject) interface{} {
 	if _, omitted := input.(undefinedLazyValue); omitted {
 		return nil
+	}
+	// Value objects are classes rather than plain dictionaries upstream. Keep
+	// them intact so sanitizeValue can reject unresolved instances instead of
+	// silently turning their private Go representation into an empty object.
+	if isCDK8sValueObject(input) {
+		return input
 	}
 	value := reflect.ValueOf(input)
 	for value.Kind() == reflect.Interface || value.Kind() == reflect.Pointer {
@@ -414,6 +424,41 @@ func resolveNestedValue(key []*string, input interface{}, obj ApiObject) interfa
 		if value.CanInterface() {
 			return value.Interface()
 		}
+		return input
+	}
+}
+
+func isCDK8sValueObject(value interface{}) bool {
+	switch value.(type) {
+	case Cron, Duration, Size:
+		return true
+	default:
+		return false
+	}
+}
+
+// JSII represents primitive properties as pointers in Go, while resolvers in
+// the source implementation receive the logical JavaScript primitive. Unwrap
+// only primitive pointers; object pointers must retain their concrete identity
+// so custom resolvers can recognize them.
+func resolverScalarValue(input interface{}) interface{} {
+	value := reflect.ValueOf(input)
+	if !value.IsValid() || value.Kind() != reflect.Pointer {
+		return input
+	}
+	for value.Kind() == reflect.Pointer || value.Kind() == reflect.Interface {
+		if value.IsNil() {
+			return nil
+		}
+		value = value.Elem()
+	}
+	switch value.Kind() {
+	case reflect.Bool, reflect.String,
+		reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
+		reflect.Float32, reflect.Float64:
+		return plainValue(input)
+	default:
 		return input
 	}
 }

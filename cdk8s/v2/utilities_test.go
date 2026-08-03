@@ -192,6 +192,7 @@ func TestYAMLParity(t *testing.T) {
   - 1
   - "2"
 date: "2020-01-01"
+nil: null
 "yes": "yes"
 ---
 
