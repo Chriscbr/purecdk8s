@@ -29,57 +29,27 @@ func NewCron_Override(cron Cron, cronOptions *CronOptions) {
 
 // Create a cron schedule which runs first day of January every year.
 func Cron_Annually() Cron {
-	return Cron_Schedule(&CronOptions{
-		Minute:  cronString("0"),
-		Hour:    cronString("0"),
-		Day:     cronString("1"),
-		Month:   cronString("1"),
-		WeekDay: cronString("*"),
-	})
+	return cronSchedule("0", "0", "1", "1", "*")
 }
 
 // Create a cron schedule which runs every day at midnight.
 func Cron_Daily() Cron {
-	return Cron_Schedule(&CronOptions{
-		Minute:  cronString("0"),
-		Hour:    cronString("0"),
-		Day:     cronString("*"),
-		Month:   cronString("*"),
-		WeekDay: cronString("*"),
-	})
+	return cronSchedule("0", "0", "*", "*", "*")
 }
 
 // Create a cron schedule which runs every minute.
 func Cron_EveryMinute() Cron {
-	return Cron_Schedule(&CronOptions{
-		Minute:  cronString("*"),
-		Hour:    cronString("*"),
-		Day:     cronString("*"),
-		Month:   cronString("*"),
-		WeekDay: cronString("*"),
-	})
+	return cronSchedule("*", "*", "*", "*", "*")
 }
 
 // Create a cron schedule which runs every hour.
 func Cron_Hourly() Cron {
-	return Cron_Schedule(&CronOptions{
-		Minute:  cronString("0"),
-		Hour:    cronString("*"),
-		Day:     cronString("*"),
-		Month:   cronString("*"),
-		WeekDay: cronString("*"),
-	})
+	return cronSchedule("0", "*", "*", "*", "*")
 }
 
 // Create a cron schedule which runs first day of every month.
 func Cron_Monthly() Cron {
-	return Cron_Schedule(&CronOptions{
-		Minute:  cronString("0"),
-		Hour:    cronString("0"),
-		Day:     cronString("1"),
-		Month:   cronString("*"),
-		WeekDay: cronString("*"),
-	})
+	return cronSchedule("0", "0", "1", "*", "*")
 }
 
 // Create a custom cron schedule from a set of cron fields.
@@ -92,12 +62,16 @@ func Cron_Schedule(options *CronOptions) Cron {
 
 // Create a cron schedule which runs every week on Sunday.
 func Cron_Weekly() Cron {
+	return cronSchedule("0", "0", "*", "*", "0")
+}
+
+func cronSchedule(minute, hour, day, month, weekDay string) Cron {
 	return Cron_Schedule(&CronOptions{
-		Minute:  cronString("0"),
-		Hour:    cronString("0"),
-		Day:     cronString("*"),
-		Month:   cronString("*"),
-		WeekDay: cronString("0"),
+		Minute:  cronString(minute),
+		Hour:    cronString(hour),
+		Day:     cronString(day),
+		Month:   cronString(month),
+		WeekDay: cronString(weekDay),
 	})
 }
 
