@@ -62,51 +62,40 @@ type Group interface {
 	Name() *string
 }
 
-type groupImpl struct {
-	node constructs.Node
+type namedSubject struct {
+	constructBase
+	kind string
 	name *string
 }
 
-func (g *groupImpl) Node() constructs.Node {
-	return g.node
-}
-
-func (g *groupImpl) SetNodeInternal(node constructs.Node) {
-	g.node = node
-}
-
-func (g *groupImpl) ToString() *string {
-	return g.node.Path()
-}
-
-func (g *groupImpl) With(mixins ...constructs.IMixin) constructs.IConstruct {
-	return g.node.With(mixins...)
-}
-
-func (g *groupImpl) ApiGroup() *string {
+func (s *namedSubject) ApiGroup() *string {
 	return jsii.String("rbac.authorization.k8s.io")
 }
 
-func (g *groupImpl) Kind() *string {
-	return jsii.String("Group")
+func (s *namedSubject) Kind() *string {
+	return jsii.String(s.kind)
 }
 
-func (g *groupImpl) Name() *string {
-	return g.name
+func (s *namedSubject) Name() *string {
+	return s.name
 }
 
-func (g *groupImpl) ToSubjectConfiguration() *SubjectConfiguration {
-	return &SubjectConfiguration{ApiGroup: g.ApiGroup(), Kind: g.Kind(), Name: g.Name()}
+func (s *namedSubject) ToSubjectConfiguration() *SubjectConfiguration {
+	return &SubjectConfiguration{ApiGroup: s.ApiGroup(), Kind: s.Kind(), Name: s.Name()}
+}
+
+func newNamedSubject(scope constructs.Construct, id, name *string, kind string) *namedSubject {
+	if scope == nil || id == nil || name == nil {
+		panic("scope, id and name are required")
+	}
+	result := &namedSubject{kind: kind, name: name}
+	constructs.NewConstruct_Override(result, scope, id)
+	return result
 }
 
 // Reference a group by name.
 func Group_FromName(scope constructs.Construct, id, name *string) Group {
-	if scope == nil || id == nil || name == nil {
-		panic("scope, id and name are required")
-	}
-	result := &groupImpl{name: name}
-	constructs.NewConstruct_Override(result, scope, id)
-	return result
+	return newNamedSubject(scope, id, name, "Group")
 }
 
 // Checks if `x` is a construct.

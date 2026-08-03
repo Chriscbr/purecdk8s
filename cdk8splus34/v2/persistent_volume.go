@@ -464,48 +464,7 @@ func (p *persistentVolumeClaimImpl) toManifest() map[string]interface{} {
 }
 
 type importedPersistentVolume struct {
-	node constructs.Node
-	name *string
-}
-
-func (p *importedPersistentVolume) Node() constructs.Node {
-	return p.node
-}
-
-func (p *importedPersistentVolume) SetNodeInternal(node constructs.Node) {
-	p.node = node
-}
-
-func (p *importedPersistentVolume) ToString() *string {
-	return p.node.Path()
-}
-
-func (p *importedPersistentVolume) With(m ...constructs.IMixin) constructs.IConstruct {
-	return p.node.With(m...)
-}
-
-func (p *importedPersistentVolume) ApiVersion() *string {
-	return jsii.String("v1")
-}
-
-func (p *importedPersistentVolume) ApiGroup() *string {
-	return jsii.String("")
-}
-
-func (p *importedPersistentVolume) Kind() *string {
-	return jsii.String("PersistentVolume")
-}
-
-func (p *importedPersistentVolume) Name() *string {
-	return p.name
-}
-
-func (p *importedPersistentVolume) ResourceName() *string {
-	return p.name
-}
-
-func (p *importedPersistentVolume) ResourceType() *string {
-	return jsii.String("persistentvolumes")
+	importedResourceBase
 }
 
 // Imports a pv from the cluster as a reference.
@@ -513,54 +472,13 @@ func PersistentVolume_FromPersistentVolumeName(scope constructs.Construct, id, n
 	if scope == nil || id == nil || name == nil {
 		panic("scope, id and volumeName are required")
 	}
-	result := &importedPersistentVolume{name: name}
+	result := &importedPersistentVolume{importedResourceBase: newImportedResourceBase(name, "v1", "", "PersistentVolume", "persistentvolumes")}
 	constructs.NewConstruct_Override(result, scope, id)
 	return result
 }
 
 type importedPersistentVolumeClaim struct {
-	node constructs.Node
-	name *string
-}
-
-func (p *importedPersistentVolumeClaim) Node() constructs.Node {
-	return p.node
-}
-
-func (p *importedPersistentVolumeClaim) SetNodeInternal(node constructs.Node) {
-	p.node = node
-}
-
-func (p *importedPersistentVolumeClaim) ToString() *string {
-	return p.node.Path()
-}
-
-func (p *importedPersistentVolumeClaim) With(m ...constructs.IMixin) constructs.IConstruct {
-	return p.node.With(m...)
-}
-
-func (p *importedPersistentVolumeClaim) ApiVersion() *string {
-	return jsii.String("v1")
-}
-
-func (p *importedPersistentVolumeClaim) ApiGroup() *string {
-	return jsii.String("")
-}
-
-func (p *importedPersistentVolumeClaim) Kind() *string {
-	return jsii.String("PersistentVolumeClaim")
-}
-
-func (p *importedPersistentVolumeClaim) Name() *string {
-	return p.name
-}
-
-func (p *importedPersistentVolumeClaim) ResourceName() *string {
-	return p.name
-}
-
-func (p *importedPersistentVolumeClaim) ResourceType() *string {
-	return jsii.String("persistentvolumeclaims")
+	importedResourceBase
 }
 
 // Imports a pvc from the cluster as a reference.
@@ -568,7 +486,7 @@ func PersistentVolumeClaim_FromClaimName(scope constructs.Construct, id, name *s
 	if scope == nil || id == nil || name == nil {
 		panic("scope, id and claimName are required")
 	}
-	result := &importedPersistentVolumeClaim{name: name}
+	result := &importedPersistentVolumeClaim{importedResourceBase: newImportedResourceBase(name, "v1", "", "PersistentVolumeClaim", "persistentvolumeclaims")}
 	constructs.NewConstruct_Override(result, scope, id)
 	return result
 }

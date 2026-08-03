@@ -95,7 +95,7 @@ func ServiceAccount_FromServiceAccountName(scope constructs.Construct, id, name 
 	if scope == nil || id == nil || name == nil {
 		panic("scope, id and name are required")
 	}
-	result := &importedServiceAccount{name: name}
+	result := &importedServiceAccount{importedResourceBase: newImportedResourceBase(name, "v1", "", "ServiceAccount", "serviceaccounts")}
 	if options != nil {
 		result.namespace = options.NamespaceName
 	}
@@ -109,49 +109,8 @@ type FromServiceAccountNameOptions struct {
 }
 
 type importedServiceAccount struct {
-	node      constructs.Node
-	name      *string
+	importedResourceBase
 	namespace *string
-}
-
-func (s *importedServiceAccount) Node() constructs.Node {
-	return s.node
-}
-
-func (s *importedServiceAccount) SetNodeInternal(node constructs.Node) {
-	s.node = node
-}
-
-func (s *importedServiceAccount) ToString() *string {
-	return s.node.Path()
-}
-
-func (s *importedServiceAccount) With(mixins ...constructs.IMixin) constructs.IConstruct {
-	return s.node.With(mixins...)
-}
-
-func (s *importedServiceAccount) ApiVersion() *string {
-	return jsii.String("v1")
-}
-
-func (s *importedServiceAccount) ApiGroup() *string {
-	return jsii.String("")
-}
-
-func (s *importedServiceAccount) Kind() *string {
-	return jsii.String("ServiceAccount")
-}
-
-func (s *importedServiceAccount) Name() *string {
-	return s.name
-}
-
-func (s *importedServiceAccount) ResourceName() *string {
-	return s.name
-}
-
-func (s *importedServiceAccount) ResourceType() *string {
-	return jsii.String("serviceaccounts")
 }
 
 func (s *importedServiceAccount) ToSubjectConfiguration() *SubjectConfiguration {

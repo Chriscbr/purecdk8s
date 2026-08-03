@@ -254,25 +254,9 @@ type Volume interface {
 }
 
 type volumeImpl struct {
-	node constructs.Node
+	constructBase
 	name *string
 	spec map[string]interface{}
-}
-
-func (v *volumeImpl) Node() constructs.Node {
-	return v.node
-}
-
-func (v *volumeImpl) SetNodeInternal(node constructs.Node) {
-	v.node = node
-}
-
-func (v *volumeImpl) ToString() *string {
-	return v.node.Path()
-}
-
-func (v *volumeImpl) With(mixins ...constructs.IMixin) constructs.IConstruct {
-	return v.node.With(mixins...)
 }
 
 func (v *volumeImpl) Name() *string {

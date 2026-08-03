@@ -439,56 +439,14 @@ func synthesizeClusterRoleRules(rules []*ClusterRolePolicyRule) []interface{} {
 }
 
 type importedRole struct {
-	node               constructs.Node
-	name               *string
-	kind, resourceType string
-}
-
-func (i *importedRole) Node() constructs.Node {
-	return i.node
-}
-
-func (i *importedRole) SetNodeInternal(node constructs.Node) {
-	i.node = node
-}
-
-func (i *importedRole) ToString() *string {
-	return i.node.Path()
-}
-
-func (i *importedRole) With(m ...constructs.IMixin) constructs.IConstruct {
-	return i.node.With(m...)
-}
-
-func (i *importedRole) ApiVersion() *string {
-	return jsii.String("rbac.authorization.k8s.io/v1")
-}
-
-func (i *importedRole) ApiGroup() *string {
-	return jsii.String("rbac.authorization.k8s.io")
-}
-
-func (i *importedRole) Kind() *string {
-	return jsii.String(i.kind)
-}
-
-func (i *importedRole) Name() *string {
-	return i.name
-}
-
-func (i *importedRole) ResourceName() *string {
-	return i.name
-}
-
-func (i *importedRole) ResourceType() *string {
-	return jsii.String(i.resourceType)
+	importedResourceBase
 }
 
 func newImportedRole(scope constructs.Construct, id, name *string, kind, resourceType string) *importedRole {
 	if scope == nil || id == nil || name == nil {
 		panic("scope, id and name are required")
 	}
-	result := &importedRole{name: name, kind: kind, resourceType: resourceType}
+	result := &importedRole{importedResourceBase: newImportedResourceBase(name, "rbac.authorization.k8s.io/v1", "rbac.authorization.k8s.io", kind, resourceType)}
 	constructs.NewConstruct_Override(result, scope, id)
 	return result
 }

@@ -89,34 +89,63 @@ type ResourcePermissions interface {
 	GrantReadWrite(subjects ...ISubject) RoleBinding
 }
 
+type constructBase struct {
+	node constructs.Node
+}
+
+func (c *constructBase) Node() constructs.Node {
+	return c.node
+}
+
+// SetNodeInternal lets constructs initialize native subclasses without a JSII
+// subclass proxy.
+func (c *constructBase) SetNodeInternal(node constructs.Node) {
+	c.node = node
+}
+
+func (c *constructBase) ToString() *string {
+	if c.node == nil {
+		return jsii.String("<root>")
+	}
+	return c.node.Path()
+}
+
+func (c *constructBase) With(mixins ...constructs.IMixin) constructs.IConstruct {
+	return c.node.With(mixins...)
+}
+
+type importedResourceBase struct {
+	constructBase
+	apiVersion, apiGroup, kind, resourceType string
+	name                                     *string
+}
+
+func newImportedResourceBase(name *string, apiVersion, apiGroup, kind, resourceType string) importedResourceBase {
+	return importedResourceBase{
+		apiVersion:   apiVersion,
+		apiGroup:     apiGroup,
+		kind:         kind,
+		name:         name,
+		resourceType: resourceType,
+	}
+}
+
+func (r *importedResourceBase) ApiVersion() *string { return jsii.String(r.apiVersion) }
+func (r *importedResourceBase) ApiGroup() *string   { return jsii.String(r.apiGroup) }
+func (r *importedResourceBase) Kind() *string       { return jsii.String(r.kind) }
+func (r *importedResourceBase) Name() *string       { return r.name }
+func (r *importedResourceBase) ResourceName() *string {
+	return r.name
+}
+func (r *importedResourceBase) ResourceType() *string { return jsii.String(r.resourceType) }
+
 type resourceBase struct {
-	node         constructs.Node
+	constructBase
 	apiObject    cdk8s.ApiObject
 	resourceType string
 	resource     IResource
 	manifest     map[string]interface{}
 	permissions  ResourcePermissions
-}
-
-func (r *resourceBase) Node() constructs.Node {
-	return r.node
-}
-
-// SetNodeInternal lets constructs initialize native subclasses without a JSII
-// subclass proxy.
-func (r *resourceBase) SetNodeInternal(node constructs.Node) {
-	r.node = node
-}
-
-func (r *resourceBase) ToString() *string {
-	if r.node == nil {
-		return jsii.String("<root>")
-	}
-	return r.node.Path()
-}
-
-func (r *resourceBase) With(mixins ...constructs.IMixin) constructs.IConstruct {
-	return r.node.With(mixins...)
 }
 
 func (r *resourceBase) initialize(host constructs.Construct, scope constructs.Construct, id *string, apiVersion, kind, resourceType string, metadata *cdk8s.ApiObjectMetadata, manifest map[string]interface{}) {

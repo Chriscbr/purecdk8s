@@ -127,25 +127,9 @@ type NetworkPolicyIpBlock interface {
 }
 
 type networkPolicyIpBlockImpl struct {
-	node   constructs.Node
+	constructBase
 	cidr   *string
 	except []*string
-}
-
-func (n *networkPolicyIpBlockImpl) Node() constructs.Node {
-	return n.node
-}
-
-func (n *networkPolicyIpBlockImpl) SetNodeInternal(node constructs.Node) {
-	n.node = node
-}
-
-func (n *networkPolicyIpBlockImpl) ToString() *string {
-	return n.node.Path()
-}
-
-func (n *networkPolicyIpBlockImpl) With(mixins ...constructs.IMixin) constructs.IConstruct {
-	return n.node.With(mixins...)
 }
 
 func (n *networkPolicyIpBlockImpl) Cidr() *string {

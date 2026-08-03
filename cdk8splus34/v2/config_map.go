@@ -79,48 +79,7 @@ type configMapImpl struct {
 }
 
 type importedConfigMap struct {
-	node constructs.Node
-	name *string
-}
-
-func (c *importedConfigMap) Node() constructs.Node {
-	return c.node
-}
-
-func (c *importedConfigMap) SetNodeInternal(node constructs.Node) {
-	c.node = node
-}
-
-func (c *importedConfigMap) ToString() *string {
-	return c.node.Path()
-}
-
-func (c *importedConfigMap) With(mixins ...constructs.IMixin) constructs.IConstruct {
-	return c.node.With(mixins...)
-}
-
-func (c *importedConfigMap) ApiVersion() *string {
-	return jsii.String("v1")
-}
-
-func (c *importedConfigMap) ApiGroup() *string {
-	return jsii.String("")
-}
-
-func (c *importedConfigMap) Kind() *string {
-	return jsii.String("ConfigMap")
-}
-
-func (c *importedConfigMap) Name() *string {
-	return c.name
-}
-
-func (c *importedConfigMap) ResourceName() *string {
-	return c.name
-}
-
-func (c *importedConfigMap) ResourceType() *string {
-	return jsii.String("configmaps")
+	importedResourceBase
 }
 
 // Represents a ConfigMap created elsewhere.
@@ -128,7 +87,7 @@ func ConfigMap_FromConfigMapName(scope constructs.Construct, id, name *string) I
 	if scope == nil || id == nil || name == nil {
 		panic("scope, id and name are required")
 	}
-	result := &importedConfigMap{name: name}
+	result := &importedConfigMap{importedResourceBase: newImportedResourceBase(name, "v1", "", "ConfigMap", "configmaps")}
 	constructs.NewConstruct_Override(result, scope, id)
 	return result
 }

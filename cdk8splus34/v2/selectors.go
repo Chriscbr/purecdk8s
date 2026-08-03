@@ -244,26 +244,10 @@ type Pods interface {
 }
 
 type podsImpl struct {
-	node        constructs.Node
+	constructBase
 	expressions *[]LabelExpression
 	labels      *map[string]*string
 	namespaces  INamespaceSelector
-}
-
-func (p *podsImpl) Node() constructs.Node {
-	return p.node
-}
-
-func (p *podsImpl) SetNodeInternal(node constructs.Node) {
-	p.node = node
-}
-
-func (p *podsImpl) ToString() *string {
-	return p.node.Path()
-}
-
-func (p *podsImpl) With(mixins ...constructs.IMixin) constructs.IConstruct {
-	return p.node.With(mixins...)
 }
 
 func NewPods(scope constructs.Construct, id *string, expressions *[]LabelExpression, labels *map[string]*string, namespaces INamespaceSelector) Pods {
@@ -344,27 +328,11 @@ type Namespaces interface {
 }
 
 type namespacesImpl struct {
-	node        constructs.Node
+	constructBase
 	expressions *[]LabelExpression
 	names       *[]*string
 	labels      *map[string]*string
 	pods        Pods
-}
-
-func (n *namespacesImpl) Node() constructs.Node {
-	return n.node
-}
-
-func (n *namespacesImpl) SetNodeInternal(node constructs.Node) {
-	n.node = node
-}
-
-func (n *namespacesImpl) ToString() *string {
-	return n.node.Path()
-}
-
-func (n *namespacesImpl) With(mixins ...constructs.IMixin) constructs.IConstruct {
-	return n.node.With(mixins...)
 }
 
 func NewNamespaces(scope constructs.Construct, id *string, expressions *[]LabelExpression, names *[]*string, labels *map[string]*string) Namespaces {

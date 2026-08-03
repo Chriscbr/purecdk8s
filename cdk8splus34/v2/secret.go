@@ -154,48 +154,7 @@ type secretImpl struct {
 // importedSecret is a construct-only reference to a Secret that already
 // exists in the cluster. It deliberately does not synthesize a manifest.
 type importedSecret struct {
-	node constructs.Node
-	name *string
-}
-
-func (s *importedSecret) Node() constructs.Node {
-	return s.node
-}
-
-func (s *importedSecret) SetNodeInternal(node constructs.Node) {
-	s.node = node
-}
-
-func (s *importedSecret) ToString() *string {
-	return s.node.Path()
-}
-
-func (s *importedSecret) With(mixins ...constructs.IMixin) constructs.IConstruct {
-	return s.node.With(mixins...)
-}
-
-func (s *importedSecret) ApiVersion() *string {
-	return jsii.String("v1")
-}
-
-func (s *importedSecret) ApiGroup() *string {
-	return jsii.String("")
-}
-
-func (s *importedSecret) Kind() *string {
-	return jsii.String("Secret")
-}
-
-func (s *importedSecret) Name() *string {
-	return s.name
-}
-
-func (s *importedSecret) ResourceName() *string {
-	return s.name
-}
-
-func (s *importedSecret) ResourceType() *string {
-	return jsii.String("secrets")
+	importedResourceBase
 }
 
 func (s *importedSecret) AsApiResource() IApiResource {
@@ -215,7 +174,7 @@ func Secret_FromSecretName(scope constructs.Construct, id, name *string) ISecret
 	if scope == nil || id == nil || name == nil {
 		panic("scope, id and name are required")
 	}
-	result := &importedSecret{name: name}
+	result := &importedSecret{importedResourceBase: newImportedResourceBase(name, "v1", "", "Secret", "secrets")}
 	constructs.NewConstruct_Override(result, scope, id)
 	return result
 }
