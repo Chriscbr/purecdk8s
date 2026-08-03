@@ -4,6 +4,13 @@
 It aims to be a drop-in replacement for the original set of cdk8s Go packages like `github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2` and `github.com/cdk8s-team/cdk8s-plus-go/cdk8splus34/v2`, but without the JSII runtime and Node.js.
 The `purecdk8s` CLI is a drop-in replacement for the original `cdk8s` CLI, and all of the Go packages expose the same APIs as the original packages.
 
+The compatibility guarantee is kept in check by a multi-layered testing approach:
+
+- Unit tests cover the constructs API, cdk8s core API, cdk8s+ API, and purecdk8s CLI, based on the original cdk8s tests.
+- Integration tests that use Docker to build and synthesize an application with both the original cdk8s Go implementation and the purecdk8s Go implementation, and compare the output byte-for-byte.
+- Automated API checks that compare the exported types and Go doc comments in constructs, cdk8s, and cdk8s+ against their upstream packages.
+
+
 The module has no dependency on `github.com/aws/jsii-runtime-go`, npm, or Node.js. Its only third-party dependency is `gopkg.in/yaml.v3`.
 
 ## Install
