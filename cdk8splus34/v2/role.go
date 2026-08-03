@@ -86,16 +86,73 @@ type Role interface {
 	Bind(subjects ...ISubject) RoleBinding
 }
 
+type roleRules[T, R any] struct {
+	rules     []R
+	valueName string
+	newRule   func(*[]*string, *[]T) R
+}
+
+func newRoleRules[T, R any](valueName string, newRule func(*[]*string, *[]T) R) roleRules[T, R] {
+	return roleRules[T, R]{valueName: valueName, newRule: newRule}
+}
+
+func (r *roleRules[T, R]) Rules() *[]R {
+	values := append([]R(nil), r.rules...)
+	return &values
+}
+
+func (r *roleRules[T, R]) Allow(verbs *[]*string, values ...T) {
+	if verbs == nil {
+		panic("verbs are required")
+	}
+	for _, value := range values {
+		if any(value) == nil {
+			panic(r.valueName + " is required")
+		}
+	}
+	values = append([]T(nil), values...)
+	r.rules = append(r.rules, r.newRule(verbs, &values))
+}
+
+func (r *roleRules[T, R]) allowVerbs(values []T, verbs ...string) {
+	verbPointers := make([]*string, len(verbs))
+	for index, verb := range verbs {
+		verbPointers[index] = jsii.String(verb)
+	}
+	r.Allow(&verbPointers, values...)
+}
+
+func (r *roleRules[T, R]) AllowCreate(values ...T) { r.allowVerbs(values, "create") }
+func (r *roleRules[T, R]) AllowGet(values ...T)    { r.allowVerbs(values, "get") }
+func (r *roleRules[T, R]) AllowList(values ...T)   { r.allowVerbs(values, "list") }
+func (r *roleRules[T, R]) AllowWatch(values ...T)  { r.allowVerbs(values, "watch") }
+func (r *roleRules[T, R]) AllowUpdate(values ...T) { r.allowVerbs(values, "update") }
+func (r *roleRules[T, R]) AllowPatch(values ...T)  { r.allowVerbs(values, "patch") }
+func (r *roleRules[T, R]) AllowDelete(values ...T) { r.allowVerbs(values, "delete") }
+func (r *roleRules[T, R]) AllowDeleteCollection(values ...T) {
+	r.allowVerbs(values, "deletecollection")
+}
+
+func (r *roleRules[T, R]) AllowRead(values ...T) {
+	r.allowVerbs(values, "get", "list", "watch")
+}
+
+func (r *roleRules[T, R]) AllowReadWrite(values ...T) {
+	r.allowVerbs(values, "get", "list", "watch", "create", "update", "patch", "delete", "deletecollection")
+}
+
 type roleImpl struct {
 	resourceBase
-	rules []*RolePolicyRule
+	roleRules[IApiResource, *RolePolicyRule]
 }
 
 func NewRole(scope constructs.Construct, id *string, props *RoleProps) Role {
 	if props == nil {
 		props = &RoleProps{}
 	}
-	result := &roleImpl{}
+	result := &roleImpl{roleRules: newRoleRules("resource", func(verbs *[]*string, resources *[]IApiResource) *RolePolicyRule {
+		return &RolePolicyRule{Verbs: verbs, Resources: resources}
+	})}
 	manifest := map[string]interface{}{}
 	result.resourceBase.initialize(result, scope, id, "rbac.authorization.k8s.io/v1", "Role", "roles", props.Metadata, manifest)
 	if props.Rules != nil {
@@ -128,64 +185,6 @@ func Role_IsConstruct(x interface{}) *bool {
 // Imports a role from the cluster as a reference.
 func Role_FromRoleName(scope constructs.Construct, id, name *string) IRole {
 	return newImportedRole(scope, id, name, "Role", "roles")
-}
-
-func (r *roleImpl) Rules() *[]*RolePolicyRule {
-	values := append([]*RolePolicyRule(nil), r.rules...)
-	return &values
-}
-
-func (r *roleImpl) Allow(verbs *[]*string, resources ...IApiResource) {
-	if verbs == nil {
-		panic("verbs are required")
-	}
-	for _, resource := range resources {
-		if resource == nil {
-			panic("resource is required")
-		}
-	}
-	values := append([]IApiResource(nil), resources...)
-	r.rules = append(r.rules, &RolePolicyRule{Verbs: verbs, Resources: &values})
-}
-
-func (r *roleImpl) AllowCreate(resources ...IApiResource) {
-	r.Allow(&[]*string{jsii.String("create")}, resources...)
-}
-
-func (r *roleImpl) AllowGet(resources ...IApiResource) {
-	r.Allow(&[]*string{jsii.String("get")}, resources...)
-}
-
-func (r *roleImpl) AllowList(resources ...IApiResource) {
-	r.Allow(&[]*string{jsii.String("list")}, resources...)
-}
-
-func (r *roleImpl) AllowWatch(resources ...IApiResource) {
-	r.Allow(&[]*string{jsii.String("watch")}, resources...)
-}
-
-func (r *roleImpl) AllowUpdate(resources ...IApiResource) {
-	r.Allow(&[]*string{jsii.String("update")}, resources...)
-}
-
-func (r *roleImpl) AllowPatch(resources ...IApiResource) {
-	r.Allow(&[]*string{jsii.String("patch")}, resources...)
-}
-
-func (r *roleImpl) AllowDelete(resources ...IApiResource) {
-	r.Allow(&[]*string{jsii.String("delete")}, resources...)
-}
-
-func (r *roleImpl) AllowDeleteCollection(resources ...IApiResource) {
-	r.Allow(&[]*string{jsii.String("deletecollection")}, resources...)
-}
-
-func (r *roleImpl) AllowRead(resources ...IApiResource) {
-	r.Allow(&[]*string{jsii.String("get"), jsii.String("list"), jsii.String("watch")}, resources...)
-}
-
-func (r *roleImpl) AllowReadWrite(resources ...IApiResource) {
-	r.Allow(&[]*string{jsii.String("get"), jsii.String("list"), jsii.String("watch"), jsii.String("create"), jsii.String("update"), jsii.String("patch"), jsii.String("delete"), jsii.String("deletecollection")}, resources...)
 }
 
 func (r *roleImpl) Bind(subjects ...ISubject) RoleBinding {
@@ -237,7 +236,7 @@ type ClusterRole interface {
 
 type clusterRoleImpl struct {
 	resourceBase
-	rules  []*ClusterRolePolicyRule
+	roleRules[IApiEndpoint, *ClusterRolePolicyRule]
 	labels map[string]*string
 }
 
@@ -245,7 +244,12 @@ func NewClusterRole(scope constructs.Construct, id *string, props *ClusterRolePr
 	if props == nil {
 		props = &ClusterRoleProps{}
 	}
-	result := &clusterRoleImpl{labels: map[string]*string{}}
+	result := &clusterRoleImpl{
+		roleRules: newRoleRules("endpoint", func(verbs *[]*string, endpoints *[]IApiEndpoint) *ClusterRolePolicyRule {
+			return &ClusterRolePolicyRule{Verbs: verbs, Endpoints: endpoints}
+		}),
+		labels: map[string]*string{},
+	}
 	manifest := map[string]interface{}{}
 	result.resourceBase.initialize(result, scope, id, "rbac.authorization.k8s.io/v1", "ClusterRole", "clusterroles", props.Metadata, manifest)
 	if props.Rules != nil {
@@ -284,64 +288,6 @@ func ClusterRole_IsConstruct(x interface{}) *bool {
 // Imports a role from the cluster as a reference.
 func ClusterRole_FromClusterRoleName(scope constructs.Construct, id, name *string) IClusterRole {
 	return newImportedRole(scope, id, name, "ClusterRole", "clusterroles")
-}
-
-func (r *clusterRoleImpl) Rules() *[]*ClusterRolePolicyRule {
-	values := append([]*ClusterRolePolicyRule(nil), r.rules...)
-	return &values
-}
-
-func (r *clusterRoleImpl) Allow(verbs *[]*string, endpoints ...IApiEndpoint) {
-	if verbs == nil {
-		panic("verbs are required")
-	}
-	for _, endpoint := range endpoints {
-		if endpoint == nil {
-			panic("endpoint is required")
-		}
-	}
-	values := append([]IApiEndpoint(nil), endpoints...)
-	r.rules = append(r.rules, &ClusterRolePolicyRule{Verbs: verbs, Endpoints: &values})
-}
-
-func (r *clusterRoleImpl) AllowCreate(values ...IApiEndpoint) {
-	r.Allow(&[]*string{jsii.String("create")}, values...)
-}
-
-func (r *clusterRoleImpl) AllowGet(values ...IApiEndpoint) {
-	r.Allow(&[]*string{jsii.String("get")}, values...)
-}
-
-func (r *clusterRoleImpl) AllowList(values ...IApiEndpoint) {
-	r.Allow(&[]*string{jsii.String("list")}, values...)
-}
-
-func (r *clusterRoleImpl) AllowWatch(values ...IApiEndpoint) {
-	r.Allow(&[]*string{jsii.String("watch")}, values...)
-}
-
-func (r *clusterRoleImpl) AllowUpdate(values ...IApiEndpoint) {
-	r.Allow(&[]*string{jsii.String("update")}, values...)
-}
-
-func (r *clusterRoleImpl) AllowPatch(values ...IApiEndpoint) {
-	r.Allow(&[]*string{jsii.String("patch")}, values...)
-}
-
-func (r *clusterRoleImpl) AllowDelete(values ...IApiEndpoint) {
-	r.Allow(&[]*string{jsii.String("delete")}, values...)
-}
-
-func (r *clusterRoleImpl) AllowDeleteCollection(values ...IApiEndpoint) {
-	r.Allow(&[]*string{jsii.String("deletecollection")}, values...)
-}
-
-func (r *clusterRoleImpl) AllowRead(values ...IApiEndpoint) {
-	r.Allow(&[]*string{jsii.String("get"), jsii.String("list"), jsii.String("watch")}, values...)
-}
-
-func (r *clusterRoleImpl) AllowReadWrite(values ...IApiEndpoint) {
-	r.Allow(&[]*string{jsii.String("get"), jsii.String("list"), jsii.String("watch"), jsii.String("create"), jsii.String("update"), jsii.String("patch"), jsii.String("delete"), jsii.String("deletecollection")}, values...)
 }
 
 func (r *clusterRoleImpl) Aggregate(key, value *string) {

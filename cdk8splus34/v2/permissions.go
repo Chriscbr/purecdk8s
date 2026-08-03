@@ -118,10 +118,36 @@ type RoleBinding interface {
 	AddSubjects(subjects ...ISubject)
 }
 
+type bindingSubjects struct {
+	subjects []ISubject
+}
+
+func (b *bindingSubjects) Subjects() *[]ISubject {
+	values := append([]ISubject(nil), b.subjects...)
+	return &values
+}
+
+func (b *bindingSubjects) AddSubjects(subjects ...ISubject) {
+	for _, subject := range subjects {
+		if subject == nil {
+			panic("subject is required")
+		}
+		b.subjects = append(b.subjects, subject)
+	}
+}
+
+func (b *bindingSubjects) subjectManifests() interface{} {
+	result := make([]interface{}, 0, len(b.subjects))
+	for _, subject := range b.subjects {
+		result = append(result, subjectManifest(subject))
+	}
+	return result
+}
+
 type roleBindingImpl struct {
 	resourceBase
-	role     IRole
-	subjects []ISubject
+	bindingSubjects
+	role IRole
 }
 
 // Properties for `RoleBinding`.
@@ -173,28 +199,6 @@ func (r *roleBindingImpl) Role() IRole {
 	return r.role
 }
 
-func (r *roleBindingImpl) Subjects() *[]ISubject {
-	values := append([]ISubject(nil), r.subjects...)
-	return &values
-}
-
-func (r *roleBindingImpl) AddSubjects(subjects ...ISubject) {
-	for _, subject := range subjects {
-		if subject == nil {
-			panic("subject is required")
-		}
-		r.subjects = append(r.subjects, subject)
-	}
-}
-
-func (r *roleBindingImpl) subjectManifests() interface{} {
-	result := make([]interface{}, 0, len(r.subjects))
-	for _, subject := range r.subjects {
-		result = append(result, subjectManifest(subject))
-	}
-	return result
-}
-
 // A ClusterRoleBinding grants permissions cluster-wide to a user or set of users.
 type ClusterRoleBinding interface {
 	Resource
@@ -206,8 +210,8 @@ type ClusterRoleBinding interface {
 
 type clusterRoleBindingImpl struct {
 	resourceBase
-	role     IClusterRole
-	subjects []ISubject
+	bindingSubjects
+	role IClusterRole
 }
 
 func NewClusterRoleBinding(scope constructs.Construct, id *string, props *ClusterRoleBindingProps) ClusterRoleBinding {
@@ -239,28 +243,6 @@ func ClusterRoleBinding_IsConstruct(x interface{}) *bool {
 
 func (r *clusterRoleBindingImpl) Role() IClusterRole {
 	return r.role
-}
-
-func (r *clusterRoleBindingImpl) Subjects() *[]ISubject {
-	values := append([]ISubject(nil), r.subjects...)
-	return &values
-}
-
-func (r *clusterRoleBindingImpl) AddSubjects(subjects ...ISubject) {
-	for _, subject := range subjects {
-		if subject == nil {
-			panic("subject is required")
-		}
-		r.subjects = append(r.subjects, subject)
-	}
-}
-
-func (r *clusterRoleBindingImpl) subjectManifests() interface{} {
-	result := make([]interface{}, 0, len(r.subjects))
-	for _, subject := range r.subjects {
-		result = append(result, subjectManifest(subject))
-	}
-	return result
 }
 
 func roleReference(role IRole) map[string]interface{} {
