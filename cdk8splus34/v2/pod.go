@@ -141,34 +141,36 @@ type podState struct {
 	initContainers []Container
 	volumes        []Volume
 	props          *PodProps
-	selector       map[string]*string
+	podSelector    map[string]*string
 	dns            PodDns
 	security       PodSecurityContext
 	hostAliases    []*HostAlias
+	subjectOwner   IResource
+	restartDefault RestartPolicy
 }
 
-func newPodState(props *PodProps) podState {
+func newPodState(props *PodProps, restartDefault RestartPolicy) podState {
 	if props == nil {
 		props = &PodProps{}
 	}
-	state := podState{props: props, selector: map[string]*string{}, dns: NewPodDns(props.Dns), security: NewPodSecurityContext(props.SecurityContext)}
+	state := podState{props: props, podSelector: map[string]*string{}, dns: NewPodDns(props.Dns), security: NewPodSecurityContext(props.SecurityContext), restartDefault: restartDefault}
 	if props.Containers != nil {
 		for _, value := range *props.Containers {
 			if value != nil {
-				state.addContainer(value)
+				state.AddContainer(value)
 			}
 		}
 	}
 	if props.InitContainers != nil {
 		for _, value := range *props.InitContainers {
 			if value != nil {
-				state.addInitContainer(value)
+				state.AddInitContainer(value)
 			}
 		}
 	}
 	if props.Volumes != nil {
 		for _, volume := range *props.Volumes {
-			state.addVolume(volume)
+			state.AddVolume(volume)
 		}
 	}
 	if props.HostAliases != nil {
@@ -177,13 +179,13 @@ func newPodState(props *PodProps) podState {
 	return state
 }
 
-func (p *podState) addContainer(props *ContainerProps) Container {
+func (p *podState) AddContainer(props *ContainerProps) Container {
 	container := NewContainer(props)
 	p.containers = append(p.containers, container)
 	return container
 }
 
-func (p *podState) addInitContainer(props *ContainerProps) Container {
+func (p *podState) AddInitContainer(props *ContainerProps) Container {
 	if props == nil {
 		panic("container props are required")
 	}
@@ -208,7 +210,7 @@ func (p *podState) addInitContainer(props *ContainerProps) Container {
 	return container
 }
 
-func (p *podState) addVolume(volume Volume) {
+func (p *podState) AddVolume(volume Volume) {
 	if volume == nil {
 		panic("volume is required")
 	}
@@ -218,6 +220,113 @@ func (p *podState) addVolume(volume Volume) {
 		}
 	}
 	p.volumes = append(p.volumes, volume)
+}
+
+func (p *podState) Containers() *[]Container {
+	values := append([]Container(nil), p.containers...)
+	return &values
+}
+
+func (p *podState) InitContainers() *[]Container {
+	values := append([]Container(nil), p.initContainers...)
+	return &values
+}
+
+func (p *podState) Volumes() *[]Volume {
+	values := append([]Volume(nil), p.volumes...)
+	return &values
+}
+
+func (p *podState) AddHostAlias(alias *HostAlias) {
+	if alias == nil || alias.Ip == nil || alias.Hostnames == nil {
+		panic("host alias IP and hostnames are required")
+	}
+	p.hostAliases = append(p.hostAliases, alias)
+}
+
+func (p *podState) AttachContainer(container Container) {
+	if container == nil {
+		panic("container is required")
+	}
+	p.containers = append(p.containers, container)
+}
+
+func (p *podState) AutomountServiceAccountToken() *bool {
+	if p.props.AutomountServiceAccountToken == nil {
+		return jsii.Bool(false)
+	}
+	return p.props.AutomountServiceAccountToken
+}
+
+func (p *podState) Dns() PodDns {
+	return p.dns
+}
+
+func (p *podState) DockerRegistryAuth() ISecret {
+	return p.props.DockerRegistryAuth
+}
+
+func (p *podState) EnableServiceLinks() *bool {
+	return p.props.EnableServiceLinks
+}
+
+func (p *podState) HostAliases() *[]*HostAlias {
+	values := append([]*HostAlias(nil), p.hostAliases...)
+	return &values
+}
+
+func (p *podState) HostNetwork() *bool {
+	if p.props.HostNetwork == nil {
+		return jsii.Bool(false)
+	}
+	return p.props.HostNetwork
+}
+
+func (p *podState) Isolate() *bool {
+	if p.props.Isolate == nil {
+		return jsii.Bool(false)
+	}
+	return p.props.Isolate
+}
+
+func (p *podState) RestartPolicy() RestartPolicy {
+	if p.props.RestartPolicy == "" {
+		return p.restartDefault
+	}
+	return p.props.RestartPolicy
+}
+
+func (p *podState) SecurityContext() PodSecurityContext {
+	return p.security
+}
+
+func (p *podState) ServiceAccount() IServiceAccount {
+	return p.props.ServiceAccount
+}
+
+func (p *podState) ShareProcessNamespace() *bool {
+	if p.props.ShareProcessNamespace == nil {
+		return jsii.Bool(false)
+	}
+	return p.props.ShareProcessNamespace
+}
+
+func (p *podState) TerminationGracePeriod() cdk8s.Duration {
+	if p.props.TerminationGracePeriod == nil {
+		return cdk8s.Duration_Seconds(jsii.Number(30))
+	}
+	return p.props.TerminationGracePeriod
+}
+
+func (p *podState) ToSubjectConfiguration() *SubjectConfiguration {
+	if p.props.ServiceAccount == nil && !*p.AutomountServiceAccountToken() {
+		panic(stringValue(p.subjectOwner.Name()) + " cannot be converted to a role binding subject: You must either assign a service account to it, or use 'automountServiceAccountToken: true'")
+	}
+	name := jsii.String("default")
+	if p.props.ServiceAccount != nil {
+		name = p.props.ServiceAccount.ResourceName()
+	}
+	return &SubjectConfiguration{ApiGroup: jsii.String(""), Kind: jsii.String("ServiceAccount"), Name: name}
 }
 
 func containerValues(values []Container) []interface{} {
@@ -353,11 +462,12 @@ func NewPod(scope constructs.Construct, id *string, props *PodProps) Pod {
 	if props == nil {
 		props = &PodProps{}
 	}
-	result := &podImpl{podState: newPodState(props)}
+	result := &podImpl{podState: newPodState(props, RestartPolicy_ALWAYS)}
 	manifest := map[string]interface{}{}
 	result.resourceBase.initialize(result, scope, id, "v1", "Pod", "pods", props.Metadata, manifest)
+	result.podState.subjectOwner = result
 	podAddress := cdk8s.Names_ToLabelValue(result, nil)
-	result.selector[podAddressLabel] = podAddress
+	result.podSelector[podAddressLabel] = podAddress
 	result.Metadata().AddLabel(jsii.String(podAddressLabel), podAddress)
 	result.scheduling = NewPodScheduling(result)
 	result.connections = NewPodConnections(result)
@@ -397,50 +507,9 @@ func Pod_ADDRESS_LABEL() *string {
 	return jsii.String(podAddressLabel)
 }
 
-func (p *podImpl) Containers() *[]Container {
-	values := append([]Container(nil), p.containers...)
-	return &values
-}
-
-func (p *podImpl) InitContainers() *[]Container {
-	values := append([]Container(nil), p.initContainers...)
-	return &values
-}
-
-func (p *podImpl) Volumes() *[]Volume {
-	values := append([]Volume(nil), p.volumes...)
-	return &values
-}
-
-func (p *podImpl) AddContainer(props *ContainerProps) Container {
-	return p.addContainer(props)
-}
-
-func (p *podImpl) AddInitContainer(props *ContainerProps) Container {
-	return p.addInitContainer(props)
-}
-
-func (p *podImpl) AddVolume(volume Volume) {
-	p.addVolume(volume)
-}
-
-func (p *podImpl) AddHostAlias(alias *HostAlias) {
-	if alias == nil || alias.Ip == nil || alias.Hostnames == nil {
-		panic("host alias IP and hostnames are required")
-	}
-	p.hostAliases = append(p.hostAliases, alias)
-}
-
-func (p *podImpl) AttachContainer(container Container) {
-	if container == nil {
-		panic("container is required")
-	}
-	p.containers = append(p.containers, container)
-}
-
 func (p *podImpl) ToPodSelectorConfig() *PodSelectorConfig {
 	labels := map[string]*string{}
-	for key, value := range p.selector {
+	for key, value := range p.podSelector {
 		labels[key] = value
 	}
 	config := &PodSelectorConfig{LabelSelector: labelSelectorFromLabels(&labels)}
@@ -460,84 +529,6 @@ func (p *podImpl) ToPodSelector() IPodSelector {
 
 func (p *podImpl) PodMetadata() cdk8s.ApiObjectMetadataDefinition {
 	return p.Metadata()
-}
-
-func (p *podImpl) ToSubjectConfiguration() *SubjectConfiguration {
-	if p.props.ServiceAccount == nil && (p.props.AutomountServiceAccountToken == nil || !*p.props.AutomountServiceAccountToken) {
-		panic(stringValue(p.Name()) + " cannot be converted to a role binding subject: You must either assign a service account to it, or use 'automountServiceAccountToken: true'")
-	}
-	name := jsii.String("default")
-	if p.props.ServiceAccount != nil {
-		name = p.props.ServiceAccount.ResourceName()
-	}
-	return &SubjectConfiguration{ApiGroup: jsii.String(""), Kind: jsii.String("ServiceAccount"), Name: name}
-}
-
-func (p *podImpl) AutomountServiceAccountToken() *bool {
-	if p.props.AutomountServiceAccountToken == nil {
-		return jsii.Bool(false)
-	}
-	return p.props.AutomountServiceAccountToken
-}
-
-func (p *podImpl) Dns() PodDns {
-	return p.dns
-}
-
-func (p *podImpl) DockerRegistryAuth() ISecret {
-	return p.props.DockerRegistryAuth
-}
-
-func (p *podImpl) EnableServiceLinks() *bool {
-	return p.props.EnableServiceLinks
-}
-
-func (p *podImpl) HostAliases() *[]*HostAlias {
-	values := append([]*HostAlias(nil), p.hostAliases...)
-	return &values
-}
-
-func (p *podImpl) HostNetwork() *bool {
-	if p.props.HostNetwork == nil {
-		return jsii.Bool(false)
-	}
-	return p.props.HostNetwork
-}
-
-func (p *podImpl) Isolate() *bool {
-	if p.props.Isolate == nil {
-		return jsii.Bool(false)
-	}
-	return p.props.Isolate
-}
-
-func (p *podImpl) RestartPolicy() RestartPolicy {
-	if p.props.RestartPolicy == "" {
-		return RestartPolicy_ALWAYS
-	}
-	return p.props.RestartPolicy
-}
-
-func (p *podImpl) SecurityContext() PodSecurityContext {
-	return p.security
-}
-
-func (p *podImpl) ServiceAccount() IServiceAccount {
-	return p.props.ServiceAccount
-}
-
-func (p *podImpl) ShareProcessNamespace() *bool {
-	if p.props.ShareProcessNamespace == nil {
-		return jsii.Bool(false)
-	}
-	return p.props.ShareProcessNamespace
-}
-
-func (p *podImpl) TerminationGracePeriod() cdk8s.Duration {
-	if p.props.TerminationGracePeriod == nil {
-		return cdk8s.Duration_Seconds(jsii.Number(30))
-	}
-	return p.props.TerminationGracePeriod
 }
 
 func (p *podImpl) Connections() PodConnections {

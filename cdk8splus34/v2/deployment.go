@@ -176,11 +176,8 @@ type Deployment interface {
 type deploymentImpl struct {
 	resourceBase
 	podState
-	replicas             *float64
-	hasAutoscaler        bool
-	selector             map[string]*string
-	matchExpressions     []*LabelSelectorRequirement
-	podMetadata          *cdk8s.ApiObjectMetadata
+	workloadState
+	scalableState
 	scheduling           WorkloadScheduling
 	connections          PodConnections
 	spread               bool
@@ -208,13 +205,18 @@ func NewDeployment(scope constructs.Construct, id *string, props *DeploymentProp
 		panic(fmt.Sprintf("'progressDeadline' (%ss) must be greater than 'minReady' (%ss)", numberString(progressDeadlineSeconds), numberString(minReadySeconds)))
 	}
 	result := &deploymentImpl{
-		podState: newPodState(deploymentPodProps(props)), replicas: props.Replicas, selector: map[string]*string{}, podMetadata: props.PodMetadata,
-		spread:   props.Spread != nil && *props.Spread,
-		strategy: props.Strategy,
-		minReady: minReady, progressDeadline: progressDeadline, revisionHistoryLimit: props.RevisionHistoryLimit,
+		podState:      newPodState(deploymentPodProps(props), RestartPolicy_ALWAYS),
+		workloadState: newWorkloadState(props.PodMetadata, true),
+		scalableState: scalableState{replicas: props.Replicas},
+		spread:        props.Spread != nil && *props.Spread,
+		strategy:      props.Strategy,
+		minReady:      minReady, progressDeadline: progressDeadline, revisionHistoryLimit: props.RevisionHistoryLimit,
 	}
 	manifest := map[string]interface{}{}
 	result.resourceBase.initialize(result, scope, id, "apps/v1", "Deployment", "deployments", props.Metadata, manifest)
+	result.podState.subjectOwner = result
+	result.workloadState.owner = result
+	result.scalableState.owner = result
 	selectPods := true
 	if props.Select != nil {
 		selectPods = *props.Select
@@ -251,15 +253,6 @@ func Deployment_IsConstruct(x interface{}) *bool {
 	return constructs.Construct_IsConstruct(x)
 }
 
-func (d *deploymentImpl) Containers() *[]Container {
-	values := append([]Container(nil), d.podState.containers...)
-	return &values
-}
-
-func (d *deploymentImpl) Replicas() *float64 {
-	return d.replicas
-}
-
 func (d *deploymentImpl) MinReady() cdk8s.Duration {
 	if d.minReady == nil {
 		return cdk8s.Duration_Seconds(jsii.Number(0))
@@ -288,41 +281,6 @@ func (d *deploymentImpl) Strategy() DeploymentStrategy {
 	return d.strategy
 }
 
-func (d *deploymentImpl) HasAutoscaler() *bool {
-	return jsii.Bool(d.hasAutoscaler)
-}
-
-func (d *deploymentImpl) SetHasAutoscaler(value *bool) {
-	d.hasAutoscaler = value != nil && *value
-}
-
-func (d *deploymentImpl) MarkHasAutoscaler() {
-	d.hasAutoscaler = true
-}
-
-func (d *deploymentImpl) ToScalingTarget() *ScalingTarget {
-	containers := d.Containers()
-	return &ScalingTarget{
-		ApiVersion: d.ApiVersion(),
-		Containers: containers,
-		Kind:       d.Kind(),
-		Name:       d.Name(),
-		Replicas:   d.replicas,
-	}
-}
-
-func (d *deploymentImpl) AddContainer(props *ContainerProps) Container {
-	return d.addContainer(props)
-}
-
-func (d *deploymentImpl) ToPodSelectorConfig() *PodSelectorConfig {
-	labels := map[string]*string{}
-	for k, v := range d.selector {
-		labels[k] = v
-	}
-	return &PodSelectorConfig{LabelSelector: newLabelSelectorFromRequirements(d.matchExpressions, &labels)}
-}
-
 func (d *deploymentImpl) Scheduling() WorkloadScheduling {
 	return d.scheduling
 }
@@ -349,172 +307,6 @@ func (d *deploymentImpl) toManifest() interface{} {
 
 func deploymentPodProps(p *DeploymentProps) *PodProps {
 	return &PodProps{Metadata: p.Metadata, AutomountServiceAccountToken: p.AutomountServiceAccountToken, Containers: p.Containers, Dns: p.Dns, DockerRegistryAuth: p.DockerRegistryAuth, EnableServiceLinks: p.EnableServiceLinks, HostAliases: p.HostAliases, HostNetwork: p.HostNetwork, InitContainers: p.InitContainers, Isolate: p.Isolate, RestartPolicy: p.RestartPolicy, SecurityContext: p.SecurityContext, ServiceAccount: p.ServiceAccount, ShareProcessNamespace: p.ShareProcessNamespace, TerminationGracePeriod: p.TerminationGracePeriod, Volumes: p.Volumes}
-}
-
-func (d *deploymentImpl) PodMetadata() cdk8s.ApiObjectMetadataDefinition {
-	metadata := d.podMetadata
-	if metadata == nil {
-		metadata = &cdk8s.ApiObjectMetadata{}
-	}
-	result := cdk8s.NewApiObjectMetadataDefinition(&cdk8s.ApiObjectMetadataDefinitionOptions{ApiObject: d.ApiObject(), Name: metadata.Name, Namespace: metadata.Namespace, Labels: metadata.Labels, Annotations: metadata.Annotations})
-	for key, value := range d.selector {
-		result.AddLabel(jsii.String(key), value)
-	}
-	return result
-}
-
-func (d *deploymentImpl) workloadSelector() map[string]interface{} {
-	result := map[string]interface{}{}
-	if len(d.selector) > 0 {
-		result["matchLabels"] = d.selector
-	}
-	if len(d.matchExpressions) > 0 {
-		result["matchExpressions"] = d.matchExpressions
-	}
-	return result
-}
-
-func (d *deploymentImpl) MatchLabels() *map[string]*string {
-	values := map[string]*string{}
-	for key, value := range d.selector {
-		values[key] = value
-	}
-	return &values
-}
-
-func (d *deploymentImpl) MatchExpressions() *[]*LabelSelectorRequirement {
-	values := append([]*LabelSelectorRequirement(nil), d.matchExpressions...)
-	return &values
-}
-
-func (d *deploymentImpl) Select(selectors ...LabelSelector) {
-	for _, selector := range selectors {
-		if selector == nil {
-			panic("selector is required")
-		}
-		for key, value := range labelSelectorLabels(selector) {
-			d.selector[key] = value
-		}
-		d.matchExpressions = append(d.matchExpressions, labelSelectorRequirements(selector)...)
-	}
-}
-
-func (d *deploymentImpl) InitContainers() *[]Container {
-	values := append([]Container(nil), d.podState.initContainers...)
-	return &values
-}
-
-func (d *deploymentImpl) Volumes() *[]Volume {
-	values := append([]Volume(nil), d.podState.volumes...)
-	return &values
-}
-
-func (d *deploymentImpl) AddInitContainer(props *ContainerProps) Container {
-	return d.addInitContainer(props)
-}
-
-func (d *deploymentImpl) AddVolume(volume Volume) {
-	d.addVolume(volume)
-}
-
-func (d *deploymentImpl) AddHostAlias(alias *HostAlias) {
-	if alias == nil || alias.Ip == nil || alias.Hostnames == nil {
-		panic("host alias IP and hostnames are required")
-	}
-	d.hostAliases = append(d.hostAliases, alias)
-}
-
-func (d *deploymentImpl) AttachContainer(container Container) {
-	if container == nil {
-		panic("container is required")
-	}
-	d.containers = append(d.containers, container)
-}
-
-func (d *deploymentImpl) ToNetworkPolicyPeerConfig() *NetworkPolicyPeerConfig {
-	return &NetworkPolicyPeerConfig{PodSelector: d.ToPodSelectorConfig()}
-}
-
-func (d *deploymentImpl) ToPodSelector() IPodSelector {
-	return d
-}
-
-func (d *deploymentImpl) AutomountServiceAccountToken() *bool {
-	if d.props.AutomountServiceAccountToken == nil {
-		return jsii.Bool(false)
-	}
-	return d.props.AutomountServiceAccountToken
-}
-
-func (d *deploymentImpl) Dns() PodDns {
-	return d.dns
-}
-
-func (d *deploymentImpl) DockerRegistryAuth() ISecret {
-	return d.props.DockerRegistryAuth
-}
-
-func (d *deploymentImpl) EnableServiceLinks() *bool {
-	return d.props.EnableServiceLinks
-}
-
-func (d *deploymentImpl) HostAliases() *[]*HostAlias {
-	values := append([]*HostAlias(nil), d.hostAliases...)
-	return &values
-}
-
-func (d *deploymentImpl) HostNetwork() *bool {
-	if d.props.HostNetwork == nil {
-		return jsii.Bool(false)
-	}
-	return d.props.HostNetwork
-}
-
-func (d *deploymentImpl) Isolate() *bool {
-	if d.props.Isolate == nil {
-		return jsii.Bool(false)
-	}
-	return d.props.Isolate
-}
-
-func (d *deploymentImpl) RestartPolicy() RestartPolicy {
-	if d.props.RestartPolicy == "" {
-		return RestartPolicy_ALWAYS
-	}
-	return d.props.RestartPolicy
-}
-
-func (d *deploymentImpl) SecurityContext() PodSecurityContext {
-	return d.security
-}
-
-func (d *deploymentImpl) ServiceAccount() IServiceAccount {
-	return d.props.ServiceAccount
-}
-
-func (d *deploymentImpl) ShareProcessNamespace() *bool {
-	if d.props.ShareProcessNamespace == nil {
-		return jsii.Bool(false)
-	}
-	return d.props.ShareProcessNamespace
-}
-
-func (d *deploymentImpl) TerminationGracePeriod() cdk8s.Duration {
-	if d.props.TerminationGracePeriod == nil {
-		return cdk8s.Duration_Seconds(jsii.Number(30))
-	}
-	return d.props.TerminationGracePeriod
-}
-
-func (d *deploymentImpl) ToSubjectConfiguration() *SubjectConfiguration {
-	if d.props.ServiceAccount == nil && !*d.AutomountServiceAccountToken() {
-		panic(stringValue(d.Name()) + " cannot be converted to a role binding subject: You must either assign a service account to it, or use 'automountServiceAccountToken: true'")
-	}
-	name := jsii.String("default")
-	if d.props.ServiceAccount != nil {
-		name = d.props.ServiceAccount.ResourceName()
-	}
-	return &SubjectConfiguration{ApiGroup: jsii.String(""), Kind: jsii.String("ServiceAccount"), Name: name}
 }
 
 func (d *deploymentImpl) ExposeViaService(options *DeploymentExposeViaServiceOptions) Service {

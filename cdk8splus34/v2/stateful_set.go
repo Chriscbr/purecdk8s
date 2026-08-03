@@ -137,11 +137,8 @@ type StatefulSet interface {
 type statefulSetImpl struct {
 	resourceBase
 	podState
-	replicas             *float64
-	hasAutoscaler        bool
-	selector             map[string]*string
-	matchExpressions     []*LabelSelectorRequirement
-	podMetadata          *cdk8s.ApiObjectMetadata
+	workloadState
+	scalableState
 	service              Service
 	scheduling           WorkloadScheduling
 	connections          PodConnections
@@ -160,13 +157,18 @@ func NewStatefulSet(scope constructs.Construct, id *string, props *StatefulSetPr
 		props = &StatefulSetProps{}
 	}
 	result := &statefulSetImpl{
-		podState: newPodState(statefulSetPodProps(props)), replicas: props.Replicas, selector: map[string]*string{}, podMetadata: props.PodMetadata,
+		podState:            newPodState(statefulSetPodProps(props), RestartPolicy_ALWAYS),
+		workloadState:       newWorkloadState(props.PodMetadata, false),
+		scalableState:       scalableState{replicas: props.Replicas},
 		spread:              props.Spread != nil && *props.Spread,
 		strategy:            props.Strategy,
 		podManagementPolicy: props.PodManagementPolicy,
 		minReady:            props.MinReady,
 	}
 	constructs.NewConstruct_Override(result, scope, id)
+	result.podState.subjectOwner = result
+	result.workloadState.owner = result
+	result.scalableState.owner = result
 	selectPods := true
 	if props.Select != nil {
 		selectPods = *props.Select
@@ -211,42 +213,6 @@ func NewStatefulSet_Override(s StatefulSet, scope constructs.Construct, id *stri
 // Returns: true if `x` is an object created from a class which extends `Construct`.
 func StatefulSet_IsConstruct(x interface{}) *bool {
 	return constructs.Construct_IsConstruct(x)
-}
-
-func (s *statefulSetImpl) Containers() *[]Container {
-	values := append([]Container(nil), s.podState.containers...)
-	return &values
-}
-
-func (s *statefulSetImpl) Replicas() *float64 {
-	return s.replicas
-}
-
-func (s *statefulSetImpl) HasAutoscaler() *bool {
-	return jsii.Bool(s.hasAutoscaler)
-}
-
-func (s *statefulSetImpl) SetHasAutoscaler(value *bool) {
-	s.hasAutoscaler = value != nil && *value
-}
-
-func (s *statefulSetImpl) MarkHasAutoscaler() {
-	s.hasAutoscaler = true
-}
-
-func (s *statefulSetImpl) ToScalingTarget() *ScalingTarget {
-	containers := s.Containers()
-	return &ScalingTarget{
-		ApiVersion: s.ApiVersion(),
-		Containers: containers,
-		Kind:       s.Kind(),
-		Name:       s.Name(),
-		Replicas:   s.replicas,
-	}
-}
-
-func (s *statefulSetImpl) AddContainer(props *ContainerProps) Container {
-	return s.addContainer(props)
 }
 
 func (s *statefulSetImpl) Service() Service {
@@ -306,14 +272,6 @@ func (s *statefulSetImpl) Scheduling() WorkloadScheduling {
 
 func (s *statefulSetImpl) Connections() PodConnections {
 	return s.connections
-}
-
-func (s *statefulSetImpl) ToPodSelectorConfig() *PodSelectorConfig {
-	labels := map[string]*string{}
-	for key, value := range s.selector {
-		labels[key] = value
-	}
-	return &PodSelectorConfig{LabelSelector: newLabelSelectorFromRequirements(s.matchExpressions, &labels)}
 }
 
 func (s *statefulSetImpl) createHeadlessService(metadata *cdk8s.ApiObjectMetadata) Service {
@@ -443,167 +401,4 @@ func podManagementPolicyManifestValue(value PodManagementPolicy) string {
 
 func statefulSetPodProps(p *StatefulSetProps) *PodProps {
 	return &PodProps{Metadata: p.Metadata, AutomountServiceAccountToken: p.AutomountServiceAccountToken, Containers: p.Containers, Dns: p.Dns, DockerRegistryAuth: p.DockerRegistryAuth, EnableServiceLinks: p.EnableServiceLinks, HostAliases: p.HostAliases, HostNetwork: p.HostNetwork, InitContainers: p.InitContainers, Isolate: p.Isolate, RestartPolicy: p.RestartPolicy, SecurityContext: p.SecurityContext, ServiceAccount: p.ServiceAccount, ShareProcessNamespace: p.ShareProcessNamespace, TerminationGracePeriod: p.TerminationGracePeriod, Volumes: p.Volumes}
-}
-
-func (s *statefulSetImpl) PodMetadata() cdk8s.ApiObjectMetadataDefinition {
-	metadata := s.podMetadata
-	if metadata == nil {
-		metadata = &cdk8s.ApiObjectMetadata{}
-	}
-	result := cdk8s.NewApiObjectMetadataDefinition(&cdk8s.ApiObjectMetadataDefinitionOptions{ApiObject: s.ApiObject(), Name: metadata.Name, Namespace: metadata.Namespace, Labels: metadata.Labels, Annotations: metadata.Annotations})
-	for key, value := range s.selector {
-		result.AddLabel(jsii.String(key), value)
-	}
-	return result
-}
-
-func (s *statefulSetImpl) workloadSelector() map[string]interface{} {
-	result := map[string]interface{}{"matchLabels": s.selector}
-	if len(s.matchExpressions) > 0 {
-		result["matchExpressions"] = s.matchExpressions
-	}
-	return result
-}
-
-func (s *statefulSetImpl) MatchLabels() *map[string]*string {
-	values := map[string]*string{}
-	for key, value := range s.selector {
-		values[key] = value
-	}
-	return &values
-}
-
-func (s *statefulSetImpl) MatchExpressions() *[]*LabelSelectorRequirement {
-	values := append([]*LabelSelectorRequirement(nil), s.matchExpressions...)
-	return &values
-}
-
-func (s *statefulSetImpl) Select(selectors ...LabelSelector) {
-	for _, selector := range selectors {
-		if selector == nil {
-			panic("selector is required")
-		}
-		for key, value := range labelSelectorLabels(selector) {
-			s.selector[key] = value
-		}
-		s.matchExpressions = append(s.matchExpressions, labelSelectorRequirements(selector)...)
-	}
-}
-
-func (s *statefulSetImpl) InitContainers() *[]Container {
-	values := append([]Container(nil), s.podState.initContainers...)
-	return &values
-}
-
-func (s *statefulSetImpl) Volumes() *[]Volume {
-	values := append([]Volume(nil), s.podState.volumes...)
-	return &values
-}
-
-func (s *statefulSetImpl) AddInitContainer(props *ContainerProps) Container {
-	return s.addInitContainer(props)
-}
-
-func (s *statefulSetImpl) AddVolume(volume Volume) {
-	s.addVolume(volume)
-}
-
-func (s *statefulSetImpl) AddHostAlias(alias *HostAlias) {
-	if alias == nil || alias.Ip == nil || alias.Hostnames == nil {
-		panic("host alias IP and hostnames are required")
-	}
-	s.hostAliases = append(s.hostAliases, alias)
-}
-
-func (s *statefulSetImpl) AttachContainer(container Container) {
-	if container == nil {
-		panic("container is required")
-	}
-	s.containers = append(s.containers, container)
-}
-
-func (s *statefulSetImpl) ToNetworkPolicyPeerConfig() *NetworkPolicyPeerConfig {
-	return &NetworkPolicyPeerConfig{PodSelector: s.ToPodSelectorConfig()}
-}
-
-func (s *statefulSetImpl) ToPodSelector() IPodSelector {
-	return s
-}
-
-func (s *statefulSetImpl) AutomountServiceAccountToken() *bool {
-	if s.props.AutomountServiceAccountToken == nil {
-		return jsii.Bool(false)
-	}
-	return s.props.AutomountServiceAccountToken
-}
-
-func (s *statefulSetImpl) Dns() PodDns {
-	return s.dns
-}
-
-func (s *statefulSetImpl) DockerRegistryAuth() ISecret {
-	return s.props.DockerRegistryAuth
-}
-
-func (s *statefulSetImpl) EnableServiceLinks() *bool {
-	return s.props.EnableServiceLinks
-}
-
-func (s *statefulSetImpl) HostAliases() *[]*HostAlias {
-	values := append([]*HostAlias(nil), s.hostAliases...)
-	return &values
-}
-
-func (s *statefulSetImpl) HostNetwork() *bool {
-	if s.props.HostNetwork == nil {
-		return jsii.Bool(false)
-	}
-	return s.props.HostNetwork
-}
-
-func (s *statefulSetImpl) Isolate() *bool {
-	if s.props.Isolate == nil {
-		return jsii.Bool(false)
-	}
-	return s.props.Isolate
-}
-
-func (s *statefulSetImpl) RestartPolicy() RestartPolicy {
-	if s.props.RestartPolicy == "" {
-		return RestartPolicy_ALWAYS
-	}
-	return s.props.RestartPolicy
-}
-
-func (s *statefulSetImpl) SecurityContext() PodSecurityContext {
-	return s.security
-}
-
-func (s *statefulSetImpl) ServiceAccount() IServiceAccount {
-	return s.props.ServiceAccount
-}
-
-func (s *statefulSetImpl) ShareProcessNamespace() *bool {
-	if s.props.ShareProcessNamespace == nil {
-		return jsii.Bool(false)
-	}
-	return s.props.ShareProcessNamespace
-}
-
-func (s *statefulSetImpl) TerminationGracePeriod() cdk8s.Duration {
-	if s.props.TerminationGracePeriod == nil {
-		return cdk8s.Duration_Seconds(jsii.Number(30))
-	}
-	return s.props.TerminationGracePeriod
-}
-
-func (s *statefulSetImpl) ToSubjectConfiguration() *SubjectConfiguration {
-	if s.props.ServiceAccount == nil && !*s.AutomountServiceAccountToken() {
-		panic(stringValue(s.Name()) + " cannot be converted to a role binding subject: You must either assign a service account to it, or use 'automountServiceAccountToken: true'")
-	}
-	name := jsii.String("default")
-	if s.props.ServiceAccount != nil {
-		name = s.props.ServiceAccount.ResourceName()
-	}
-	return &SubjectConfiguration{ApiGroup: jsii.String(""), Kind: jsii.String("ServiceAccount"), Name: name}
 }

@@ -195,7 +195,7 @@ func NewCronJob(scope constructs.Construct, id *string, props *CronJobProps) Cro
 	if props.TtlAfterFinished != nil && (props.SuccessfulJobsRetained != nil || props.FailedJobsRetained != nil) {
 		panic("The 'ttlAfterFinished' property cannot be set if 'successfulJobsRetained' property or 'failedJobsRetained' property is set")
 	}
-	result := &cronJobImpl{jobImpl: jobImpl{podState: newPodState(cronJobPodProps(props)), podMetadata: props.PodMetadata, selector: map[string]*string{}, activeDeadline: props.ActiveDeadline, backoffLimit: props.BackoffLimit, ttlAfterFinished: props.TtlAfterFinished}, schedule: props.Schedule, concurrencyPolicy: props.ConcurrencyPolicy, failedJobsRetained: props.FailedJobsRetained, startingDeadline: props.StartingDeadline, successfulJobsRetained: props.SuccessfulJobsRetained, suspend: props.Suspend, timeZone: props.TimeZone}
+	result := &cronJobImpl{jobImpl: jobImpl{podState: newPodState(cronJobPodProps(props), RestartPolicy_NEVER), workloadState: newWorkloadState(props.PodMetadata, false), activeDeadline: props.ActiveDeadline, backoffLimit: props.BackoffLimit, ttlAfterFinished: props.TtlAfterFinished}, schedule: props.Schedule, concurrencyPolicy: props.ConcurrencyPolicy, failedJobsRetained: props.FailedJobsRetained, startingDeadline: props.StartingDeadline, successfulJobsRetained: props.SuccessfulJobsRetained, suspend: props.Suspend, timeZone: props.TimeZone}
 	if result.concurrencyPolicy == "" {
 		result.concurrencyPolicy = ConcurrencyPolicy_FORBID
 	}
@@ -213,6 +213,8 @@ func NewCronJob(scope constructs.Construct, id *string, props *CronJobProps) Cro
 	}
 	manifest := map[string]interface{}{}
 	result.resourceBase.initialize(result, scope, id, "batch/v1", "CronJob", "cronjobs", props.Metadata, manifest)
+	result.podState.subjectOwner = result
+	result.workloadState.owner = result
 	// CronJobs do not automatically select their generated Pods, but callers can
 	// opt in just as they can for any other workload.
 	if props.Select != nil && *props.Select {

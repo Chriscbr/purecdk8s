@@ -101,21 +101,21 @@ type DaemonSet interface {
 type daemonSetImpl struct {
 	resourceBase
 	podState
-	minReadySeconds  *float64
-	podMetadata      *cdk8s.ApiObjectMetadata
-	selector         map[string]*string
-	matchExpressions []*LabelSelectorRequirement
-	scheduling       WorkloadScheduling
-	connections      PodConnections
+	workloadState
+	minReadySeconds *float64
+	scheduling      WorkloadScheduling
+	connections     PodConnections
 }
 
 func NewDaemonSet(scope constructs.Construct, id *string, props *DaemonSetProps) DaemonSet {
 	if props == nil {
 		props = &DaemonSetProps{}
 	}
-	result := &daemonSetImpl{podState: newPodState(daemonSetPodProps(props)), minReadySeconds: props.MinReadySeconds, podMetadata: props.PodMetadata, selector: map[string]*string{}}
+	result := &daemonSetImpl{podState: newPodState(daemonSetPodProps(props), RestartPolicy_ALWAYS), workloadState: newWorkloadState(props.PodMetadata, false), minReadySeconds: props.MinReadySeconds}
 	manifest := map[string]interface{}{}
 	result.resourceBase.initialize(result, scope, id, "apps/v1", "DaemonSet", "daemonsets", props.Metadata, manifest)
+	result.podState.subjectOwner = result
+	result.workloadState.owner = result
 	selectPods := true
 	if props.Select != nil {
 		selectPods = *props.Select
@@ -158,100 +158,6 @@ func (d *daemonSetImpl) MinReadySeconds() *float64 {
 	return d.minReadySeconds
 }
 
-func (d *daemonSetImpl) Containers() *[]Container {
-	values := append([]Container(nil), d.containers...)
-	return &values
-}
-
-func (d *daemonSetImpl) InitContainers() *[]Container {
-	values := append([]Container(nil), d.initContainers...)
-	return &values
-}
-
-func (d *daemonSetImpl) Volumes() *[]Volume {
-	values := append([]Volume(nil), d.volumes...)
-	return &values
-}
-
-func (d *daemonSetImpl) AddContainer(props *ContainerProps) Container {
-	return d.addContainer(props)
-}
-
-func (d *daemonSetImpl) AddInitContainer(props *ContainerProps) Container {
-	return d.addInitContainer(props)
-}
-
-func (d *daemonSetImpl) AddVolume(volume Volume) {
-	d.addVolume(volume)
-}
-
-func (d *daemonSetImpl) AddHostAlias(alias *HostAlias) {
-	if alias == nil || alias.Ip == nil || alias.Hostnames == nil {
-		panic("host alias IP and hostnames are required")
-	}
-	d.hostAliases = append(d.hostAliases, alias)
-}
-
-func (d *daemonSetImpl) AttachContainer(container Container) {
-	if container == nil {
-		panic("container is required")
-	}
-	d.containers = append(d.containers, container)
-}
-
-func (d *daemonSetImpl) PodMetadata() cdk8s.ApiObjectMetadataDefinition {
-	metadata := d.podMetadata
-	if metadata == nil {
-		metadata = &cdk8s.ApiObjectMetadata{}
-	}
-	result := cdk8s.NewApiObjectMetadataDefinition(&cdk8s.ApiObjectMetadataDefinitionOptions{ApiObject: d.ApiObject(), Name: metadata.Name, Namespace: metadata.Namespace, Labels: metadata.Labels, Annotations: metadata.Annotations})
-	for key, value := range d.selector {
-		result.AddLabel(jsii.String(key), value)
-	}
-	return result
-}
-
-func (d *daemonSetImpl) ToPodSelectorConfig() *PodSelectorConfig {
-	labels := map[string]*string{}
-	for key, value := range d.selector {
-		labels[key] = value
-	}
-	return &PodSelectorConfig{LabelSelector: newLabelSelectorFromRequirements(d.matchExpressions, &labels)}
-}
-
-func (d *daemonSetImpl) ToNetworkPolicyPeerConfig() *NetworkPolicyPeerConfig {
-	return &NetworkPolicyPeerConfig{PodSelector: d.ToPodSelectorConfig()}
-}
-
-func (d *daemonSetImpl) ToPodSelector() IPodSelector {
-	return d
-}
-
-func (d *daemonSetImpl) Select(selectors ...LabelSelector) {
-	for _, selector := range selectors {
-		if selector == nil {
-			panic("selector is required")
-		}
-		for key, value := range labelSelectorLabels(selector) {
-			d.selector[key] = value
-		}
-		d.matchExpressions = append(d.matchExpressions, labelSelectorRequirements(selector)...)
-	}
-}
-
-func (d *daemonSetImpl) MatchLabels() *map[string]*string {
-	values := map[string]*string{}
-	for key, value := range d.selector {
-		values[key] = value
-	}
-	return &values
-}
-
-func (d *daemonSetImpl) MatchExpressions() *[]*LabelSelectorRequirement {
-	values := append([]*LabelSelectorRequirement(nil), d.matchExpressions...)
-	return &values
-}
-
 func (d *daemonSetImpl) Connections() PodConnections {
 	return d.connections
 }
@@ -260,98 +166,12 @@ func (d *daemonSetImpl) Scheduling() WorkloadScheduling {
 	return d.scheduling
 }
 
-func (d *daemonSetImpl) AutomountServiceAccountToken() *bool {
-	if d.props.AutomountServiceAccountToken == nil {
-		return jsii.Bool(false)
-	}
-	return d.props.AutomountServiceAccountToken
-}
-
-func (d *daemonSetImpl) Dns() PodDns {
-	return d.dns
-}
-
-func (d *daemonSetImpl) DockerRegistryAuth() ISecret {
-	return d.props.DockerRegistryAuth
-}
-
-func (d *daemonSetImpl) EnableServiceLinks() *bool {
-	return d.props.EnableServiceLinks
-}
-
-func (d *daemonSetImpl) HostAliases() *[]*HostAlias {
-	values := append([]*HostAlias(nil), d.hostAliases...)
-	return &values
-}
-
-func (d *daemonSetImpl) HostNetwork() *bool {
-	if d.props.HostNetwork == nil {
-		return jsii.Bool(false)
-	}
-	return d.props.HostNetwork
-}
-
-func (d *daemonSetImpl) Isolate() *bool {
-	if d.props.Isolate == nil {
-		return jsii.Bool(false)
-	}
-	return d.props.Isolate
-}
-
-func (d *daemonSetImpl) RestartPolicy() RestartPolicy {
-	if d.props.RestartPolicy == "" {
-		return RestartPolicy_ALWAYS
-	}
-	return d.props.RestartPolicy
-}
-
-func (d *daemonSetImpl) SecurityContext() PodSecurityContext {
-	return d.security
-}
-
-func (d *daemonSetImpl) ServiceAccount() IServiceAccount {
-	return d.props.ServiceAccount
-}
-
-func (d *daemonSetImpl) ShareProcessNamespace() *bool {
-	if d.props.ShareProcessNamespace == nil {
-		return jsii.Bool(false)
-	}
-	return d.props.ShareProcessNamespace
-}
-
-func (d *daemonSetImpl) TerminationGracePeriod() cdk8s.Duration {
-	if d.props.TerminationGracePeriod == nil {
-		return cdk8s.Duration_Seconds(jsii.Number(30))
-	}
-	return d.props.TerminationGracePeriod
-}
-
-func (d *daemonSetImpl) ToSubjectConfiguration() *SubjectConfiguration {
-	if d.props.ServiceAccount == nil && !*d.AutomountServiceAccountToken() {
-		panic(stringValue(d.Name()) + " cannot be converted to a role binding subject: You must either assign a service account to it, or use 'automountServiceAccountToken: true'")
-	}
-	name := jsii.String("default")
-	if d.props.ServiceAccount != nil {
-		name = d.props.ServiceAccount.ResourceName()
-	}
-	return &SubjectConfiguration{ApiGroup: jsii.String(""), Kind: jsii.String("ServiceAccount"), Name: name}
-}
-
 func (d *daemonSetImpl) toManifest() map[string]interface{} {
 	spec := d.podState.manifest(d.RestartPolicy())
 	for key, value := range d.scheduling.toManifest() {
 		spec[key] = value
 	}
 	return map[string]interface{}{"minReadySeconds": d.MinReadySeconds(), "selector": d.workloadSelector(), "template": map[string]interface{}{"metadata": d.PodMetadata().ToJson(), "spec": spec}}
-}
-
-func (d *daemonSetImpl) workloadSelector() map[string]interface{} {
-	result := map[string]interface{}{"matchLabels": d.selector}
-	if len(d.matchExpressions) > 0 {
-		result["matchExpressions"] = d.matchExpressions
-	}
-	return result
 }
 
 func daemonSetPodProps(p *DaemonSetProps) *PodProps {

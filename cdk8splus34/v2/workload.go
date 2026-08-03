@@ -1,6 +1,9 @@
 package cdk8splus34
 
-import "github.com/Chriscbr/purecdk8s/cdk8s/v2"
+import (
+	"github.com/Chriscbr/purecdk8s/cdk8s/v2"
+	"github.com/Chriscbr/purecdk8s/jsii"
+)
 
 // Properties for `Workload`.
 type WorkloadProps struct {
@@ -90,5 +93,123 @@ func (p *WorkloadProps) podProps() *PodProps {
 		SecurityContext: p.SecurityContext, ServiceAccount: p.ServiceAccount,
 		ShareProcessNamespace: p.ShareProcessNamespace, TerminationGracePeriod: p.TerminationGracePeriod,
 		Volumes: p.Volumes,
+	}
+}
+
+type workloadOwner interface {
+	Resource
+	IPodSelector
+}
+
+type workloadState struct {
+	owner            workloadOwner
+	podMetadata      *cdk8s.ApiObjectMetadata
+	selector         map[string]*string
+	matchExpressions []*LabelSelectorRequirement
+	omitEmptyLabels  bool
+}
+
+func newWorkloadState(podMetadata *cdk8s.ApiObjectMetadata, omitEmptyLabels bool) workloadState {
+	return workloadState{podMetadata: podMetadata, selector: map[string]*string{}, omitEmptyLabels: omitEmptyLabels}
+}
+
+func (w *workloadState) PodMetadata() cdk8s.ApiObjectMetadataDefinition {
+	metadata := w.podMetadata
+	if metadata == nil {
+		metadata = &cdk8s.ApiObjectMetadata{}
+	}
+	result := cdk8s.NewApiObjectMetadataDefinition(&cdk8s.ApiObjectMetadataDefinitionOptions{ApiObject: w.owner.ApiObject(), Name: metadata.Name, Namespace: metadata.Namespace, Labels: metadata.Labels, Annotations: metadata.Annotations})
+	for key, value := range w.selector {
+		result.AddLabel(jsii.String(key), value)
+	}
+	return result
+}
+
+func (w *workloadState) ToPodSelectorConfig() *PodSelectorConfig {
+	labels := map[string]*string{}
+	for key, value := range w.selector {
+		labels[key] = value
+	}
+	return &PodSelectorConfig{LabelSelector: newLabelSelectorFromRequirements(w.matchExpressions, &labels)}
+}
+
+func (w *workloadState) ToNetworkPolicyPeerConfig() *NetworkPolicyPeerConfig {
+	return &NetworkPolicyPeerConfig{PodSelector: w.ToPodSelectorConfig()}
+}
+
+func (w *workloadState) ToPodSelector() IPodSelector {
+	return w.owner
+}
+
+func (w *workloadState) Select(selectors ...LabelSelector) {
+	for _, selector := range selectors {
+		if selector == nil {
+			panic("selector is required")
+		}
+		for key, value := range labelSelectorLabels(selector) {
+			w.selector[key] = value
+		}
+		w.matchExpressions = append(w.matchExpressions, labelSelectorRequirements(selector)...)
+	}
+}
+
+func (w *workloadState) MatchLabels() *map[string]*string {
+	values := map[string]*string{}
+	for key, value := range w.selector {
+		values[key] = value
+	}
+	return &values
+}
+
+func (w *workloadState) MatchExpressions() *[]*LabelSelectorRequirement {
+	values := append([]*LabelSelectorRequirement(nil), w.matchExpressions...)
+	return &values
+}
+
+func (w *workloadState) workloadSelector() map[string]interface{} {
+	result := map[string]interface{}{}
+	if !w.omitEmptyLabels || len(w.selector) > 0 {
+		result["matchLabels"] = w.selector
+	}
+	if len(w.matchExpressions) > 0 {
+		result["matchExpressions"] = w.matchExpressions
+	}
+	return result
+}
+
+type scalableOwner interface {
+	Resource
+	Containers() *[]Container
+}
+
+type scalableState struct {
+	owner         scalableOwner
+	replicas      *float64
+	hasAutoscaler bool
+}
+
+func (s *scalableState) Replicas() *float64 {
+	return s.replicas
+}
+
+func (s *scalableState) HasAutoscaler() *bool {
+	return jsii.Bool(s.hasAutoscaler)
+}
+
+func (s *scalableState) SetHasAutoscaler(value *bool) {
+	s.hasAutoscaler = value != nil && *value
+}
+
+func (s *scalableState) MarkHasAutoscaler() {
+	s.hasAutoscaler = true
+}
+
+func (s *scalableState) ToScalingTarget() *ScalingTarget {
+	return &ScalingTarget{
+		ApiVersion: s.owner.ApiVersion(),
+		Containers: s.owner.Containers(),
+		Kind:       s.owner.Kind(),
+		Name:       s.owner.Name(),
+		Replicas:   s.replicas,
 	}
 }
