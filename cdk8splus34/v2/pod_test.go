@@ -817,22 +817,283 @@ func podPolicyMetadataNamespace(t *testing.T, policy map[string]interface{}) str
 	return namespace
 }
 
-func TestPodConnectionsAllowTo(t *testing.T) {
-	// Ported from: https://github.com/cdk8s-team/cdk8s-plus/blob/fe0337f802a48b0fba3588b80b4afe82085225b0/test/pod.test.ts#L827
-	t.Run("can allow to ip block", func(t *testing.T) {
+type podConnectionTestDirection struct {
+	verb, primary, opposite, oppositeTitle string
+	allow                                  func(plus.PodConnections, plus.INetworkPolicyPeer)
+	allowPorts                             func(plus.PodConnections, plus.INetworkPolicyPeer, *[]plus.NetworkPolicyPort)
+	allowIsolation                         func(plus.PodConnections, plus.INetworkPolicyPeer, plus.PodConnectionsIsolation)
+	defaultPorts                           []interface{}
+}
+
+func testPodConnections(t *testing.T, direction podConnectionTestDirection) {
+	t.Run("can allow "+direction.verb+" ip block", func(t *testing.T) {
 		chart := cdk8s.Testing_Chart()
 		pod := podConnectionPod(chart, "Pod", "", 0)
-		pod.Connections().AllowTo(plus.NetworkPolicyIpBlock_AnyIpv4(chart, jsii.String("AnyIpv4")), nil)
-		policies := podPoliciesForDirection(t, chart, "egress")
+		direction.allow(pod.Connections(), plus.NetworkPolicyIpBlock_AnyIpv4(chart, jsii.String("AnyIpv4")))
+		policies := podPoliciesForDirection(t, chart, direction.primary)
 		if len(policies) != 1 || len(podManifestsOfKind(t, chart, "NetworkPolicy")) != 1 {
-			t.Fatalf("egress/total policy counts = %d/%d, want 1/1", len(policies), len(podManifestsOfKind(t, chart, "NetworkPolicy")))
+			t.Fatalf("%s/total policy counts = %d/%d, want 1/1", direction.primary, len(policies), len(podManifestsOfKind(t, chart, "NetworkPolicy")))
 		}
-		rule := podPolicyRule(t, policies[0], "egress")
-		requireDeepEqual(t, podRulePeers(t, rule, "egress"), []interface{}{map[string]interface{}{"ipBlock": map[string]interface{}{"cidr": "0.0.0.0/0"}}})
+		rule := podPolicyRule(t, policies[0], direction.primary)
+		requireDeepEqual(t, podRulePeers(t, rule, direction.primary), []interface{}{map[string]interface{}{"ipBlock": map[string]interface{}{"cidr": "0.0.0.0/0"}}})
 		requireDeepEqual(t, rule["ports"], []interface{}{})
 	})
 
-	// Ported from: https://github.com/cdk8s-team/cdk8s-plus/blob/fe0337f802a48b0fba3588b80b4afe82085225b0/test/pod.test.ts#L839
+	t.Run("can allow "+direction.verb+" managed pod", func(t *testing.T) {
+		chart := cdk8s.Testing_Chart()
+		pod1 := podConnectionPod(chart, "Pod1", "", 0)
+		pod2 := podConnectionPod(chart, "Pod2", "", 0)
+		ports := []plus.NetworkPolicyPort{plus.NetworkPolicyPort_Tcp(jsii.Number(4444))}
+		direction.allowPorts(pod1.Connections(), pod2, &ports)
+		primary := podPoliciesForDirection(t, chart, direction.primary)
+		opposite := podPoliciesForDirection(t, chart, direction.opposite)
+		if len(primary) != 1 || len(opposite) != 1 {
+			t.Fatalf("%s/%s policy counts = %d/%d, want 1/1", direction.primary, direction.opposite, len(primary), len(opposite))
+		}
+		primaryRule := podPolicyRule(t, primary[0], direction.primary)
+		oppositeRule := podPolicyRule(t, opposite[0], direction.opposite)
+		wantPorts := []interface{}{map[string]interface{}{"port": float64(4444), "protocol": "TCP"}}
+		requireDeepEqual(t, primaryRule["ports"], wantPorts)
+		requireDeepEqual(t, oppositeRule["ports"], wantPorts)
+		requireDeepEqual(t, mapAt(t, podRulePeers(t, primaryRule, direction.primary)[0], "podSelector", "matchLabels"), map[string]interface{}{"cdk8s.io/metadata.addr": "test-Pod2-c82dc44e"})
+		requireDeepEqual(t, mapAt(t, podRulePeers(t, oppositeRule, direction.opposite)[0], "podSelector", "matchLabels"), map[string]interface{}{"cdk8s.io/metadata.addr": "test-Pod1-c8591188"})
+	})
+
+	t.Run("can allow "+direction.verb+" managed workload resource", func(t *testing.T) {
+		chart := cdk8s.Testing_Chart()
+		pod := podConnectionPod(chart, "Pod", "", 0)
+		deployment := plus.NewDeployment(chart, jsii.String("Deployment"), &plus.DeploymentProps{Containers: podContainers("pod")})
+		direction.allow(pod.Connections(), deployment)
+		if len(podPoliciesForDirection(t, chart, direction.primary)) != 1 || len(podPoliciesForDirection(t, chart, direction.opposite)) != 1 {
+			t.Fatalf("managed workload did not create paired policies: %#v", podPolicySpecs(t, chart))
+		}
+		rule := podPolicyRule(t, podPoliciesForDirection(t, chart, direction.primary)[0], direction.primary)
+		selector := mapAt(t, podRulePeers(t, rule, direction.primary)[0], "podSelector", "matchLabels")
+		if selector["cdk8s.io/metadata.addr"] == nil {
+			t.Fatalf("deployment selector = %#v", selector)
+		}
+		if len(podManifestsOfKind(t, chart, "Deployment")) != 1 {
+			t.Fatal("managed Deployment was not synthesized")
+		}
+	})
+
+	t.Run("can allow "+direction.verb+" pods selected without namespaces", func(t *testing.T) {
+		chart := cdk8s.Testing_Chart()
+		pod := podConnectionPod(chart, "Pod", "", 0)
+		selected := plus.Pods_Select(chart, jsii.String("Pods"), &plus.PodsSelectOptions{Labels: &map[string]*string{"type": jsii.String("selected")}})
+		direction.allow(pod.Connections(), selected)
+		if len(podManifestsOfKind(t, chart, "NetworkPolicy")) != 2 {
+			t.Fatalf("NetworkPolicy count = %d, want 2", len(podManifestsOfKind(t, chart, "NetworkPolicy")))
+		}
+		primaryRule := podPolicyRule(t, podPoliciesForDirection(t, chart, direction.primary)[0], direction.primary)
+		requireDeepEqual(t, mapAt(t, podRulePeers(t, primaryRule, direction.primary)[0], "podSelector", "matchLabels"), map[string]interface{}{"type": "selected"})
+		opposite := mapAt(t, podPoliciesForDirection(t, chart, direction.opposite)[0], "spec", "podSelector", "matchLabels")
+		requireDeepEqual(t, opposite, map[string]interface{}{"type": "selected"})
+	})
+
+	t.Run("can allow "+direction.verb+" pods selected with namespaces selected by names", func(t *testing.T) {
+		chart := cdk8s.Testing_Chart()
+		pod := podConnectionPod(chart, "Pod", "", 0)
+		namespaces := plus.Namespaces_Select(chart, jsii.String("Namespaces"), &plus.NamespacesSelectOptions{Names: &[]*string{jsii.String("selected1"), jsii.String("selected2")}})
+		selected := plus.Pods_Select(chart, jsii.String("Pods"), &plus.PodsSelectOptions{Labels: &map[string]*string{"type": jsii.String("selected")}, Namespaces: namespaces})
+		direction.allow(pod.Connections(), selected)
+		if got := len(podManifestsOfKind(t, chart, "NetworkPolicy")); got != 3 {
+			t.Fatalf("NetworkPolicy count = %d, want 3", got)
+		}
+		primaryRule := podPolicyRule(t, podPoliciesForDirection(t, chart, direction.primary)[0], direction.primary)
+		peers := podRulePeers(t, primaryRule, direction.primary)
+		if len(peers) != 2 {
+			t.Fatalf("%s peer count = %d, want 2", direction.primary, len(peers))
+		}
+		names := make([]string, 0, 2)
+		for _, peer := range peers {
+			names = append(names, mapAt(t, peer, "namespaceSelector", "matchLabels")["kubernetes.io/metadata.name"].(string))
+		}
+		sort.Strings(names)
+		requireDeepEqual(t, names, []string{"selected1", "selected2"})
+		opposite := podPoliciesForDirection(t, chart, direction.opposite)
+		gotNamespaces := []string{podPolicyMetadataNamespace(t, opposite[0]), podPolicyMetadataNamespace(t, opposite[1])}
+		sort.Strings(gotNamespaces)
+		requireDeepEqual(t, gotNamespaces, []string{"selected1", "selected2"})
+	})
+
+	t.Run("cannot allow "+direction.verb+" pods selected with namespaces selected by labels", func(t *testing.T) {
+		chart := cdk8s.Testing_Chart()
+		pod := podConnectionPod(chart, "Pod", "", 0)
+		namespaces := plus.Namespaces_Select(chart, jsii.String("Namespaces"), &plus.NamespacesSelectOptions{Labels: &map[string]*string{"type": jsii.String("selected")}})
+		selected := plus.Pods_Select(chart, jsii.String("Pods"), &plus.PodsSelectOptions{Labels: &map[string]*string{"type": jsii.String("selected")}, Namespaces: namespaces})
+		requirePanicContains(t, "Unable to create an "+direction.oppositeTitle+" policy for peer 'test/Pods' (pod=test-pod-c890e1b8). Peer must specify namespaces only by name", func() {
+			direction.allow(pod.Connections(), selected)
+		})
+	})
+
+	t.Run("cannot allow "+direction.verb+" pods selected in all namespaces", func(t *testing.T) {
+		chart := cdk8s.Testing_Chart()
+		pod := podConnectionPod(chart, "Pod", "", 0)
+		selected := plus.Pods_Select(chart, jsii.String("Pods"), &plus.PodsSelectOptions{
+			Labels:     &map[string]*string{"type": jsii.String("selected")},
+			Namespaces: plus.Namespaces_All(chart, jsii.String("AllNamespaces")),
+		})
+		requirePanicContains(t, "Unable to create an "+direction.oppositeTitle+" policy for peer 'test/Pods' (pod=test-pod-c890e1b8). Peer must specify namespace names", func() {
+			direction.allow(pod.Connections(), selected)
+		})
+	})
+
+	t.Run("can allow "+direction.verb+" all pods", func(t *testing.T) {
+		chart := cdk8s.Testing_Chart()
+		pod := podConnectionPod(chart, "Pod", "", 0)
+		direction.allow(pod.Connections(), plus.Pods_All(chart, jsii.String("AllPods"), nil))
+		if len(podManifestsOfKind(t, chart, "NetworkPolicy")) != 2 {
+			t.Fatalf("NetworkPolicy count = %d, want 2", len(podManifestsOfKind(t, chart, "NetworkPolicy")))
+		}
+		rule := podPolicyRule(t, podPoliciesForDirection(t, chart, direction.primary)[0], direction.primary)
+		requireDeepEqual(t, mapAt(t, podRulePeers(t, rule, direction.primary)[0], "podSelector"), map[string]interface{}{})
+		requireDeepEqual(t, mapAt(t, podPoliciesForDirection(t, chart, direction.opposite)[0], "spec", "podSelector"), map[string]interface{}{})
+	})
+
+	t.Run("can allow "+direction.verb+" managed namespace", func(t *testing.T) {
+		chart := cdk8s.Testing_Chart()
+		pod := podConnectionPod(chart, "Pod", "", 0)
+		namespace := plus.NewNamespace(chart, jsii.String("Namespace"), nil)
+		direction.allow(pod.Connections(), namespace)
+		if len(podManifestsOfKind(t, chart, "Namespace")) != 1 || len(podManifestsOfKind(t, chart, "NetworkPolicy")) != 2 {
+			t.Fatalf("Namespace/NetworkPolicy counts = %d/%d, want 1/2", len(podManifestsOfKind(t, chart, "Namespace")), len(podManifestsOfKind(t, chart, "NetworkPolicy")))
+		}
+		rule := podPolicyRule(t, podPoliciesForDirection(t, chart, direction.primary)[0], direction.primary)
+		peer := podRulePeers(t, rule, direction.primary)[0]
+		requireDeepEqual(t, mapAt(t, peer, "podSelector"), map[string]interface{}{})
+		if got := mapAt(t, peer, "namespaceSelector", "matchLabels")["kubernetes.io/metadata.name"]; got != stringValue(namespace.Name()) {
+			t.Fatalf("namespace selector = %#v, want %q", got, stringValue(namespace.Name()))
+		}
+		if got := podPolicyMetadataNamespace(t, podPoliciesForDirection(t, chart, direction.opposite)[0]); got != stringValue(namespace.Name()) {
+			t.Fatalf("opposite policy namespace = %q, want %q", got, stringValue(namespace.Name()))
+		}
+	})
+
+	t.Run("can allow "+direction.verb+" namespaces selected by name", func(t *testing.T) {
+		chart := cdk8s.Testing_Chart()
+		pod := podConnectionPod(chart, "Pod", "", 0)
+		namespace := plus.Namespaces_Select(chart, jsii.String("Namespaces"), &plus.NamespacesSelectOptions{Names: &[]*string{jsii.String("n1")}})
+		direction.allow(pod.Connections(), namespace)
+		if len(podManifestsOfKind(t, chart, "NetworkPolicy")) != 2 {
+			t.Fatalf("NetworkPolicy count = %d, want 2", len(podManifestsOfKind(t, chart, "NetworkPolicy")))
+		}
+		rule := podPolicyRule(t, podPoliciesForDirection(t, chart, direction.primary)[0], direction.primary)
+		if got := mapAt(t, podRulePeers(t, rule, direction.primary)[0], "namespaceSelector", "matchLabels")["kubernetes.io/metadata.name"]; got != "n1" {
+			t.Fatalf("namespace selector = %#v, want n1", got)
+		}
+		if got := podPolicyMetadataNamespace(t, podPoliciesForDirection(t, chart, direction.opposite)[0]); got != "n1" {
+			t.Fatalf("opposite policy namespace = %q, want n1", got)
+		}
+	})
+
+	t.Run("cannot allow "+direction.verb+" namespaces selected by labels", func(t *testing.T) {
+		chart := cdk8s.Testing_Chart()
+		pod := podConnectionPod(chart, "Pod", "", 0)
+		namespace := plus.Namespaces_Select(chart, jsii.String("Namespaces"), &plus.NamespacesSelectOptions{Labels: &map[string]*string{"type": jsii.String("selected")}})
+		requirePanicContains(t, "Unable to create an "+direction.oppositeTitle+" policy for peer 'test/Namespaces' (pod=test-pod-c890e1b8). Peer must specify namespaces only by name", func() {
+			direction.allow(pod.Connections(), namespace)
+		})
+	})
+
+	t.Run("can allow "+direction.verb+" peer across namespaces", func(t *testing.T) {
+		chart := cdk8s.Testing_Chart()
+		pod1 := podConnectionPod(chart, "Pod1", "n1", 0)
+		pod2 := podConnectionPod(chart, "Pod2", "n2", 0)
+		direction.allow(pod1.Connections(), pod2)
+		primary := podPoliciesForDirection(t, chart, direction.primary)
+		opposite := podPoliciesForDirection(t, chart, direction.opposite)
+		if len(primary) != 1 || len(opposite) != 1 {
+			t.Fatalf("%s/%s counts = %d/%d, want 1/1", direction.primary, direction.opposite, len(primary), len(opposite))
+		}
+		if got := podPolicyMetadataNamespace(t, primary[0]); got != "n1" {
+			t.Fatalf("%s policy namespace = %q, want n1", direction.primary, got)
+		}
+		if got := podPolicyMetadataNamespace(t, opposite[0]); got != "n2" {
+			t.Fatalf("%s policy namespace = %q, want n2", direction.opposite, got)
+		}
+	})
+
+	t.Run("can allow "+direction.verb+" multiple peers", func(t *testing.T) {
+		chart := cdk8s.Testing_Chart()
+		pod1 := podConnectionPod(chart, "Pod1", "", 0)
+		pod2 := podConnectionPod(chart, "Pod2", "", 0)
+		pod3 := podConnectionPod(chart, "Pod3", "", 0)
+		direction.allow(pod1.Connections(), pod2)
+		direction.allow(pod1.Connections(), pod3)
+		if len(podPoliciesForDirection(t, chart, direction.primary)) != 2 || len(podPoliciesForDirection(t, chart, direction.opposite)) != 2 {
+			t.Fatalf("paired policies = %#v", podPolicySpecs(t, chart))
+		}
+	})
+
+	t.Run("cannot allow "+direction.verb+" the same peer twice", func(t *testing.T) {
+		chart := cdk8s.Testing_Chart()
+		pod1 := podConnectionPod(chart, "Pod1", "", 0)
+		pod2 := podConnectionPod(chart, "Pod2", "", 0)
+		direction.allow(pod1.Connections(), pod2)
+		requirePanicContains(t, "There is already a Construct with name", func() { direction.allow(pod1.Connections(), pod2) })
+	})
+
+	t.Run("creates opposite policy in source namespace when peer doesnt define namespaces", func(t *testing.T) {
+		chart := cdk8s.Testing_Chart()
+		pod := podConnectionPod(chart, "Pod", "n1", 0)
+		redis := plus.Pods_Select(chart, jsii.String("Pods"), &plus.PodsSelectOptions{Labels: &map[string]*string{"role": jsii.String("redis")}})
+		direction.allow(pod.Connections(), redis)
+		opposite := podPoliciesForDirection(t, chart, direction.opposite)
+		if len(opposite) != 1 || podPolicyMetadataNamespace(t, opposite[0]) != "n1" {
+			t.Fatalf("opposite %s policies = %#v, want one in n1", direction.opposite, opposite)
+		}
+	})
+
+	for _, isolation := range []struct {
+		name      string
+		value     plus.PodConnectionsIsolation
+		direction string
+	}{
+		{name: "peer", value: plus.PodConnectionsIsolation_PEER, direction: direction.opposite},
+		{name: "pod", value: plus.PodConnectionsIsolation_POD, direction: direction.primary},
+	} {
+		isolation := isolation
+		t.Run("with "+isolation.name+" isolation creates one "+isolation.direction+" policy", func(t *testing.T) {
+			chart := cdk8s.Testing_Chart()
+			pod1 := podConnectionPod(chart, "Pod1", "", 0)
+			pod2 := podConnectionPod(chart, "Pod2", "", 0)
+			direction.allowIsolation(pod1.Connections(), pod2, isolation.value)
+			if len(podManifestsOfKind(t, chart, "NetworkPolicy")) != 1 || len(podPoliciesForDirection(t, chart, isolation.direction)) != 1 {
+				t.Fatalf("policies = %#v, want one %s policy", podPolicySpecs(t, chart), isolation.direction)
+			}
+		})
+	}
+
+	t.Run("defaults to directional container ports", func(t *testing.T) {
+		chart := cdk8s.Testing_Chart()
+		pod1 := podConnectionPod(chart, "Pod1", "", 0)
+		pod2 := podConnectionPod(chart, "Pod2", "", 6739)
+		direction.allow(pod1.Connections(), pod2)
+		requireDeepEqual(t, podPolicyRule(t, podPoliciesForDirection(t, chart, direction.primary)[0], direction.primary)["ports"], direction.defaultPorts)
+		requireDeepEqual(t, podPolicyRule(t, podPoliciesForDirection(t, chart, direction.opposite)[0], direction.opposite)["ports"], direction.defaultPorts)
+	})
+}
+
+func TestPodConnectionsAllowTo(t *testing.T) {
+	direction := podConnectionTestDirection{
+		verb:          "to",
+		primary:       "egress",
+		opposite:      "ingress",
+		oppositeTitle: "Ingress",
+		allow: func(connections plus.PodConnections, peer plus.INetworkPolicyPeer) {
+			connections.AllowTo(peer, nil)
+		},
+		allowPorts: func(connections plus.PodConnections, peer plus.INetworkPolicyPeer, ports *[]plus.NetworkPolicyPort) {
+			connections.AllowTo(peer, &plus.PodConnectionsAllowToOptions{Ports: ports})
+		},
+		allowIsolation: func(connections plus.PodConnections, peer plus.INetworkPolicyPeer, isolation plus.PodConnectionsIsolation) {
+			connections.AllowTo(peer, &plus.PodConnectionsAllowToOptions{Isolation: isolation})
+		},
+		defaultPorts: []interface{}{map[string]interface{}{"port": float64(6739), "protocol": "TCP"}},
+	}
+	testPodConnections(t, direction)
+
 	t.Run("can isolate pod", func(t *testing.T) {
 		chart := cdk8s.Testing_Chart()
 		plus.NewPod(chart, jsii.String("Pod"), &plus.PodProps{Containers: podContainers("pod"), Isolate: jsii.Bool(true)})
@@ -853,524 +1114,26 @@ func TestPodConnectionsAllowTo(t *testing.T) {
 			t.Fatalf("default-deny policy unexpectedly has ingress rules: %#v", spec["ingress"])
 		}
 	})
-
-	// Ported from: https://github.com/cdk8s-team/cdk8s-plus/blob/fe0337f802a48b0fba3588b80b4afe82085225b0/test/pod.test.ts#L855
-	t.Run("can allow to managed pod", func(t *testing.T) {
-		chart := cdk8s.Testing_Chart()
-		pod1 := podConnectionPod(chart, "Pod1", "", 0)
-		pod2 := podConnectionPod(chart, "Pod2", "", 0)
-		ports := []plus.NetworkPolicyPort{plus.NetworkPolicyPort_Tcp(jsii.Number(4444))}
-		pod1.Connections().AllowTo(pod2, &plus.PodConnectionsAllowToOptions{Ports: &ports})
-		egress := podPoliciesForDirection(t, chart, "egress")
-		ingress := podPoliciesForDirection(t, chart, "ingress")
-		if len(egress) != 1 || len(ingress) != 1 {
-			t.Fatalf("egress/ingress policy counts = %d/%d, want 1/1", len(egress), len(ingress))
-		}
-		egressRule := podPolicyRule(t, egress[0], "egress")
-		ingressRule := podPolicyRule(t, ingress[0], "ingress")
-		wantPorts := []interface{}{map[string]interface{}{"port": float64(4444), "protocol": "TCP"}}
-		requireDeepEqual(t, egressRule["ports"], wantPorts)
-		requireDeepEqual(t, ingressRule["ports"], wantPorts)
-		requireDeepEqual(t, mapAt(t, podRulePeers(t, egressRule, "egress")[0], "podSelector", "matchLabels"), map[string]interface{}{"cdk8s.io/metadata.addr": "test-Pod2-c82dc44e"})
-		requireDeepEqual(t, mapAt(t, podRulePeers(t, ingressRule, "ingress")[0], "podSelector", "matchLabels"), map[string]interface{}{"cdk8s.io/metadata.addr": "test-Pod1-c8591188"})
-	})
-
-	// Ported from: https://github.com/cdk8s-team/cdk8s-plus/blob/fe0337f802a48b0fba3588b80b4afe82085225b0/test/pod.test.ts#L871
-	t.Run("can allow to managed workload resource", func(t *testing.T) {
-		chart := cdk8s.Testing_Chart()
-		pod := podConnectionPod(chart, "Pod", "", 0)
-		deployment := plus.NewDeployment(chart, jsii.String("Deployment"), &plus.DeploymentProps{Containers: podContainers("pod")})
-		pod.Connections().AllowTo(deployment, nil)
-		if len(podPoliciesForDirection(t, chart, "egress")) != 1 || len(podPoliciesForDirection(t, chart, "ingress")) != 1 {
-			t.Fatalf("managed workload did not create paired policies: %#v", podPolicySpecs(t, chart))
-		}
-		rule := podPolicyRule(t, podPoliciesForDirection(t, chart, "egress")[0], "egress")
-		selector := mapAt(t, podRulePeers(t, rule, "egress")[0], "podSelector", "matchLabels")
-		if selector["cdk8s.io/metadata.addr"] == nil {
-			t.Fatalf("deployment selector = %#v", selector)
-		}
-		if len(podManifestsOfKind(t, chart, "Deployment")) != 1 {
-			t.Fatal("managed Deployment was not synthesized")
-		}
-	})
-
-	// Ported from: https://github.com/cdk8s-team/cdk8s-plus/blob/fe0337f802a48b0fba3588b80b4afe82085225b0/test/pod.test.ts#L887
-	t.Run("can allow to pods selected without namespaces", func(t *testing.T) {
-		chart := cdk8s.Testing_Chart()
-		pod := podConnectionPod(chart, "Pod", "", 0)
-		selected := plus.Pods_Select(chart, jsii.String("Pods"), &plus.PodsSelectOptions{Labels: &map[string]*string{"type": jsii.String("selected")}})
-		pod.Connections().AllowTo(selected, nil)
-		if len(podManifestsOfKind(t, chart, "NetworkPolicy")) != 2 {
-			t.Fatalf("NetworkPolicy count = %d, want 2", len(podManifestsOfKind(t, chart, "NetworkPolicy")))
-		}
-		egressRule := podPolicyRule(t, podPoliciesForDirection(t, chart, "egress")[0], "egress")
-		requireDeepEqual(t, mapAt(t, podRulePeers(t, egressRule, "egress")[0], "podSelector", "matchLabels"), map[string]interface{}{"type": "selected"})
-		opposite := mapAt(t, podPoliciesForDirection(t, chart, "ingress")[0], "spec", "podSelector", "matchLabels")
-		requireDeepEqual(t, opposite, map[string]interface{}{"type": "selected"})
-	})
-
-	// Ported from: https://github.com/cdk8s-team/cdk8s-plus/blob/fe0337f802a48b0fba3588b80b4afe82085225b0/test/pod.test.ts#L901
-	t.Run("can allow to pods selected with namespaces selected by names", func(t *testing.T) {
-		chart := cdk8s.Testing_Chart()
-		pod := podConnectionPod(chart, "Pod", "", 0)
-		namespaces := plus.Namespaces_Select(chart, jsii.String("Namespaces"), &plus.NamespacesSelectOptions{Names: &[]*string{jsii.String("selected1"), jsii.String("selected2")}})
-		selected := plus.Pods_Select(chart, jsii.String("Pods"), &plus.PodsSelectOptions{Labels: &map[string]*string{"type": jsii.String("selected")}, Namespaces: namespaces})
-		pod.Connections().AllowTo(selected, nil)
-		policies := podManifestsOfKind(t, chart, "NetworkPolicy")
-		if len(policies) != 3 {
-			t.Fatalf("NetworkPolicy count = %d, want 3", len(policies))
-		}
-		egressRule := podPolicyRule(t, podPoliciesForDirection(t, chart, "egress")[0], "egress")
-		peers := podRulePeers(t, egressRule, "egress")
-		if len(peers) != 2 {
-			t.Fatalf("egress peer count = %d, want 2", len(peers))
-		}
-		names := make([]string, 0, 2)
-		for _, peer := range peers {
-			names = append(names, mapAt(t, peer, "namespaceSelector", "matchLabels")["kubernetes.io/metadata.name"].(string))
-		}
-		sort.Strings(names)
-		requireDeepEqual(t, names, []string{"selected1", "selected2"})
-		ingress := podPoliciesForDirection(t, chart, "ingress")
-		gotNamespaces := []string{podPolicyMetadataNamespace(t, ingress[0]), podPolicyMetadataNamespace(t, ingress[1])}
-		sort.Strings(gotNamespaces)
-		requireDeepEqual(t, gotNamespaces, []string{"selected1", "selected2"})
-	})
-
-	// Ported from: https://github.com/cdk8s-team/cdk8s-plus/blob/fe0337f802a48b0fba3588b80b4afe82085225b0/test/pod.test.ts#L918
-	t.Run("cannot allow to pods selected with namespaces selected by labels", func(t *testing.T) {
-		chart := cdk8s.Testing_Chart()
-		pod := podConnectionPod(chart, "Pod", "", 0)
-		namespaces := plus.Namespaces_Select(chart, jsii.String("Namespaces"), &plus.NamespacesSelectOptions{Labels: &map[string]*string{"type": jsii.String("selected")}})
-		selected := plus.Pods_Select(chart, jsii.String("Pods"), &plus.PodsSelectOptions{Labels: &map[string]*string{"type": jsii.String("selected")}, Namespaces: namespaces})
-		requirePanicContains(t, "Unable to create an Ingress policy for peer 'test/Pods' (pod=test-pod-c890e1b8). Peer must specify namespaces only by name", func() {
-			pod.Connections().AllowTo(selected, nil)
-		})
-	})
-
-	// Ported from: https://github.com/cdk8s-team/cdk8s-plus/blob/fe0337f802a48b0fba3588b80b4afe82085225b0/test/pod.test.ts#L934
-	t.Run("cannot allow to pods selected in all namespaces", func(t *testing.T) {
-		chart := cdk8s.Testing_Chart()
-		pod := podConnectionPod(chart, "Pod", "", 0)
-		selected := plus.Pods_Select(chart, jsii.String("Pods"), &plus.PodsSelectOptions{
-			Labels:     &map[string]*string{"type": jsii.String("selected")},
-			Namespaces: plus.Namespaces_All(chart, jsii.String("AllNamespaces")),
-		})
-		requirePanicContains(t, "Unable to create an Ingress policy for peer 'test/Pods' (pod=test-pod-c890e1b8). Peer must specify namespace names", func() {
-			pod.Connections().AllowTo(selected, nil)
-		})
-	})
-
-	// Ported from: https://github.com/cdk8s-team/cdk8s-plus/blob/fe0337f802a48b0fba3588b80b4afe82085225b0/test/pod.test.ts#L950
-	t.Run("can allow to all pods", func(t *testing.T) {
-		chart := cdk8s.Testing_Chart()
-		pod := podConnectionPod(chart, "Pod", "", 0)
-		pod.Connections().AllowTo(plus.Pods_All(chart, jsii.String("AllPods"), nil), nil)
-		if len(podManifestsOfKind(t, chart, "NetworkPolicy")) != 2 {
-			t.Fatalf("NetworkPolicy count = %d, want 2", len(podManifestsOfKind(t, chart, "NetworkPolicy")))
-		}
-		rule := podPolicyRule(t, podPoliciesForDirection(t, chart, "egress")[0], "egress")
-		requireDeepEqual(t, mapAt(t, podRulePeers(t, rule, "egress")[0], "podSelector"), map[string]interface{}{})
-		requireDeepEqual(t, mapAt(t, podPoliciesForDirection(t, chart, "ingress")[0], "spec", "podSelector"), map[string]interface{}{})
-	})
-
-	// Ported from: https://github.com/cdk8s-team/cdk8s-plus/blob/fe0337f802a48b0fba3588b80b4afe82085225b0/test/pod.test.ts#L964
-	t.Run("can allow to managed namespace", func(t *testing.T) {
-		chart := cdk8s.Testing_Chart()
-		pod := podConnectionPod(chart, "Pod", "", 0)
-		namespace := plus.NewNamespace(chart, jsii.String("Namespace"), nil)
-		pod.Connections().AllowTo(namespace, nil)
-		if len(podManifestsOfKind(t, chart, "Namespace")) != 1 || len(podManifestsOfKind(t, chart, "NetworkPolicy")) != 2 {
-			t.Fatalf("Namespace/NetworkPolicy counts = %d/%d, want 1/2", len(podManifestsOfKind(t, chart, "Namespace")), len(podManifestsOfKind(t, chart, "NetworkPolicy")))
-		}
-		rule := podPolicyRule(t, podPoliciesForDirection(t, chart, "egress")[0], "egress")
-		peer := podRulePeers(t, rule, "egress")[0]
-		requireDeepEqual(t, mapAt(t, peer, "podSelector"), map[string]interface{}{})
-		if got := mapAt(t, peer, "namespaceSelector", "matchLabels")["kubernetes.io/metadata.name"]; got != stringValue(namespace.Name()) {
-			t.Fatalf("namespace selector = %#v, want %q", got, stringValue(namespace.Name()))
-		}
-		if got := podPolicyMetadataNamespace(t, podPoliciesForDirection(t, chart, "ingress")[0]); got != stringValue(namespace.Name()) {
-			t.Fatalf("opposite policy namespace = %q, want %q", got, stringValue(namespace.Name()))
-		}
-	})
-
-	// Ported from: https://github.com/cdk8s-team/cdk8s-plus/blob/fe0337f802a48b0fba3588b80b4afe82085225b0/test/pod.test.ts#L978
-	t.Run("can allow to namespaces selected by name", func(t *testing.T) {
-		chart := cdk8s.Testing_Chart()
-		pod := podConnectionPod(chart, "Pod", "", 0)
-		namespace := plus.Namespaces_Select(chart, jsii.String("Namespaces"), &plus.NamespacesSelectOptions{Names: &[]*string{jsii.String("n1")}})
-		pod.Connections().AllowTo(namespace, nil)
-		if len(podManifestsOfKind(t, chart, "NetworkPolicy")) != 2 {
-			t.Fatalf("NetworkPolicy count = %d, want 2", len(podManifestsOfKind(t, chart, "NetworkPolicy")))
-		}
-		rule := podPolicyRule(t, podPoliciesForDirection(t, chart, "egress")[0], "egress")
-		if got := mapAt(t, podRulePeers(t, rule, "egress")[0], "namespaceSelector", "matchLabels")["kubernetes.io/metadata.name"]; got != "n1" {
-			t.Fatalf("namespace selector = %#v, want n1", got)
-		}
-		if got := podPolicyMetadataNamespace(t, podPoliciesForDirection(t, chart, "ingress")[0]); got != "n1" {
-			t.Fatalf("opposite policy namespace = %q, want n1", got)
-		}
-	})
-
-	// Ported from: https://github.com/cdk8s-team/cdk8s-plus/blob/fe0337f802a48b0fba3588b80b4afe82085225b0/test/pod.test.ts#L992
-	t.Run("cannot allow to namespaces selected by labels", func(t *testing.T) {
-		chart := cdk8s.Testing_Chart()
-		pod := podConnectionPod(chart, "Pod", "", 0)
-		namespace := plus.Namespaces_Select(chart, jsii.String("Namespaces"), &plus.NamespacesSelectOptions{Labels: &map[string]*string{"type": jsii.String("selected")}})
-		requirePanicContains(t, "Unable to create an Ingress policy for peer 'test/Namespaces' (pod=test-pod-c890e1b8). Peer must specify namespaces only by name", func() {
-			pod.Connections().AllowTo(namespace, nil)
-		})
-	})
-
-	// Ported from: https://github.com/cdk8s-team/cdk8s-plus/blob/fe0337f802a48b0fba3588b80b4afe82085225b0/test/pod.test.ts#L1005
-	t.Run("can allow to peer across namespaces", func(t *testing.T) {
-		chart := cdk8s.Testing_Chart()
-		pod1 := podConnectionPod(chart, "Pod1", "n1", 0)
-		pod2 := podConnectionPod(chart, "Pod2", "n2", 0)
-		pod1.Connections().AllowTo(pod2, nil)
-		egress := podPoliciesForDirection(t, chart, "egress")
-		ingress := podPoliciesForDirection(t, chart, "ingress")
-		if len(egress) != 1 || len(ingress) != 1 {
-			t.Fatalf("egress/ingress counts = %d/%d, want 1/1", len(egress), len(ingress))
-		}
-		if got := podPolicyMetadataNamespace(t, egress[0]); got != "n1" {
-			t.Fatalf("egress policy namespace = %q, want n1", got)
-		}
-		if got := podPolicyMetadataNamespace(t, ingress[0]); got != "n2" {
-			t.Fatalf("ingress policy namespace = %q, want n2", got)
-		}
-	})
-
-	// Ported from: https://github.com/cdk8s-team/cdk8s-plus/blob/fe0337f802a48b0fba3588b80b4afe82085225b0/test/pod.test.ts#L1023
-	t.Run("can allow to multiple peers", func(t *testing.T) {
-		chart := cdk8s.Testing_Chart()
-		pod1 := podConnectionPod(chart, "Pod1", "", 0)
-		pod2 := podConnectionPod(chart, "Pod2", "", 0)
-		pod3 := podConnectionPod(chart, "Pod3", "", 0)
-		pod1.Connections().AllowTo(pod2, nil)
-		pod1.Connections().AllowTo(pod3, nil)
-		if len(podPoliciesForDirection(t, chart, "egress")) != 2 || len(podPoliciesForDirection(t, chart, "ingress")) != 2 {
-			t.Fatalf("paired policies = %#v", podPolicySpecs(t, chart))
-		}
-	})
-
-	// Ported from: https://github.com/cdk8s-team/cdk8s-plus/blob/fe0337f802a48b0fba3588b80b4afe82085225b0/test/pod.test.ts#L1044
-	t.Run("cannot allow to the same peer twice", func(t *testing.T) {
-		chart := cdk8s.Testing_Chart()
-		pod1 := podConnectionPod(chart, "Pod1", "", 0)
-		pod2 := podConnectionPod(chart, "Pod2", "", 0)
-		pod1.Connections().AllowTo(pod2, nil)
-		requirePanicContains(t, "There is already a Construct with name", func() { pod1.Connections().AllowTo(pod2, nil) })
-	})
-
-	// Ported from: https://github.com/cdk8s-team/cdk8s-plus/blob/fe0337f802a48b0fba3588b80b4afe82085225b0/test/pod.test.ts#L1060
-	t.Run("allow to create an ingress policy in source namespace when peer doesnt define namespaces", func(t *testing.T) {
-		chart := cdk8s.Testing_Chart()
-		pod := podConnectionPod(chart, "Pod", "n1", 0)
-		redis := plus.Pods_Select(chart, jsii.String("Pods"), &plus.PodsSelectOptions{Labels: &map[string]*string{"role": jsii.String("redis")}})
-		pod.Connections().AllowTo(redis, nil)
-		ingress := podPoliciesForDirection(t, chart, "ingress")
-		if len(ingress) != 1 || podPolicyMetadataNamespace(t, ingress[0]) != "n1" {
-			t.Fatalf("opposite ingress policies = %#v, want one in n1", ingress)
-		}
-	})
-
-	// Ported from: https://github.com/cdk8s-team/cdk8s-plus/blob/fe0337f802a48b0fba3588b80b4afe82085225b0/test/pod.test.ts#L1079
-	t.Run("allow to with peer isolation creates only ingress policy on peer", func(t *testing.T) {
-		chart := cdk8s.Testing_Chart()
-		pod1 := podConnectionPod(chart, "Pod1", "", 0)
-		pod2 := podConnectionPod(chart, "Pod2", "", 0)
-		pod1.Connections().AllowTo(pod2, &plus.PodConnectionsAllowToOptions{Isolation: plus.PodConnectionsIsolation_PEER})
-		if len(podManifestsOfKind(t, chart, "NetworkPolicy")) != 1 || len(podPoliciesForDirection(t, chart, "ingress")) != 1 {
-			t.Fatalf("policies = %#v, want one ingress policy", podPolicySpecs(t, chart))
-		}
-	})
-
-	// Ported from: https://github.com/cdk8s-team/cdk8s-plus/blob/fe0337f802a48b0fba3588b80b4afe82085225b0/test/pod.test.ts#L1096
-	t.Run("allow to with pod isolation creates only egress policy on pod", func(t *testing.T) {
-		chart := cdk8s.Testing_Chart()
-		pod1 := podConnectionPod(chart, "Pod1", "", 0)
-		pod2 := podConnectionPod(chart, "Pod2", "", 0)
-		pod1.Connections().AllowTo(pod2, &plus.PodConnectionsAllowToOptions{Isolation: plus.PodConnectionsIsolation_POD})
-		if len(podManifestsOfKind(t, chart, "NetworkPolicy")) != 1 || len(podPoliciesForDirection(t, chart, "egress")) != 1 {
-			t.Fatalf("policies = %#v, want one egress policy", podPolicySpecs(t, chart))
-		}
-	})
-
-	// Ported from: https://github.com/cdk8s-team/cdk8s-plus/blob/fe0337f802a48b0fba3588b80b4afe82085225b0/test/pod.test.ts#L1113
-	t.Run("allow to defaults to peer container ports", func(t *testing.T) {
-		chart := cdk8s.Testing_Chart()
-		pod1 := podConnectionPod(chart, "Pod1", "", 0)
-		pod2 := podConnectionPod(chart, "Pod2", "", 6739)
-		pod1.Connections().AllowTo(pod2, nil)
-		want := []interface{}{map[string]interface{}{"port": float64(6739), "protocol": "TCP"}}
-		requireDeepEqual(t, podPolicyRule(t, podPoliciesForDirection(t, chart, "egress")[0], "egress")["ports"], want)
-		requireDeepEqual(t, podPolicyRule(t, podPoliciesForDirection(t, chart, "ingress")[0], "ingress")["ports"], want)
-	})
 }
 
 func TestPodConnectionsAllowFrom(t *testing.T) {
-	// Ported from: https://github.com/cdk8s-team/cdk8s-plus/blob/fe0337f802a48b0fba3588b80b4afe82085225b0/test/pod.test.ts#L1130
-	t.Run("can allow from ip block", func(t *testing.T) {
-		chart := cdk8s.Testing_Chart()
-		pod := podConnectionPod(chart, "Pod", "", 0)
-		pod.Connections().AllowFrom(plus.NetworkPolicyIpBlock_AnyIpv4(chart, jsii.String("AnyIpv4")), nil)
-		policies := podPoliciesForDirection(t, chart, "ingress")
-		if len(policies) != 1 || len(podManifestsOfKind(t, chart, "NetworkPolicy")) != 1 {
-			t.Fatalf("ingress/total policy counts = %d/%d, want 1/1", len(policies), len(podManifestsOfKind(t, chart, "NetworkPolicy")))
-		}
-		rule := podPolicyRule(t, policies[0], "ingress")
-		requireDeepEqual(t, podRulePeers(t, rule, "ingress"), []interface{}{map[string]interface{}{"ipBlock": map[string]interface{}{"cidr": "0.0.0.0/0"}}})
-		requireDeepEqual(t, rule["ports"], []interface{}{})
-	})
-
-	// Ported from: https://github.com/cdk8s-team/cdk8s-plus/blob/fe0337f802a48b0fba3588b80b4afe82085225b0/test/pod.test.ts#L1142
-	t.Run("can allow from managed pod", func(t *testing.T) {
-		chart := cdk8s.Testing_Chart()
-		pod1 := podConnectionPod(chart, "Pod1", "", 0)
-		pod2 := podConnectionPod(chart, "Pod2", "", 0)
-		pod1.Connections().AllowFrom(pod2, nil)
-		ingress := podPoliciesForDirection(t, chart, "ingress")
-		egress := podPoliciesForDirection(t, chart, "egress")
-		if len(ingress) != 1 || len(egress) != 1 {
-			t.Fatalf("ingress/egress policy counts = %d/%d, want 1/1", len(ingress), len(egress))
-		}
-		ingressRule := podPolicyRule(t, ingress[0], "ingress")
-		egressRule := podPolicyRule(t, egress[0], "egress")
-		requireDeepEqual(t, mapAt(t, podRulePeers(t, ingressRule, "ingress")[0], "podSelector", "matchLabels"), map[string]interface{}{"cdk8s.io/metadata.addr": "test-Pod2-c82dc44e"})
-		requireDeepEqual(t, mapAt(t, podRulePeers(t, egressRule, "egress")[0], "podSelector", "matchLabels"), map[string]interface{}{"cdk8s.io/metadata.addr": "test-Pod1-c8591188"})
-	})
-
-	// Ported from: https://github.com/cdk8s-team/cdk8s-plus/blob/fe0337f802a48b0fba3588b80b4afe82085225b0/test/pod.test.ts#L1158
-	t.Run("can allow from managed workload resource", func(t *testing.T) {
-		chart := cdk8s.Testing_Chart()
-		pod := podConnectionPod(chart, "Pod", "", 0)
-		deployment := plus.NewDeployment(chart, jsii.String("Deployment"), &plus.DeploymentProps{Containers: podContainers("pod")})
-		pod.Connections().AllowFrom(deployment, nil)
-		if len(podPoliciesForDirection(t, chart, "ingress")) != 1 || len(podPoliciesForDirection(t, chart, "egress")) != 1 {
-			t.Fatalf("managed workload did not create paired policies: %#v", podPolicySpecs(t, chart))
-		}
-		rule := podPolicyRule(t, podPoliciesForDirection(t, chart, "ingress")[0], "ingress")
-		selector := mapAt(t, podRulePeers(t, rule, "ingress")[0], "podSelector", "matchLabels")
-		if selector["cdk8s.io/metadata.addr"] == nil {
-			t.Fatalf("deployment selector = %#v", selector)
-		}
-		if len(podManifestsOfKind(t, chart, "Deployment")) != 1 {
-			t.Fatal("managed Deployment was not synthesized")
-		}
-	})
-
-	// Ported from: https://github.com/cdk8s-team/cdk8s-plus/blob/fe0337f802a48b0fba3588b80b4afe82085225b0/test/pod.test.ts#L1174
-	t.Run("can allow from pods selected without namespaces", func(t *testing.T) {
-		chart := cdk8s.Testing_Chart()
-		pod := podConnectionPod(chart, "Pod", "", 0)
-		selected := plus.Pods_Select(chart, jsii.String("Pods"), &plus.PodsSelectOptions{Labels: &map[string]*string{"type": jsii.String("selected")}})
-		pod.Connections().AllowFrom(selected, nil)
-		if len(podManifestsOfKind(t, chart, "NetworkPolicy")) != 2 {
-			t.Fatalf("NetworkPolicy count = %d, want 2", len(podManifestsOfKind(t, chart, "NetworkPolicy")))
-		}
-		ingressRule := podPolicyRule(t, podPoliciesForDirection(t, chart, "ingress")[0], "ingress")
-		requireDeepEqual(t, mapAt(t, podRulePeers(t, ingressRule, "ingress")[0], "podSelector", "matchLabels"), map[string]interface{}{"type": "selected"})
-		opposite := mapAt(t, podPoliciesForDirection(t, chart, "egress")[0], "spec", "podSelector", "matchLabels")
-		requireDeepEqual(t, opposite, map[string]interface{}{"type": "selected"})
-	})
-
-	// Ported from: https://github.com/cdk8s-team/cdk8s-plus/blob/fe0337f802a48b0fba3588b80b4afe82085225b0/test/pod.test.ts#L1188
-	t.Run("can allow from pods selected with namespaces selected by names", func(t *testing.T) {
-		chart := cdk8s.Testing_Chart()
-		pod := podConnectionPod(chart, "Pod", "", 0)
-		namespaces := plus.Namespaces_Select(chart, jsii.String("Namespaces"), &plus.NamespacesSelectOptions{Names: &[]*string{jsii.String("selected1"), jsii.String("selected2")}})
-		selected := plus.Pods_Select(chart, jsii.String("Pods"), &plus.PodsSelectOptions{Labels: &map[string]*string{"type": jsii.String("selected")}, Namespaces: namespaces})
-		pod.Connections().AllowFrom(selected, nil)
-		policies := podManifestsOfKind(t, chart, "NetworkPolicy")
-		if len(policies) != 3 {
-			t.Fatalf("NetworkPolicy count = %d, want 3", len(policies))
-		}
-		ingressRule := podPolicyRule(t, podPoliciesForDirection(t, chart, "ingress")[0], "ingress")
-		peers := podRulePeers(t, ingressRule, "ingress")
-		if len(peers) != 2 {
-			t.Fatalf("ingress peer count = %d, want 2", len(peers))
-		}
-		names := make([]string, 0, 2)
-		for _, peer := range peers {
-			names = append(names, mapAt(t, peer, "namespaceSelector", "matchLabels")["kubernetes.io/metadata.name"].(string))
-		}
-		sort.Strings(names)
-		requireDeepEqual(t, names, []string{"selected1", "selected2"})
-		egress := podPoliciesForDirection(t, chart, "egress")
-		gotNamespaces := []string{podPolicyMetadataNamespace(t, egress[0]), podPolicyMetadataNamespace(t, egress[1])}
-		sort.Strings(gotNamespaces)
-		requireDeepEqual(t, gotNamespaces, []string{"selected1", "selected2"})
-	})
-
-	// Ported from: https://github.com/cdk8s-team/cdk8s-plus/blob/fe0337f802a48b0fba3588b80b4afe82085225b0/test/pod.test.ts#L1205
-	t.Run("cannot allow from pods selected with namespaces selected by labels", func(t *testing.T) {
-		chart := cdk8s.Testing_Chart()
-		pod := podConnectionPod(chart, "Pod", "", 0)
-		namespaces := plus.Namespaces_Select(chart, jsii.String("Namespaces"), &plus.NamespacesSelectOptions{Labels: &map[string]*string{"type": jsii.String("selected")}})
-		selected := plus.Pods_Select(chart, jsii.String("Pods"), &plus.PodsSelectOptions{Labels: &map[string]*string{"type": jsii.String("selected")}, Namespaces: namespaces})
-		requirePanicContains(t, "Unable to create an Egress policy for peer 'test/Pods' (pod=test-pod-c890e1b8). Peer must specify namespaces only by name", func() {
-			pod.Connections().AllowFrom(selected, nil)
-		})
-	})
-
-	// Ported from: https://github.com/cdk8s-team/cdk8s-plus/blob/fe0337f802a48b0fba3588b80b4afe82085225b0/test/pod.test.ts#L1221
-	t.Run("cannot allow from pods selected in all namespaces", func(t *testing.T) {
-		chart := cdk8s.Testing_Chart()
-		pod := podConnectionPod(chart, "Pod", "", 0)
-		selected := plus.Pods_Select(chart, jsii.String("Pods"), &plus.PodsSelectOptions{
-			Labels:     &map[string]*string{"type": jsii.String("selected")},
-			Namespaces: plus.Namespaces_All(chart, jsii.String("AllNamespaces")),
-		})
-		requirePanicContains(t, "Unable to create an Egress policy for peer 'test/Pods' (pod=test-pod-c890e1b8). Peer must specify namespace names", func() {
-			pod.Connections().AllowFrom(selected, nil)
-		})
-	})
-
-	// Ported from: https://github.com/cdk8s-team/cdk8s-plus/blob/fe0337f802a48b0fba3588b80b4afe82085225b0/test/pod.test.ts#L1237
-	t.Run("can allow from all pods", func(t *testing.T) {
-		chart := cdk8s.Testing_Chart()
-		pod := podConnectionPod(chart, "Pod", "", 0)
-		pod.Connections().AllowFrom(plus.Pods_All(chart, jsii.String("AllPods"), nil), nil)
-		if len(podManifestsOfKind(t, chart, "NetworkPolicy")) != 2 {
-			t.Fatalf("NetworkPolicy count = %d, want 2", len(podManifestsOfKind(t, chart, "NetworkPolicy")))
-		}
-		rule := podPolicyRule(t, podPoliciesForDirection(t, chart, "ingress")[0], "ingress")
-		requireDeepEqual(t, mapAt(t, podRulePeers(t, rule, "ingress")[0], "podSelector"), map[string]interface{}{})
-		requireDeepEqual(t, mapAt(t, podPoliciesForDirection(t, chart, "egress")[0], "spec", "podSelector"), map[string]interface{}{})
-	})
-
-	// Ported from: https://github.com/cdk8s-team/cdk8s-plus/blob/fe0337f802a48b0fba3588b80b4afe82085225b0/test/pod.test.ts#L1251
-	t.Run("can allow from managed namespace", func(t *testing.T) {
-		chart := cdk8s.Testing_Chart()
-		pod := podConnectionPod(chart, "Pod", "", 0)
-		namespace := plus.NewNamespace(chart, jsii.String("Namespace"), nil)
-		pod.Connections().AllowFrom(namespace, nil)
-		if len(podManifestsOfKind(t, chart, "Namespace")) != 1 || len(podManifestsOfKind(t, chart, "NetworkPolicy")) != 2 {
-			t.Fatalf("Namespace/NetworkPolicy counts = %d/%d, want 1/2", len(podManifestsOfKind(t, chart, "Namespace")), len(podManifestsOfKind(t, chart, "NetworkPolicy")))
-		}
-		rule := podPolicyRule(t, podPoliciesForDirection(t, chart, "ingress")[0], "ingress")
-		peer := podRulePeers(t, rule, "ingress")[0]
-		if got := mapAt(t, peer, "namespaceSelector", "matchLabels")["kubernetes.io/metadata.name"]; got != stringValue(namespace.Name()) {
-			t.Fatalf("namespace selector = %#v, want %q", got, stringValue(namespace.Name()))
-		}
-		if got := podPolicyMetadataNamespace(t, podPoliciesForDirection(t, chart, "egress")[0]); got != stringValue(namespace.Name()) {
-			t.Fatalf("opposite policy namespace = %q, want %q", got, stringValue(namespace.Name()))
-		}
-	})
-
-	// Ported from: https://github.com/cdk8s-team/cdk8s-plus/blob/fe0337f802a48b0fba3588b80b4afe82085225b0/test/pod.test.ts#L1265
-	t.Run("can allow from namespaces selected by name", func(t *testing.T) {
-		chart := cdk8s.Testing_Chart()
-		pod := podConnectionPod(chart, "Pod", "", 0)
-		namespace := plus.Namespaces_Select(chart, jsii.String("Namespaces"), &plus.NamespacesSelectOptions{Names: &[]*string{jsii.String("n1")}})
-		pod.Connections().AllowFrom(namespace, nil)
-		if len(podManifestsOfKind(t, chart, "NetworkPolicy")) != 2 {
-			t.Fatalf("NetworkPolicy count = %d, want 2", len(podManifestsOfKind(t, chart, "NetworkPolicy")))
-		}
-		rule := podPolicyRule(t, podPoliciesForDirection(t, chart, "ingress")[0], "ingress")
-		if got := mapAt(t, podRulePeers(t, rule, "ingress")[0], "namespaceSelector", "matchLabels")["kubernetes.io/metadata.name"]; got != "n1" {
-			t.Fatalf("namespace selector = %#v, want n1", got)
-		}
-		if got := podPolicyMetadataNamespace(t, podPoliciesForDirection(t, chart, "egress")[0]); got != "n1" {
-			t.Fatalf("opposite policy namespace = %q, want n1", got)
-		}
-	})
-
-	// Ported from: https://github.com/cdk8s-team/cdk8s-plus/blob/fe0337f802a48b0fba3588b80b4afe82085225b0/test/pod.test.ts#L1279
-	t.Run("cannot allow from namespaces selected by labels", func(t *testing.T) {
-		chart := cdk8s.Testing_Chart()
-		pod := podConnectionPod(chart, "Pod", "", 0)
-		namespace := plus.Namespaces_Select(chart, jsii.String("Namespaces"), &plus.NamespacesSelectOptions{Labels: &map[string]*string{"type": jsii.String("selected")}})
-		requirePanicContains(t, "Unable to create an Egress policy for peer 'test/Namespaces' (pod=test-pod-c890e1b8). Peer must specify namespaces only by name", func() {
-			pod.Connections().AllowFrom(namespace, nil)
-		})
-	})
-
-	// Ported from: https://github.com/cdk8s-team/cdk8s-plus/blob/fe0337f802a48b0fba3588b80b4afe82085225b0/test/pod.test.ts#L1292
-	t.Run("can allow from peer across namespaces", func(t *testing.T) {
-		chart := cdk8s.Testing_Chart()
-		pod1 := podConnectionPod(chart, "Pod1", "n1", 0)
-		pod2 := podConnectionPod(chart, "Pod2", "n2", 0)
-		pod1.Connections().AllowFrom(pod2, nil)
-		ingress := podPoliciesForDirection(t, chart, "ingress")
-		egress := podPoliciesForDirection(t, chart, "egress")
-		if len(ingress) != 1 || len(egress) != 1 {
-			t.Fatalf("ingress/egress counts = %d/%d, want 1/1", len(ingress), len(egress))
-		}
-		if got := podPolicyMetadataNamespace(t, ingress[0]); got != "n1" {
-			t.Fatalf("ingress policy namespace = %q, want n1", got)
-		}
-		if got := podPolicyMetadataNamespace(t, egress[0]); got != "n2" {
-			t.Fatalf("egress policy namespace = %q, want n2", got)
-		}
-	})
-
-	// Ported from: https://github.com/cdk8s-team/cdk8s-plus/blob/fe0337f802a48b0fba3588b80b4afe82085225b0/test/pod.test.ts#L1310
-	t.Run("can allow from multiple peers", func(t *testing.T) {
-		chart := cdk8s.Testing_Chart()
-		pod1 := podConnectionPod(chart, "Pod1", "", 0)
-		pod2 := podConnectionPod(chart, "Pod2", "", 0)
-		pod3 := podConnectionPod(chart, "Pod3", "", 0)
-		pod1.Connections().AllowFrom(pod2, nil)
-		pod1.Connections().AllowFrom(pod3, nil)
-		if len(podPoliciesForDirection(t, chart, "ingress")) != 2 || len(podPoliciesForDirection(t, chart, "egress")) != 2 {
-			t.Fatalf("paired policies = %#v", podPolicySpecs(t, chart))
-		}
-	})
-
-	// Ported from: https://github.com/cdk8s-team/cdk8s-plus/blob/fe0337f802a48b0fba3588b80b4afe82085225b0/test/pod.test.ts#L1331
-	t.Run("cannot allow from the same peer twice", func(t *testing.T) {
-		chart := cdk8s.Testing_Chart()
-		pod1 := podConnectionPod(chart, "Pod1", "", 0)
-		pod2 := podConnectionPod(chart, "Pod2", "", 0)
-		pod1.Connections().AllowFrom(pod2, nil)
-		requirePanicContains(t, "There is already a Construct with name", func() { pod1.Connections().AllowFrom(pod2, nil) })
-	})
-
-	// Ported from: https://github.com/cdk8s-team/cdk8s-plus/blob/fe0337f802a48b0fba3588b80b4afe82085225b0/test/pod.test.ts#L1347
-	t.Run("allow from create an ingress policy in source namespace when peer doesnt define namespaces", func(t *testing.T) {
-		chart := cdk8s.Testing_Chart()
-		pod := podConnectionPod(chart, "Pod", "n1", 0)
-		redis := plus.Pods_Select(chart, jsii.String("Pods"), &plus.PodsSelectOptions{Labels: &map[string]*string{"role": jsii.String("redis")}})
-		pod.Connections().AllowFrom(redis, nil)
-		egress := podPoliciesForDirection(t, chart, "egress")
-		if len(egress) != 1 || podPolicyMetadataNamespace(t, egress[0]) != "n1" {
-			t.Fatalf("opposite egress policies = %#v, want one in n1", egress)
-		}
-	})
-
-	// Ported from: https://github.com/cdk8s-team/cdk8s-plus/blob/fe0337f802a48b0fba3588b80b4afe82085225b0/test/pod.test.ts#L1366
-	t.Run("allow from with peer isolation creates only ingress policy on peer", func(t *testing.T) {
-		chart := cdk8s.Testing_Chart()
-		pod1 := podConnectionPod(chart, "Pod1", "", 0)
-		pod2 := podConnectionPod(chart, "Pod2", "", 0)
-		pod1.Connections().AllowFrom(pod2, &plus.PodConnectionsAllowFromOptions{Isolation: plus.PodConnectionsIsolation_PEER})
-		if len(podManifestsOfKind(t, chart, "NetworkPolicy")) != 1 || len(podPoliciesForDirection(t, chart, "egress")) != 1 {
-			t.Fatalf("policies = %#v, want one peer egress policy", podPolicySpecs(t, chart))
-		}
-	})
-
-	// Ported from: https://github.com/cdk8s-team/cdk8s-plus/blob/fe0337f802a48b0fba3588b80b4afe82085225b0/test/pod.test.ts#L1383
-	t.Run("allow from with pod isolation creates only egress policy on pod", func(t *testing.T) {
-		chart := cdk8s.Testing_Chart()
-		pod1 := podConnectionPod(chart, "Pod1", "", 0)
-		pod2 := podConnectionPod(chart, "Pod2", "", 0)
-		pod1.Connections().AllowFrom(pod2, &plus.PodConnectionsAllowFromOptions{Isolation: plus.PodConnectionsIsolation_POD})
-		if len(podManifestsOfKind(t, chart, "NetworkPolicy")) != 1 || len(podPoliciesForDirection(t, chart, "ingress")) != 1 {
-			t.Fatalf("policies = %#v, want one pod ingress policy", podPolicySpecs(t, chart))
-		}
-	})
-
-	// Ported from: https://github.com/cdk8s-team/cdk8s-plus/blob/fe0337f802a48b0fba3588b80b4afe82085225b0/test/pod.test.ts#L1400
-	t.Run("allow from defaults to peer container ports", func(t *testing.T) {
-		chart := cdk8s.Testing_Chart()
-		pod1 := podConnectionPod(chart, "Pod1", "", 0)
-		pod2 := podConnectionPod(chart, "Pod2", "", 6739)
-		pod1.Connections().AllowFrom(pod2, nil)
-		requireDeepEqual(t, podPolicyRule(t, podPoliciesForDirection(t, chart, "ingress")[0], "ingress")["ports"], []interface{}{})
-		requireDeepEqual(t, podPolicyRule(t, podPoliciesForDirection(t, chart, "egress")[0], "egress")["ports"], []interface{}{})
-	})
+	direction := podConnectionTestDirection{
+		verb:          "from",
+		primary:       "ingress",
+		opposite:      "egress",
+		oppositeTitle: "Egress",
+		allow: func(connections plus.PodConnections, peer plus.INetworkPolicyPeer) {
+			connections.AllowFrom(peer, nil)
+		},
+		allowPorts: func(connections plus.PodConnections, peer plus.INetworkPolicyPeer, ports *[]plus.NetworkPolicyPort) {
+			connections.AllowFrom(peer, &plus.PodConnectionsAllowFromOptions{Ports: ports})
+		},
+		allowIsolation: func(connections plus.PodConnections, peer plus.INetworkPolicyPeer, isolation plus.PodConnectionsIsolation) {
+			connections.AllowFrom(peer, &plus.PodConnectionsAllowFromOptions{Isolation: isolation})
+		},
+		defaultPorts: []interface{}{},
+	}
+	testPodConnections(t, direction)
 }
 
 func podManifestsOfKind(t *testing.T, chart cdk8s.Chart, kind string) []map[string]interface{} {
