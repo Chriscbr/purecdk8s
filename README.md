@@ -16,9 +16,9 @@ The module has no dependency on `github.com/aws/jsii-runtime-go`, npm, or Node.j
 
 ## Performance
 
-On an Apple M3 Max (macOS arm64, Go 1.27.1, Node.js 22.13.1), four integration examples (1–19 resources) rendered in **7–33 ms with purecdk8s versus 211–286 ms with the upstream Go packages pinned in the fixtures**, roughly **7–28× faster**.
-These are medians of 15 runs after two warmups, timing prebuilt applications through manifest writes (including JSII/Node startup, excluding compilation, imports, and CLI overhead), with byte-for-byte output checks on every run.
-Run `python3 integration/benchmark.py` to reproduce (requires Go, Node.js, and npm; add `--json results.json` to save raw samples).
+On an Apple M3 Max (macOS arm64, Go 1.27.1, Node.js 22.13.1), I tested the performance of `purecdk8s` vs `cdk8s` by rendering four integration examples with varying numbers of resources.
+The examples took **28–36 ms** to render with `purecdk8s` versus **211–286 ms** with `cdk8s`, suggesting a performance improvement of roughly **6–10×**.
+Run `python3 integration/benchmark.py` to reproduce the benchmark (requires Go, Node.js, and npm).
 
 ## Install
 
