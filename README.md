@@ -14,6 +14,12 @@ The compatibility guarantee is kept in check by a multi-layered testing approach
 
 The module has no dependency on `github.com/aws/jsii-runtime-go`, npm, or Node.js. Its only third-party dependency is `gopkg.in/yaml.v3`.
 
+## Performance
+
+On an Apple M3 Max (macOS arm64, Go 1.27.1, Node.js 22.13.1), four integration examples (1–19 resources) rendered in **7–33 ms with purecdk8s versus 211–286 ms with the upstream Go packages pinned in the fixtures**, roughly **7–28× faster**.
+These are medians of 15 runs after two warmups, timing prebuilt applications through manifest writes (including JSII/Node startup, excluding compilation, imports, and CLI overhead), with byte-for-byte output checks on every run.
+Run `python3 integration/benchmark.py` to reproduce (requires Go, Node.js, and npm; add `--json results.json` to save raw samples).
+
 ## Install
 
 ```console

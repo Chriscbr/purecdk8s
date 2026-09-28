@@ -1,9 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-project=${1:?usage: migrate.sh PROJECT}
+project=${1:?usage: migrate.sh PROJECT [PURECDK8S_ROOT]}
+purecdk8s_root=${2:-/purecdk8s}
 
-find "$project" -type f -name '*.go' -exec sed -i \
+# BSD sed requires an explicit empty backup suffix; GNU sed does not.
+sed_in_place=(-i)
+if [[ "$(uname -s)" == Darwin ]]; then
+  sed_in_place=(-i '')
+fi
+
+find "$project" -type f -name '*.go' -exec sed "${sed_in_place[@]}" \
   -e 's|github.com/cdk8s-team/cdk8s-core-go/cdk8s/v2|github.com/Chriscbr/purecdk8s/cdk8s/v2|g' \
   -e 's|github.com/cdk8s-team/cdk8s-plus-go/cdk8splus34/v2|github.com/Chriscbr/purecdk8s/cdk8splus34/v2|g' \
   -e 's|github.com/cdk8s-team/cdk8s-plus-go/cdk8splus35/v2|github.com/Chriscbr/purecdk8s/cdk8splus35/v2|g' \
@@ -21,4 +28,4 @@ go mod edit \
   -droprequire github.com/aws/constructs-go/constructs/v10 \
   -droprequire github.com/aws/jsii-runtime-go \
   -require github.com/Chriscbr/purecdk8s@v0.0.0 \
-  -replace github.com/Chriscbr/purecdk8s=/purecdk8s
+  -replace "github.com/Chriscbr/purecdk8s=$purecdk8s_root"
